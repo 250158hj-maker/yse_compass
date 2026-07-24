@@ -13,6 +13,13 @@ export const roleLabels: Record<Role, string> = {
 
 export type AnnouncementPhase = "企画" | "設計" | "試作" | "最終";
 
+export const phaseStyle: Record<AnnouncementPhase, string> = {
+  企画: "bg-sky-100 text-sky-700",
+  設計: "bg-cyan-100 text-cyan-700",
+  試作: "bg-amber-100 text-amber-700",
+  最終: "bg-teal-100 text-teal-700",
+};
+
 export type Announcement = {
   id: string;
   phase: AnnouncementPhase;

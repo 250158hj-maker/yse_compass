@@ -4,6 +4,7 @@ import {
   announcements,
   getAnnouncementById,
   getSubmissionsForAnnouncement,
+  phaseStyle,
   type SubmissionStatus,
 } from "@/lib/mock-data";
 
@@ -29,12 +30,12 @@ export default async function AnnouncementTeamsPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
-      <Link href="/announcements" className="text-sm text-slate-400 hover:text-slate-700">
+      <Link href="/announcements" className="text-sm text-slate-400 hover:text-sky-600">
         ← 発表会一覧に戻る
       </Link>
 
       <div className="mt-4 flex items-center gap-3">
-        <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${phaseStyle[announcement.phase]}`}>
           {announcement.phase}
         </span>
         <h1 className="text-2xl font-bold text-slate-900">{announcement.title}</h1>
@@ -50,7 +51,7 @@ export default async function AnnouncementTeamsPage({
             href={`/announcements/${a.id}`}
             className={`whitespace-nowrap border-b-2 px-3 py-2 ${
               a.id === announcement.id
-                ? "border-slate-900 text-slate-900"
+                ? "border-sky-600 text-sky-600"
                 : "border-transparent text-slate-400 hover:text-slate-700"
             }`}
           >
@@ -66,7 +67,7 @@ export default async function AnnouncementTeamsPage({
           <Link
             key={team.id}
             href={`/announcements/${announcement.id}/teams/${team.id}`}
-            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-sky-200 hover:shadow-md"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-400">{team.className}</span>

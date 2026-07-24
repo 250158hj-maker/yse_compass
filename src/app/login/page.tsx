@@ -39,14 +39,14 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => handleLogin("teacher")}
-            className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700"
+            className="w-full rounded-lg bg-sky-600 px-4 py-3 text-sm font-semibold text-white hover:bg-sky-700"
           >
             先生としてログイン
           </button>
           <button
             type="button"
             onClick={() => handleLogin("student2")}
-            className="w-full rounded-lg border border-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-100"
+            className="w-full rounded-lg border border-sky-600 px-4 py-3 text-sm font-semibold text-sky-700 hover:bg-sky-50"
           >
             生徒(2年・発表側)としてログイン
           </button>

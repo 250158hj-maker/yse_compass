@@ -24,7 +24,7 @@ export default function Header() {
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/announcements" className="text-lg font-bold text-slate-900">
+        <Link href="/announcements" className="text-lg font-bold text-sky-600">
           YSE Compass
         </Link>
 
@@ -35,7 +35,7 @@ export default function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={active ? "text-slate-900" : "hover:text-slate-900"}
+                className={active ? "text-sky-600" : "hover:text-sky-600"}
               >
                 {link.label}
               </Link>
@@ -52,7 +52,7 @@ export default function Header() {
                 onClick={() => setRole(option.value)}
                 className={`rounded-full px-3 py-1 transition ${
                   role === option.value
-                    ? "bg-slate-900 text-white"
+                    ? "bg-sky-600 text-white"
                     : "text-slate-500 hover:text-slate-900"
                 }`}
               >

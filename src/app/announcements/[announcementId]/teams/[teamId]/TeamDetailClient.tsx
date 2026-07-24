@@ -34,7 +34,7 @@ export default function TeamDetailClient({
     <div className="mx-auto max-w-4xl px-6 py-10">
       <Link
         href={`/announcements/${announcement.id}`}
-        className="text-sm text-slate-400 hover:text-slate-700"
+        className="text-sm text-slate-400 hover:text-sky-600"
       >
         ← {announcement.title}のチーム一覧に戻る
       </Link>
@@ -98,7 +98,7 @@ export default function TeamDetailClient({
                     href={material.driveUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs font-semibold text-slate-900 hover:underline"
+                    className="text-xs font-semibold text-sky-600 hover:underline"
                   >
                     開く
                   </a>
@@ -106,7 +106,7 @@ export default function TeamDetailClient({
                   role === "student2" && (
                     <button
                       type="button"
-                      className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      className="rounded-md border border-sky-200 px-2 py-1 text-xs font-medium text-sky-700 hover:bg-sky-50"
                     >
                       提出する
                     </button>
@@ -115,7 +115,7 @@ export default function TeamDetailClient({
                 {role === "student2" && material.driveUrl && (
                   <button
                     type="button"
-                    className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    className="rounded-md border border-sky-200 px-2 py-1 text-xs font-medium text-sky-700 hover:bg-sky-50"
                   >
                     差し替え
                   </button>

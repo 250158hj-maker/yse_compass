@@ -9,7 +9,7 @@ export default function Home() {
       </p>
       <Link
         href="/login"
-        className="mt-8 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700"
+        className="mt-8 rounded-full bg-sky-600 px-6 py-3 text-sm font-semibold text-white hover:bg-sky-700"
       >
         ログインへ進む
       </Link>

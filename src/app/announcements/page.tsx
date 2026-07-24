@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRole } from "@/context/RoleContext";
-import { announcements, templates, type Announcement } from "@/lib/mock-data";
+import { announcements, phaseStyle, templates, type Announcement } from "@/lib/mock-data";
 
 const statusStyle: Record<Announcement["status"], string> = {
   受付中: "bg-emerald-100 text-emerald-700",
@@ -25,7 +25,7 @@ export default function AnnouncementsPage() {
         {role === "teacher" && (
           <button
             type="button"
-            className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+            className="rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
           >
             発表会を作成
           </button>
@@ -37,10 +37,12 @@ export default function AnnouncementsPage() {
           <Link
             key={a.id}
             href={`/announcements/${a.id}`}
-            className="block rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+            className="block rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-200 hover:shadow-md"
           >
             <div className="flex items-center justify-between">
-              <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${phaseStyle[a.phase]}`}
+              >
                 {a.phase}
               </span>
               <span
@@ -75,7 +77,7 @@ export default function AnnouncementsPage() {
               ))}
             </div>
 
-            <span className="mt-5 inline-block text-sm font-semibold text-slate-900">
+            <span className="mt-5 inline-block text-sm font-semibold text-sky-600">
               チーム一覧・提出状況を見る →
             </span>
           </Link>
@@ -94,7 +96,7 @@ export default function AnnouncementsPage() {
             {role === "teacher" && (
               <button
                 type="button"
-                className="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-full border border-sky-200 px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50"
               >
                 テンプレートを追加
               </button>
@@ -107,7 +109,9 @@ export default function AnnouncementsPage() {
                 <div>
                   <p className="text-sm font-medium text-slate-800">{tpl.name}</p>
                   <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5">{tpl.relatedPhase}</span>
+                    <span className={`rounded-full px-2 py-0.5 ${phaseStyle[tpl.relatedPhase]}`}>
+                      {tpl.relatedPhase}
+                    </span>
                     <span>{tpl.format}</span>
                   </div>
                 </div>
@@ -115,7 +119,7 @@ export default function AnnouncementsPage() {
                   href={tpl.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-semibold text-slate-900 hover:underline"
+                  className="text-xs font-semibold text-sky-600 hover:underline"
                 >
                   開く
                 </a>

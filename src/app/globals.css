@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+@theme {
+  --color-brand-blue: #005ca2;
+  --color-brand-cyan: #00c3e1;
+  --color-brand-orange: #f0844a;
+  --color-brand-coral: #e56c74;
+  --color-brand-teal: #0bab8b;
+  --color-brand-purple: #854798;
+  --color-brand-green: #70a82e;
+}
+
+.brand-gradient-bar {
+  background: linear-gradient(
+    90deg,
+    var(--color-brand-blue),
+    var(--color-brand-cyan),
+    var(--color-brand-teal),
+    var(--color-brand-green),
+    var(--color-brand-orange),
+    var(--color-brand-coral),
+    var(--color-brand-purple)
+  );
+}

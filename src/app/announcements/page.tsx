@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRole } from "@/context/RoleContext";
-import { announcements, type Announcement } from "@/lib/mock-data";
+import { announcements, templates, type Announcement } from "@/lib/mock-data";
 
 const statusStyle: Record<Announcement["status"], string> = {
   受付中: "bg-emerald-100 text-emerald-700",
@@ -34,9 +34,10 @@ export default function AnnouncementsPage() {
 
       <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
         {announcements.map((a) => (
-          <div
+          <Link
             key={a.id}
-            className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+            href={`/announcements/${a.id}`}
+            className="block rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md"
           >
             <div className="flex items-center justify-between">
               <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
@@ -74,15 +75,55 @@ export default function AnnouncementsPage() {
               ))}
             </div>
 
-            <Link
-              href={`/teams?announcement=${a.id}`}
-              className="mt-5 inline-block text-sm font-semibold text-slate-900 hover:underline"
-            >
+            <span className="mt-5 inline-block text-sm font-semibold text-slate-900">
               チーム一覧・提出状況を見る →
-            </Link>
-          </div>
+            </span>
+          </Link>
         ))}
       </div>
+
+      {(role === "teacher" || role === "student2") && (
+        <section className="mt-10 rounded-xl border border-slate-200 bg-white p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-400">配布テンプレート</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                各発表会で提出する資料のフォーマットです。ダウンロードして編集してください。
+              </p>
+            </div>
+            {role === "teacher" && (
+              <button
+                type="button"
+                className="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                テンプレートを追加
+              </button>
+            )}
+          </div>
+
+          <ul className="mt-4 divide-y divide-slate-100">
+            {templates.map((tpl) => (
+              <li key={tpl.id} className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-800">{tpl.name}</p>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5">{tpl.relatedPhase}</span>
+                    <span>{tpl.format}</span>
+                  </div>
+                </div>
+                <a
+                  href={tpl.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-semibold text-slate-900 hover:underline"
+                >
+                  開く
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

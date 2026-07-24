@@ -3,10 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRole } from "@/context/RoleContext";
+import type { Role } from "@/lib/mock-data";
 
-const navLinks = [
-  { href: "/announcements", label: "発表会" },
-  { href: "/teams", label: "チーム一覧" },
+const navLinks = [{ href: "/announcements", label: "発表会一覧" }];
+
+const roleOptions: { value: Role; label: string }[] = [
+  { value: "teacher", label: "先生" },
+  { value: "student2", label: "生徒(2年)" },
+  { value: "student1", label: "生徒(1年)" },
 ];
 
 export default function Header() {
@@ -41,28 +45,20 @@ export default function Header() {
 
         <div className="flex items-center gap-3">
           <div className="flex rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-medium">
-            <button
-              type="button"
-              onClick={() => setRole("teacher")}
-              className={`rounded-full px-3 py-1 transition ${
-                role === "teacher"
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              先生として表示
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("student")}
-              className={`rounded-full px-3 py-1 transition ${
-                role === "student"
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              生徒として表示
-            </button>
+            {roleOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setRole(option.value)}
+                className={`rounded-full px-3 py-1 transition ${
+                  role === option.value
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
           <Link
             href="/login"

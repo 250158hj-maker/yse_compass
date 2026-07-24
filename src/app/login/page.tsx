@@ -45,10 +45,17 @@ export default function LoginPage() {
           </button>
           <button
             type="button"
-            onClick={() => handleLogin("student")}
+            onClick={() => handleLogin("student2")}
             className="w-full rounded-lg border border-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-100"
           >
-            生徒としてログイン
+            生徒(2年・発表側)としてログイン
+          </button>
+          <button
+            type="button"
+            onClick={() => handleLogin("student1")}
+            className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            生徒(1年・視聴側)としてログイン
           </button>
         </div>
       </div>

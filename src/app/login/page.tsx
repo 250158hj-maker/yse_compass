@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRole } from "@/context/RoleContext";
-import type { Role } from "@/lib/mock-data";
+import type { Role } from "@/lib/types";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,12 +10,12 @@ export default function LoginPage() {
 
   function handleLogin(role: Role) {
     setRole(role);
-    router.push("/announcements");
+    router.push("/");
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col justify-center px-6 py-16">
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-lg flex-col justify-center px-6 py-16">
+      <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="text-xl font-bold text-slate-900">YSE Compass</h1>
         <p className="mt-2 text-sm text-slate-500">
           学校アカウントでログインしてください(モック画面のため、役割を選択するだけでログインできます)
@@ -39,23 +39,23 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => handleLogin("teacher")}
-            className="w-full rounded-lg bg-sky-600 px-4 py-3 text-sm font-semibold text-white hover:bg-sky-700"
+            className="w-full rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
           >
             先生としてログイン
           </button>
           <button
             type="button"
-            onClick={() => handleLogin("student2")}
-            className="w-full rounded-lg border border-sky-600 px-4 py-3 text-sm font-semibold text-sky-700 hover:bg-sky-50"
+            onClick={() => handleLogin("presenter")}
+            className="w-full rounded-lg border border-brand-600 px-4 py-3 text-sm font-semibold text-brand-700 hover:bg-brand-50"
           >
-            生徒(2年・発表側)としてログイン
+            生徒(発表側・Cheersチーム)としてログイン
           </button>
           <button
             type="button"
-            onClick={() => handleLogin("student1")}
+            onClick={() => handleLogin("viewer")}
             className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
           >
-            生徒(1年・視聴側)としてログイン
+            生徒(視聴側)としてログイン
           </button>
         </div>
       </div>

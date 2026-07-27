@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { getAnnouncementById, getSubmission, getTeamById } from "@/lib/mock";
-import PresentationDetailClient from "./PresentationDetailClient";
+import SummaryFormClient from "./SummaryFormClient";
 
-export default async function PresentationDetailPage({
+export default async function SummaryFormPage({
   params,
 }: {
   params: Promise<{ announcementId: string; teamId: string }>;
@@ -13,5 +13,5 @@ export default async function PresentationDetailPage({
   const submission = getSubmission(announcementId, teamId);
   if (!announcement || !team || !submission) notFound();
 
-  return <PresentationDetailClient announcement={announcement} team={team} submission={submission} />;
+  return <SummaryFormClient announcement={announcement} team={team} submission={submission} />;
 }

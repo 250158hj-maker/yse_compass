@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import type { Role } from "@/lib/mock-data";
+import type { Role } from "@/lib/types";
 
 const STORAGE_KEY = "yse-compass-role";
 
@@ -17,7 +17,10 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === "teacher" || stored === "student2" || stored === "student1") {
+    if (stored === "teacher" || stored === "presenter" || stored === "viewer") {
+      // SSR時はwindowがなくlocalStorageを読めないため、初期値は常に"teacher"でサーバー/クライアントの
+      // 初回描画を一致させ、マウント後にこの効果でローカルストレージの値へ反映してhydrationミスマッチを避ける。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRoleState(stored);
     }
   }, []);
@@ -27,11 +30,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, next);
   }
 
-  return (
-    <RoleContext.Provider value={{ role, setRole }}>
-      {children}
-    </RoleContext.Provider>
-  );
+  return <RoleContext.Provider value={{ role, setRole }}>{children}</RoleContext.Provider>;
 }
 
 export function useRole() {

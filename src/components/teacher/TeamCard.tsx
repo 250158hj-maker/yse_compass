@@ -112,7 +112,7 @@ export function TeamCard({ team, initialMembers }: { team: Team; initialMembers:
                 href={`/teacher/teams/${team.id}`}
                 className="rounded-full border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand-blue hover:text-brand-blue"
               >
-                作品ページを見る
+                チーム詳細を見る
               </Link>
               <button
                 type="button"

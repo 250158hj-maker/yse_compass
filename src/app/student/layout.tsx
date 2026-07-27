@@ -9,16 +9,16 @@ export default async function StudentLayout({ children }: { children: React.Reac
 
   const navItems: RoleNavItem[] = myTeam
     ? [
-        { href: "/student", label: "マイプロジェクト", exact: true },
-        { href: "/student/submissions", label: "資料提出" },
+        { href: "/student", label: "ホーム", exact: true },
+        { href: "/student/events", label: "発表会一覧" },
+        { href: "/student/teams", label: "チーム" },
         { href: "/student/templates", label: "テンプレート" },
-        { href: "/student/browse/ev-2", label: "他チームの発表を見る" },
-        { href: "/student/timetable/ev-2", label: "タイムテーブル" },
         { href: "/student/archive", label: "過去の作品を検索" },
       ]
     : [
-        { href: "/student", label: "発表資料を見る", exact: true },
-        { href: "/student/timetable/ev-2", label: "タイムテーブル" },
+        { href: "/student", label: "ホーム", exact: true },
+        { href: "/student/events", label: "発表会一覧" },
+        { href: "/student/teams", label: "チーム" },
         { href: "/student/archive", label: "過去の作品を検索" },
       ];
 

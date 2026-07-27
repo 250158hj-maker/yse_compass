@@ -23,14 +23,15 @@ export default async function TeacherSubmissionsPage({
   const slots = materialSlots.filter((slot) => slot.eventId === eventId);
   const cells = getSubmissionMatrix(eventId);
   const showOnlyMissing = onlyMissing === "1";
+  const yearTeams = teams.filter((t) => t.year === event.year);
 
   const visibleTeams = showOnlyMissing
-    ? teams.filter((team) =>
+    ? yearTeams.filter((team) =>
         cells.some((cell) => cell.team.id === team.id && cell.status !== "提出済み")
       )
-    : teams;
+    : yearTeams;
 
-  const fullySubmittedCount = teams.filter((team) =>
+  const fullySubmittedCount = yearTeams.filter((team) =>
     slots.every(
       (slot) => cells.find((c) => c.team.id === team.id && c.slot.id === slot.id)?.status === "提出済み"
     )
@@ -38,14 +39,14 @@ export default async function TeacherSubmissionsPage({
 
   return (
     <div>
-      <BackLink href="/teacher/events" label="発表会一覧に戻る" />
+      <BackLink href={`/teacher/events/${eventId}`} label="発表会詳細に戻る" />
       <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-gray-900">提出状況一覧</h1>
       <p className="mt-1 text-gray-600">
         {event.phase}発表会（締切: {event.deadline}）のチーム別提出状況です。
       </p>
       <p className="mt-2 text-sm text-gray-600">
         <span className="font-semibold text-gray-900">
-          {fullySubmittedCount} / {teams.length}
+          {fullySubmittedCount} / {yearTeams.length}
         </span>{" "}
         チームが全資料提出済み
       </p>
@@ -90,7 +91,23 @@ export default async function TeacherSubmissionsPage({
                   const cell = cells.find((c) => c.slot.id === slot.id && c.team.id === team.id);
                   return (
                     <td key={slot.id} className="py-3 pr-4">
-                      {cell ? <StatusBadge status={cell.status} /> : "—"}
+                      {cell ? (
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={cell.status} />
+                          {cell.linkUrl && (
+                            <a
+                              href={cell.linkUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-semibold text-brand-blue hover:underline"
+                            >
+                              開く ↗
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                   );
                 })}

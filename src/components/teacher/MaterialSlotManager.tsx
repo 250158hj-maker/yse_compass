@@ -6,6 +6,7 @@ import type { MaterialSlot } from "@/lib/mock-data";
 interface EditableFields {
   kind: string;
   deadline: string;
+  formType: MaterialSlot["formType"];
 }
 
 export function MaterialSlotManager({
@@ -23,22 +24,30 @@ export function MaterialSlotManager({
   const [isAdding, setIsAdding] = useState(false);
   const [newKind, setNewKind] = useState("");
   const [newDeadline, setNewDeadline] = useState("");
+  const [newFormType, setNewFormType] = useState<MaterialSlot["formType"]>("link");
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!newKind.trim() || !newDeadline) return;
     setSlots((prev) => [
       ...prev,
-      { id: `slot-new-${prev.length + 1}-${Date.now()}`, eventId, kind: newKind.trim(), deadline: newDeadline },
+      {
+        id: `slot-new-${prev.length + 1}-${Date.now()}`,
+        eventId,
+        kind: newKind.trim(),
+        deadline: newDeadline,
+        formType: newFormType,
+      },
     ]);
     setNewKind("");
     setNewDeadline("");
+    setNewFormType("link");
     setIsAdding(false);
   }
 
   function startEdit(slot: MaterialSlot) {
     setEditingId(slot.id);
-    setEditFields({ kind: slot.kind, deadline: slot.deadline });
+    setEditFields({ kind: slot.kind, deadline: slot.deadline, formType: slot.formType });
   }
 
   function handleSaveEdit(e: React.FormEvent) {
@@ -76,6 +85,16 @@ export function MaterialSlotManager({
                     onChange={(e) => setEditFields({ ...editFields, deadline: e.target.value })}
                     className="rounded border border-gray-200 px-1 py-0.5 text-sm focus:border-gray-400 focus:outline-none"
                   />
+                  <select
+                    value={editFields.formType}
+                    onChange={(e) =>
+                      setEditFields({ ...editFields, formType: e.target.value as MaterialSlot["formType"] })
+                    }
+                    className="rounded border border-gray-200 px-1 py-0.5 text-sm focus:border-gray-400 focus:outline-none"
+                  >
+                    <option value="link">リンク登録</option>
+                    <option value="summary">概要フォーム</option>
+                  </select>
                   <button type="submit" className="text-xs font-semibold text-brand-blue hover:underline">
                     保存
                   </button>
@@ -94,7 +113,7 @@ export function MaterialSlotManager({
                 className="flex items-center gap-2 rounded-md border border-gray-200 px-2.5 py-1 text-gray-600"
               >
                 <span>
-                  {slot.kind}（締切 {slot.deadline}）
+                  {slot.kind}（{slot.formType === "summary" ? "概要フォーム" : "リンク登録"}・締切 {slot.deadline}）
                 </span>
                 <button
                   type="button"
@@ -136,6 +155,14 @@ export function MaterialSlotManager({
             onChange={(e) => setNewDeadline(e.target.value)}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
           />
+          <select
+            value={newFormType}
+            onChange={(e) => setNewFormType(e.target.value as MaterialSlot["formType"])}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
+          >
+            <option value="link">リンク登録</option>
+            <option value="summary">概要フォーム</option>
+          </select>
           <button
             type="submit"
             className="rounded-full bg-brand-blue px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-cyan"

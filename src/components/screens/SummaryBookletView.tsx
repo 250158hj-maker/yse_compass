@@ -1,22 +1,15 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/Card";
-import { PrintButton } from "@/components/ui/PrintButton";
+import { GenerateBookletButton } from "@/components/teacher/GenerateBookletButton";
 import { getEvent, getSummaryBooklet } from "@/lib/mock-data";
 
-export function SummaryBookletView({
-  eventId,
-  teamHref = (teamId: string) => `/student/teams/${teamId}`,
-  editHref,
-}: {
-  eventId: string;
-  teamHref?: (teamId: string) => string;
-  editHref?: string;
-}) {
+/** SC-11 概要集生成・プレビュー。手修正UIは持たない（内容は SC-10 の入力そのまま）。 */
+export function SummaryBookletView({ eventId }: { eventId: string }) {
   const event = getEvent(eventId);
   if (!event) notFound();
 
   const entries = getSummaryBooklet(eventId);
+  const missingCount = entries.filter((e) => !e.content).length;
 
   return (
     <div>
@@ -24,19 +17,16 @@ export function SummaryBookletView({
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">概要集</h1>
           <p className="mt-1 text-gray-600">
-            {event.phase}発表会（{event.deadline}）提出済みの概要集用サマリーを発表順にまとめたものです。
+            {event.phase}発表会（{event.deadline}）。タイムテーブルの発表順に、各チームの概要入力（SC-10）を束ねたものです。
           </p>
-        </div>
-        <div className="flex flex-wrap gap-2 print:hidden">
-          {editHref && (
-            <Link
-              href={editHref}
-              className="rounded-full border border-gray-300 px-4 py-1.5 text-sm font-semibold text-gray-700 hover:border-brand-blue hover:text-brand-blue"
-            >
-              整形・編集する
-            </Link>
+          {missingCount > 0 && (
+            <p className="mt-2 text-sm font-semibold text-brand-orange print:hidden">
+              {missingCount}チームが概要未提出です。
+            </p>
           )}
-          <PrintButton />
+        </div>
+        <div className="print:hidden">
+          <GenerateBookletButton missingCount={missingCount} />
         </div>
       </div>
 
@@ -48,32 +38,35 @@ export function SummaryBookletView({
                 {index + 1}
               </span>
               <div>
-                <Link href={teamHref(entry.team.id)} className="font-semibold text-gray-900 hover:underline print:no-underline print:pointer-events-none">
-                  {entry.team.workTitle}
-                </Link>
+                <p className="font-semibold text-gray-900">{entry.team.workTitle}</p>
                 <p className="text-xs text-gray-400">{entry.team.name}</p>
               </div>
             </div>
-            <p className="mt-2 text-sm text-gray-600">{entry.team.summary}</p>
-            <div className="mt-3">
-              {entry.submission?.linkUrl ? (
-                <a
-                  href={entry.submission.linkUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:border-gray-500 hover:bg-gray-50 print:hidden"
-                >
-                  概要集を開く ↗
-                </a>
-              ) : (
-                <span className="text-sm text-gray-400">概要集用サマリーは未提出です</span>
-              )}
-            </div>
+            {entry.content ? (
+              <div className="mt-3 space-y-2 text-sm">
+                <p>
+                  <span className="font-medium text-gray-700">背景・動機：</span>
+                  {entry.content.background}
+                </p>
+                <p>
+                  <span className="font-medium text-gray-700">起・結：</span>
+                  {entry.content.kiKetsu}
+                </p>
+                <p className="whitespace-pre-wrap">
+                  <span className="font-medium text-gray-700">1ページ集約：</span>
+                  {entry.content.onePageDigest}
+                </p>
+                <p>
+                  <span className="font-medium text-gray-700">使用技術：</span>
+                  {entry.content.techUsed}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-gray-400">概要は未提出です。</p>
+            )}
           </Card>
         ))}
-        {entries.length === 0 && (
-          <p className="text-gray-500">対象となるチームがまだ登録されていません。</p>
-        )}
+        {entries.length === 0 && <p className="text-gray-500">対象となるチームがまだ登録されていません。</p>}
       </div>
     </div>
   );

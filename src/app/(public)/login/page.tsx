@@ -40,14 +40,12 @@ export default function LoginPage() {
               className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-left text-sm hover:border-brand-blue hover:bg-brand-blue/5"
             >
               <span className="font-medium text-gray-900">冨永先生</span>
-              <span className="ml-2 text-gray-500">主任</span>
             </Link>
             <Link
               href="/api/mock-login?teacher=t-mito"
               className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-left text-sm hover:border-brand-blue hover:bg-brand-blue/5"
             >
               <span className="font-medium text-gray-900">水戸先生</span>
-              <span className="ml-2 text-gray-500">担当（冨永先生の下）</span>
             </Link>
           </div>
         </Card>

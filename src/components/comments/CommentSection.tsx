@@ -2,42 +2,20 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
-import { CURRENT_EVENT_ID } from "@/lib/constants";
-import { getEvent, type Comment, type CommentLabel } from "@/lib/mock-data";
+import type { Comment, CommentLabel } from "@/lib/mock-data";
 
 const labels: CommentLabel[] = ["感想", "批評", "その他"];
-type NameMode = "実名" | "ニックネーム" | "匿名";
 
-interface CommentGroup {
-  eventId: string;
-  eventLabel: string;
-  deadline: string;
-  comments: Comment[];
-}
-
-function groupByEvent(comments: Comment[]): CommentGroup[] {
-  const groups = new Map<string, CommentGroup>();
-  for (const comment of comments) {
-    const event = getEvent(comment.eventId);
-    const group = groups.get(comment.eventId) ?? {
-      eventId: comment.eventId,
-      eventLabel: event ? `${event.year}年度 ${event.phase}発表会` : "(不明な発表会)",
-      deadline: event?.deadline ?? "",
-      comments: [],
-    };
-    group.comments.push(comment);
-    groups.set(comment.eventId, group);
-  }
-  return [...groups.values()].sort((a, b) => b.deadline.localeCompare(a.deadline));
-}
-
+/** SC-12 の議論の器。コメント・いいねのアンカーは発表（チーム×発表会）単位。投稿は実名固定（匿名・ニックネームは持たない）。 */
 export function CommentSection({
   teamId,
+  eventId,
   teamName,
   viewerName = "あなた",
   initialComments,
 }: {
   teamId: string;
+  eventId: string;
   teamName: string;
   viewerName?: string;
   initialComments: Comment[];
@@ -47,8 +25,6 @@ export function CommentSection({
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [body, setBody] = useState("");
   const [label, setLabel] = useState<CommentLabel>("感想");
-  const [nameMode, setNameMode] = useState<NameMode>("実名");
-  const [nickname, setNickname] = useState("");
 
   const [mineCommentIds, setMineCommentIds] = useState<Set<string>>(new Set());
   const [mineReplyIds, setMineReplyIds] = useState<Set<string>>(new Set());
@@ -62,8 +38,6 @@ export function CommentSection({
   const [editReplyBody, setEditReplyBody] = useState("");
 
   const visible = items.filter((c) => filter === "すべて" || c.label === filter);
-  const groups = groupByEvent(visible);
-  const currentEvent = getEvent(CURRENT_EVENT_ID);
 
   function toggleLike(id: string) {
     setLikedIds((prev) => {
@@ -74,12 +48,6 @@ export function CommentSection({
       setItems((cur) => cur.map((c) => (c.id === id ? { ...c, likes: c.likes + delta } : c)));
       return next;
     });
-  }
-
-  function resolveAuthorDisplay(): string {
-    if (nameMode === "実名") return viewerName;
-    if (nameMode === "ニックネーム") return nickname.trim() || "名無しの生徒";
-    return "匿名の生徒";
   }
 
   function handleDeleteComment(commentId: string) {
@@ -160,15 +128,14 @@ export function CommentSection({
         onSubmit={(e) => {
           e.preventDefault();
           if (!body.trim()) return;
-          if (nameMode === "ニックネーム" && !nickname.trim()) return;
           const id = `cm-new-${Date.now()}`;
           setItems((prev) => [
             {
               id,
               teamId,
-              eventId: CURRENT_EVENT_ID,
+              eventId,
               label,
-              authorDisplay: resolveAuthorDisplay(),
+              authorDisplay: viewerName,
               body,
               likes: 0,
               createdAt: new Date().toISOString(),
@@ -191,25 +158,9 @@ export function CommentSection({
             </option>
           ))}
         </select>
-        <select
-          value={nameMode}
-          onChange={(e) => setNameMode(e.target.value as NameMode)}
-          className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-        >
-          <option value="実名">実名（{viewerName}）</option>
-          <option value="ニックネーム">ニックネーム</option>
-          <option value="匿名">匿名</option>
-        </select>
-        {nameMode === "ニックネーム" && (
-          <input
-            type="text"
-            required
-            placeholder="表示するニックネーム"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            className="w-32 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
-          />
-        )}
+        <span className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">
+          {viewerName}（実名）
+        </span>
         <input
           type="text"
           placeholder="コメントを入力"
@@ -224,21 +175,9 @@ export function CommentSection({
           投稿する
         </button>
       </form>
-      {currentEvent && (
-        <p className="mt-1 text-xs text-gray-400">
-          投稿は{currentEvent.year}年度 {currentEvent.phase}発表会のコメントとして記録されます。
-        </p>
-      )}
-
-      <div className="mt-4 space-y-6">
-        {groups.map((group) => (
-          <div key={group.eventId}>
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-              {group.eventLabel}
-              {group.deadline && <span className="text-xs font-normal text-gray-400">{group.deadline}</span>}
-            </h3>
-            <div className="mt-2 grid gap-3">
-              {group.comments.map((comment) => (
+      <div className="mt-4">
+        <div className="grid gap-3">
+          {visible.map((comment) => (
                 <Card key={comment.id}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-900">{comment.authorDisplay}</span>
@@ -408,11 +347,9 @@ export function CommentSection({
                     </form>
                   )}
                 </Card>
-              ))}
-            </div>
-          </div>
-        ))}
-        {groups.length === 0 && <p className="text-sm text-gray-400">該当するコメントはありません。</p>}
+          ))}
+        </div>
+        {visible.length === 0 && <p className="text-sm text-gray-400">該当するコメントはありません。</p>}
       </div>
     </div>
   );

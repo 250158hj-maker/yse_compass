@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/ui/BackLink";
 import { LiveOperationView, type OperationEntry } from "@/components/teacher/LiveOperationView";
@@ -27,10 +28,17 @@ export default async function TeacherLiveOperationPage({
 
   return (
     <div>
-      <BackLink href="/teacher/events" label="発表会一覧に戻る" />
+      <BackLink href={`/teacher/events/${eventId}`} label="発表会詳細に戻る" />
       <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-gray-900">当日進行・入れ替え操作</h1>
       <p className="mt-1 text-gray-600">
         {event.phase}発表会（{event.deadline}）。チームの入れ替え時に、次の発表資料をすぐに開けます。実際の進行が予定時刻とずれる場合は、下のボタンや一覧から手動で進めてください。
+      </p>
+      <p className="mt-1 text-sm text-gray-500">
+        発表順・時間・会場そのものを変更する場合は
+        <Link href={`/teacher/events/${eventId}/timetable`} className="ml-1 font-semibold text-brand-blue hover:underline">
+          タイムテーブル編集
+        </Link>
+        から行ってください。
       </p>
 
       <div className="mt-6">

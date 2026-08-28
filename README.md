@@ -1,5 +1,27 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Docker での開発環境
+
+アプリと PostgreSQL を Docker Compose で起動できる。DB の中身（スキーマ）は未確定のため、まだ空のデータベースを用意するだけの構成。
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+- アプリ: http://localhost:3000
+- DB: localhost:5432（`.env` の値で接続）
+- DB接続確認: http://localhost:3000/api/health/db が `{"status":"ok"}` を返せば接続成功
+
+ソースコードはバインドマウントされているため、ホスト側での編集がそのままコンテナ内の Next.js dev server に反映される（ホットリロード）。`node_modules` と `.next` はコンテナ専用の匿名ボリュームなので、依存関係を変更した場合は `docker compose up --build` でイメージを作り直す。
+
+停止・データ削除:
+
+```bash
+docker compose down        # 停止（DBデータは残る）
+docker compose down -v     # 停止 + DBデータも削除
+```
+
 ## Getting Started
 
 First, run the development server:

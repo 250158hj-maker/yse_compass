@@ -12,12 +12,32 @@ import {
   getTimetableFor,
   isLateSubmission,
 } from "@/lib/mock";
-import { Badge, LateBadge, PhaseBadge, StatusBadge } from "@/components/ui/Badge";
+import { Badge, LateBadge, PhaseBadge, StatusBadge, type BadgeTone } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { CardLink } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateTime } from "@/lib/format";
+import type { Announcement, Team } from "@/lib/types";
+
+function submissionSummary(announcement: Announcement, teams: Team[]) {
+  const submittedCount = teams.filter((team) => {
+    const submission = getSubmission(announcement.id, team.id);
+    const required = announcement.materialSlots.filter((s) => s.required);
+    return (
+      submission &&
+      required.every((slot) => submission.materials.find((m) => m.name === slot.name)?.status === "提出済み")
+    );
+  }).length;
+
+  const allSubmitted = submittedCount === teams.length;
+  const pastDeadline = new Date() > new Date(announcement.submissionDeadline);
+  const tone: BadgeTone = allSubmitted ? "emerald" : pastDeadline ? "rose" : "amber";
+  const label = allSubmitted
+    ? `提出 ${submittedCount}/${teams.length} チーム(全チーム提出済み)`
+    : `提出 ${submittedCount}/${teams.length} チーム・未提出あり${pastDeadline ? "(締切超過)" : ""}`;
+
+  return { tone, label };
+}
 
 export default function HomePage() {
   const { currentUser } = useSession();
@@ -27,6 +47,7 @@ export default function HomePage() {
     return <EmptyState message="進行中の年度がありません。" />;
   }
 
+  const teacher = isTeacher(currentUser);
   const announcements = getAnnouncementsByYear(year.id);
   const teams = getTeamsByYear(year.id);
   const ownTeam = teams.find((t) => isOwnTeam(currentUser, t.id)) ?? null;
@@ -52,52 +73,6 @@ export default function HomePage() {
             タイムテーブルを見る
           </Link>
         </div>
-      )}
-
-      {isTeacher(currentUser) && (
-        <section className="mt-8">
-          <SectionHeading>当年度の発表会サマリ</SectionHeading>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {announcements.map((a) => {
-              const submittedCount = teams.filter((team) => {
-                const submission = getSubmission(a.id, team.id);
-                const required = a.materialSlots.filter((s) => s.required);
-                return (
-                  submission &&
-                  required.every(
-                    (slot) => submission.materials.find((m) => m.name === slot.name)?.status === "提出済み"
-                  )
-                );
-              }).length;
-
-              return (
-                <CardLink key={a.id} href={`/announcements/${a.id}`}>
-                  <div className="flex items-center justify-between">
-                    <PhaseBadge phase={a.phase} />
-                    <Badge tone={a.isPublished ? "emerald" : "slate"}>
-                      {a.isPublished ? "公開中" : "非公開"}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 font-semibold text-slate-900">{a.title}</p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    提出 {submittedCount}/{teams.length} チーム・締切 {formatDateTime(a.submissionDeadline)}
-                  </p>
-                </CardLink>
-              );
-            })}
-          </div>
-          <div className="mt-4 flex flex-wrap gap-4 text-sm">
-            <Link href="/admin/years" className="text-brand-600 hover:underline">
-              年度管理へ
-            </Link>
-            <Link href="/admin/publish-permissions" className="text-brand-600 hover:underline">
-              公開許可管理へ
-            </Link>
-            <Link href="/admin/users" className="text-brand-600 hover:underline">
-              ユーザー管理へ
-            </Link>
-          </div>
-        </section>
       )}
 
       {ownTeam && (
@@ -143,26 +118,33 @@ export default function HomePage() {
       )}
 
       <section className="mt-8">
-        <SectionHeading>{isTeacher(currentUser) ? "発表会一覧" : "聴講できる発表会"}</SectionHeading>
+        <SectionHeading>{teacher ? "発表会一覧" : "聴講できる発表会"}</SectionHeading>
         <div className="flex flex-col gap-3">
           {announcements.map((a) => {
-            const viewable = a.isPublished || isTeacher(currentUser);
+            const viewable = a.isPublished || teacher;
+            const summary = teacher ? submissionSummary(a, teams) : null;
             return (
               <Link
                 key={a.id}
                 href={viewable ? `/announcements/${a.id}` : "#"}
                 aria-disabled={!viewable}
-                className={`flex items-center justify-between rounded-lg border p-5 ${
+                className={`rounded-lg border p-5 ${
                   viewable
                     ? "border-slate-200 bg-white hover:border-brand-300"
                     : "pointer-events-none border-slate-100 bg-slate-50 text-slate-400"
                 }`}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <PhaseBadge phase={a.phase} />
-                  <span className="font-semibold">{a.title}</span>
+                  <span className="font-semibold text-slate-900">{a.title}</span>
+                  <Badge tone={a.isPublished ? "emerald" : "slate"}>{a.isPublished ? "公開中" : "非公開"}</Badge>
                 </div>
-                <span className="text-xs">{a.isPublished ? "公開中" : "非公開"}</span>
+                {summary && (
+                  <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                    <span>締切 {formatDateTime(a.submissionDeadline)}</span>
+                    <Badge tone={summary.tone}>{summary.label}</Badge>
+                  </p>
+                )}
               </Link>
             );
           })}

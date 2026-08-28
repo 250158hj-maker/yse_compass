@@ -5,19 +5,78 @@ import { useSession } from "@/context/SessionContext";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import {
   getAnnouncementsByYear,
+  getArchivedYears,
   getCurrentYear,
   getSubmission,
   getTeamById,
   getTeamsByYear,
   getTimetableFor,
   isLateSubmission,
+  users,
 } from "@/lib/mock";
 import { Badge, LateBadge, PhaseBadge, StatusBadge, type BadgeTone } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { CardLink } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateTime } from "@/lib/format";
-import type { Announcement, Team } from "@/lib/types";
+import type { Announcement, Team, Year } from "@/lib/types";
+
+type DashboardTile = { label: string; value: string; caption: string; href: string };
+
+function buildDashboardTiles(year: Year, announcements: Announcement[], teams: Team[], teacher: boolean): DashboardTile[] {
+  const publishedCount = announcements.filter((a) => a.isPublished).length;
+  const archivedYears = getArchivedYears();
+
+  const tiles: DashboardTile[] = [
+    {
+      label: "発表会",
+      value: `${announcements.length}件${publishedCount > 0 ? `(${publishedCount}件公開中)` : ""}`,
+      caption: "提出状況・締切を確認する",
+      href: "/announcements",
+    },
+    {
+      label: "チーム",
+      value: `${teams.length}チーム`,
+      caption: "メンバー・提出資料をまとめて見る",
+      href: "/teams",
+    },
+    {
+      label: "アーカイブ",
+      value: `${archivedYears.length}年度分`,
+      caption: "過去の卒業制作を検索・閲覧する",
+      href: "/archive",
+    },
+  ];
+
+  if (teacher) {
+    const archivedTeams = archivedYears.flatMap((y) => getTeamsByYear(y.id));
+    const permissionSetCount = archivedTeams.filter((t) => t.publishPermission !== "未設定").length;
+
+    tiles.push(
+      {
+        label: "年度管理",
+        value: year.label,
+        caption: "年度の開始・アーカイブ操作",
+        href: "/admin/years",
+      },
+      {
+        label: "公開許可管理",
+        value: `${permissionSetCount}/${archivedTeams.length}件設定済み`,
+        caption: "卒業生の公開許可を管理する",
+        href: "/admin/publish-permissions",
+      },
+      {
+        label: "ユーザー管理",
+        value: `${users.length}アカウント`,
+        caption: "ロールの確認・変更",
+        href: "/admin/users",
+      }
+    );
+  }
+
+  return tiles;
+}
 
 function submissionSummary(announcement: Announcement, teams: Team[]) {
   const submittedCount = teams.filter((team) => {
@@ -56,6 +115,8 @@ export default function HomePage() {
     .map((a) => ({ announcement: a, timetable: getTimetableFor(a.id) }))
     .find((entry) => entry.timetable?.currentPresentingTeamId);
 
+  const dashboardTiles = buildDashboardTiles(year, announcements, teams, teacher);
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader eyebrow={year.label} title="ホーム" />
@@ -74,6 +135,19 @@ export default function HomePage() {
           </Link>
         </div>
       )}
+
+      <section className="mt-8">
+        <SectionHeading>YSE Compassでできること</SectionHeading>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {dashboardTiles.map((tile) => (
+            <CardLink key={tile.href} href={tile.href}>
+              <p className="text-2xl font-bold text-brand-700">{tile.value}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{tile.label}</p>
+              <p className="mt-1 text-xs text-slate-500">{tile.caption}</p>
+            </CardLink>
+          ))}
+        </div>
+      </section>
 
       {ownTeam && (
         <section className="mt-8">

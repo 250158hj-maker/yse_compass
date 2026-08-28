@@ -1,0 +1,46 @@
+name: Docker smoke test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  docker-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start containers
+        run: docker compose up --build -d
+
+      - name: Wait for db healthcheck
+        run: |
+          for i in $(seq 1 30); do
+            status="$(docker inspect -f '{{.State.Health.Status}}' yse_compass-db-1 2>/dev/null || echo starting)"
+            if [ "$status" = "healthy" ]; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "db did not become healthy in time"
+          exit 1
+
+      - name: Check app -> db connection
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health/db | grep -q '"status":"ok"'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "health check did not return ok in time"
+          exit 1
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

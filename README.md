@@ -22,6 +22,30 @@ docker compose down        # 停止（DBデータは残る）
 docker compose down -v     # 停止 + DBデータも削除
 ```
 
+### アプリはホストで直接動かし、DBだけDockerを使う場合
+
+DBコンテナだけ起動する:
+
+```bash
+docker compose up -d db
+```
+
+`.env.local` を作成し、`DATABASE_URL` のホストを `db` から `localhost` に変更する（Next.js は `.env.local` を自動で読み込み、`.env` より優先する）。
+
+```bash
+# .env.local
+DATABASE_URL=postgresql://yse_compass:yse_compass@localhost:5432/yse_compass
+```
+
+```bash
+pnpm install
+pnpm dev
+```
+
+http://localhost:3000/api/health/db が `{"status":"ok"}` を返せば接続成功。
+
+> **注意**: 一度 `docker compose up` でアプリコンテナを起動すると、`.next` ディレクトリがroot所有で作られ、その後ホストで直接 `pnpm dev` すると権限エラー（`EACCES`）で起動に失敗することがある。その場合は `rm -rf .next` で削除してから `pnpm dev` を実行し直す。
+
 ## Getting Started
 
 First, run the development server:

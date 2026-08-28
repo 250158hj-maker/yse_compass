@@ -1,5 +1,51 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Docker での開発環境
+
+アプリと PostgreSQL を Docker Compose で起動できる。DB の中身（スキーマ）は未確定のため、まだ空のデータベースを用意するだけの構成。
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+- アプリ: http://localhost:3000
+- DB: localhost:5432（`.env` の値で接続）
+- DB接続確認: http://localhost:3000/api/health/db が `{"status":"ok"}` を返せば接続成功
+
+ソースコードはバインドマウントされているため、ホスト側での編集がそのままコンテナ内の Next.js dev server に反映される（ホットリロード）。`node_modules` と `.next` はコンテナ専用の匿名ボリュームなので、依存関係を変更した場合は `docker compose up --build` でイメージを作り直す。
+
+停止・データ削除:
+
+```bash
+docker compose down        # 停止（DBデータは残る）
+docker compose down -v     # 停止 + DBデータも削除
+```
+
+### アプリはホストで直接動かし、DBだけDockerを使う場合
+
+DBコンテナだけ起動する:
+
+```bash
+docker compose up -d db
+```
+
+`.env.local` を作成し、`DATABASE_URL` のホストを `db` から `localhost` に変更する（Next.js は `.env.local` を自動で読み込み、`.env` より優先する）。
+
+```bash
+# .env.local
+DATABASE_URL=postgresql://yse_compass:yse_compass@localhost:5432/yse_compass
+```
+
+```bash
+pnpm install
+pnpm dev
+```
+
+http://localhost:3000/api/health/db が `{"status":"ok"}` を返せば接続成功。
+
+> **注意**: 一度 `docker compose up` でアプリコンテナを起動すると、`.next` ディレクトリがroot所有で作られ、その後ホストで直接 `pnpm dev` すると権限エラー（`EACCES`）で起動に失敗することがある。その場合は `rm -rf .next` で削除してから `pnpm dev` を実行し直す。
+
 ## Getting Started
 
 First, run the development server:

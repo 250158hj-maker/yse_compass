@@ -12,37 +12,24 @@ function personaSubtitle(user: AppUser): string {
   return [user.className, team?.name ? `${team.name}チーム` : null].filter(Boolean).join(" / ");
 }
 
-export function PersonaSwitcher({ layout }: { layout: "chooser" | "dropdown" }) {
+// ヘッダーに常時表示する切り替え+ログアウトの操作。ログイン後はどの画面からでも
+// この1コンポーネント経由で3ロールの切り替え・ログアウトができる(ログイン画面への遷移は
+// ログアウト時のみ。切り替えは選び直すだけで画面遷移しない)。
+export function PersonaSwitcher() {
   const personas = usePersonaList();
-  const { currentUser, setCurrentUserId } = useSession();
+  const { currentUser, setCurrentUserId, signOut } = useSession();
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
   function handleSelect(id: string) {
     setCurrentUserId(id);
-    if (layout === "chooser") {
-      router.push("/");
-    } else {
-      setOpen(false);
-    }
+    setOpen(false);
   }
 
-  if (layout === "chooser") {
-    return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {personas.map((persona) => (
-          <button
-            key={persona.id}
-            type="button"
-            onClick={() => handleSelect(persona.id)}
-            className="flex flex-col items-start gap-1 rounded-lg border border-slate-200 bg-white p-4 text-left transition hover:border-brand-300 hover:bg-brand-50"
-          >
-            <span className="text-base font-semibold text-slate-900">{persona.name}</span>
-            <span className="text-xs text-slate-500">{personaSubtitle(persona)}</span>
-          </button>
-        ))}
-      </div>
-    );
+  function handleSignOut() {
+    signOut();
+    setOpen(false);
+    router.push("/login");
   }
 
   return (
@@ -58,7 +45,10 @@ export function PersonaSwitcher({ layout }: { layout: "chooser" | "dropdown" }) 
         </span>
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-56 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+        <div className="absolute right-0 z-20 mt-2 w-60 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+          <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            ロールを切り替え
+          </p>
           {personas.map((persona) => (
             <button
               key={persona.id}
@@ -69,9 +59,19 @@ export function PersonaSwitcher({ layout }: { layout: "chooser" | "dropdown" }) 
               }`}
             >
               {persona.name}
-              <span className="ml-1 text-xs text-slate-400">({roleLabels[persona.role]})</span>
+              <span className="ml-1 text-xs text-slate-400">
+                ({roleLabels[persona.role]}・{personaSubtitle(persona)})
+              </span>
             </button>
           ))}
+          <div className="my-1 border-t border-slate-100" />
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="block w-full px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"
+          >
+            ログアウト
+          </button>
         </div>
       )}
     </div>

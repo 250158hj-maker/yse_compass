@@ -47,7 +47,7 @@ export function Header() {
           </nav>
         )}
 
-        {currentUser && <PersonaSwitcher layout="dropdown" />}
+        {currentUser && <PersonaSwitcher />}
       </div>
     </header>
   );

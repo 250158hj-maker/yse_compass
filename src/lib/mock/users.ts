@@ -1,17 +1,10 @@
 import type { AppUser } from "@/lib/types";
 
+// ログイン切り替えの検証観点を3ロールに絞るため、アカウントはこの3件のみを保持する。
+// チーム・コメント等のモックデータ(mock/teams.ts, mock/submissions.ts等)は氏名を文字列として
+// 保持しており本配列のidを参照しないため、アカウント数を絞っても他データには影響しない。
 export const users: AppUser[] = [
   { id: "user-tominaga", name: "冨永先生", role: "teacher", className: null, teamId: null },
-  { id: "user-watanabe", name: "渡部先生", role: "teacher", className: null, teamId: null },
-
-  { id: "user-mito", name: "水戸匠", role: "student", className: "3年A組", teamId: "team-cheers" },
-  { id: "user-suzuki", name: "鈴木和明", role: "student", className: "3年A組", teamId: "team-cheers" },
-  { id: "user-kabayama", name: "蒲山由梨花", role: "student", className: "3年A組", teamId: "team-cheers" },
-
-  { id: "user-yamada", name: "山田太郎", role: "student", className: "3年B組", teamId: "team-nova" },
-  { id: "user-sato", name: "佐藤花子", role: "student", className: "3年B組", teamId: "team-nova" },
-
-  { id: "user-tanaka", name: "田中一郎", role: "student", className: "3年C組", teamId: "team-lumen" },
-  { id: "user-takahashi", name: "高橋美咲", role: "student", className: "3年C組", teamId: "team-lumen" },
-  { id: "user-ito", name: "伊藤健", role: "student", className: "3年C組", teamId: "team-lumen" },
+  { id: "user-mito", name: "水戸匠", role: "student", className: "2年A組", teamId: "team-cheers" },
+  { id: "user-viewer", name: "野村あかり", role: "student", className: "1年A組", teamId: null },
 ];

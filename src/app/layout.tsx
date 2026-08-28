@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { RoleProvider } from "@/context/RoleContext";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
+import { SessionProvider } from "@/context/SessionContext";
+import { AuthGuard } from "@/components/session/AuthGuard";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
   title: "YSE Compass",
@@ -17,11 +18,13 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className="flex min-h-screen flex-col bg-white text-slate-900">
-        <RoleProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </RoleProvider>
+        <SessionProvider>
+          <AuthGuard>
+            <Header />
+            <main className="flex-1 px-6 py-8">{children}</main>
+            <Footer />
+          </AuthGuard>
+        </SessionProvider>
       </body>
     </html>
   );

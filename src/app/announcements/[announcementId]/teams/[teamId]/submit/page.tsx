@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { getAnnouncementById, getSubmission, getTeamById } from "@/lib/mock";
-import SubmitFormClient from "./SubmitFormClient";
+import { getAnnouncementById, getTeamById } from "@/lib/mock";
+import { SubmitFormClient } from "./SubmitFormClient";
 
-export default async function SubmitFormPage({
+export default async function SubmitPage({
   params,
 }: {
   params: Promise<{ announcementId: string; teamId: string }>;
@@ -10,8 +10,7 @@ export default async function SubmitFormPage({
   const { announcementId, teamId } = await params;
   const announcement = getAnnouncementById(announcementId);
   const team = getTeamById(teamId);
-  const submission = getSubmission(announcementId, teamId);
-  if (!announcement || !team || !submission) notFound();
+  if (!announcement || !team) notFound();
 
-  return <SubmitFormClient announcement={announcement} team={team} submission={submission} />;
+  return <SubmitFormClient announcement={announcement} team={team} />;
 }

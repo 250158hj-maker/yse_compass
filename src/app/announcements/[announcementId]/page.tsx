@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { getAnnouncementById, getTeamsByYear, getTemplateById } from "@/lib/mock";
-import AnnouncementDetailClient from "./AnnouncementDetailClient";
+import { getAnnouncementById } from "@/lib/mock";
+import { AnnouncementHubClient } from "./AnnouncementHubClient";
 
-export default async function AnnouncementDetailPage({
+export default async function AnnouncementHubPage({
   params,
 }: {
   params: Promise<{ announcementId: string }>;
@@ -11,13 +11,5 @@ export default async function AnnouncementDetailPage({
   const announcement = getAnnouncementById(announcementId);
   if (!announcement) notFound();
 
-  const teams = getTeamsByYear(announcement.yearId);
-  const slotsWithTemplate = announcement.materialSlots.map((slot) => ({
-    slot,
-    template: slot.templateId ? getTemplateById(slot.templateId) ?? null : null,
-  }));
-
-  return (
-    <AnnouncementDetailClient announcement={announcement} teams={teams} slotsWithTemplate={slotsWithTemplate} />
-  );
+  return <AnnouncementHubClient announcement={announcement} />;
 }

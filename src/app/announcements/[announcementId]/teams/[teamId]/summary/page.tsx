@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { getAnnouncementById, getSubmission, getTeamById } from "@/lib/mock";
-import SummaryFormClient from "./SummaryFormClient";
+import { getAnnouncementById, getTeamById } from "@/lib/mock";
+import { SummaryFormClient } from "./SummaryFormClient";
 
-export default async function SummaryFormPage({
+export default async function SummaryPage({
   params,
 }: {
   params: Promise<{ announcementId: string; teamId: string }>;
@@ -10,8 +10,7 @@ export default async function SummaryFormPage({
   const { announcementId, teamId } = await params;
   const announcement = getAnnouncementById(announcementId);
   const team = getTeamById(teamId);
-  const submission = getSubmission(announcementId, teamId);
-  if (!announcement || !team || !submission) notFound();
+  if (!announcement || !team) notFound();
 
-  return <SummaryFormClient announcement={announcement} team={team} submission={submission} />;
+  return <SummaryFormClient announcement={announcement} team={team} />;
 }

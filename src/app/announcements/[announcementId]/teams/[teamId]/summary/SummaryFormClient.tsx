@@ -1,127 +1,168 @@
 "use client";
 
 import { useState } from "react";
-import { RoleGate, RoleRestrictedNotice } from "@/components/ui/RoleGate";
-import { formatDateTimeNow } from "@/lib/format";
-import type { Announcement, Submission, Team } from "@/lib/types";
+import Link from "next/link";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { InlineNotice } from "@/components/ui/InlineNotice";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { FormField, fieldClassName } from "@/components/ui/FormField";
+import { useSession } from "@/context/SessionContext";
+import { isOwnTeam } from "@/lib/session-helpers";
+import { formatDateTime } from "@/lib/format";
+import { getSubmission } from "@/lib/mock";
+import type { Announcement, SummaryEntry, Team } from "@/lib/types";
 
-export default function SummaryFormClient({
-  announcement,
-  team,
-  submission,
-}: {
-  announcement: Announcement;
-  team: Team;
-  submission: Submission;
-}) {
-  const existing = submission.summary;
-  const [background, setBackground] = useState(existing?.background ?? "");
-  const [opening, setOpening] = useState(existing?.opening ?? "");
-  const [closing, setClosing] = useState(existing?.closing ?? "");
-  const [techUsed, setTechUsed] = useState(existing?.techUsed.join("、") ?? "");
-  const [onePageBody, setOnePageBody] = useState(existing?.onePageBody ?? "");
-  const [submittedAt, setSubmittedAt] = useState(existing?.submittedAt ?? null);
+export function SummaryFormClient({ announcement: a, team }: { announcement: Announcement; team: Team }) {
+  const { currentUser } = useSession();
+  const submission = getSubmission(a.id, team.id);
+  const [summary, setSummary] = useState<SummaryEntry | null>(submission?.summary ?? null);
 
-  return (
-    <RoleGate
-      allow={["presenter"]}
-      fallback={
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <RoleRestrictedNotice message="この画面は発表する生徒(自チーム)向けです。「生徒(発表側)」を選択してください。" />
-        </div>
-      }
-    >
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <h1 className="text-2xl font-bold text-slate-900">概要入力フォーム</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {team.name} ／ {announcement.title}
-        </p>
-        <p className="mt-2 rounded-lg bg-brand-50 px-4 py-3 text-xs text-brand-700">
-          概要はシステム定義の統一レイアウトで概要集に掲載されます。フォント・レイアウトの個別調整はできません。
-        </p>
+  const [background, setBackground] = useState(summary?.background ?? "");
+  const [techUsedText, setTechUsedText] = useState(summary?.techUsed.join("、") ?? "");
+  const [opening, setOpening] = useState(summary?.opening ?? "");
+  const [closing, setClosing] = useState(summary?.closing ?? "");
+  const [onePageBody, setOnePageBody] = useState(summary?.onePageBody ?? "");
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <div className="flex flex-col gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-500">背景・動機</label>
-              <textarea
-                value={background}
-                onChange={(e) => setBackground(e.target.value)}
-                rows={3}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500">起(取り組みの発端)</label>
-              <textarea
-                value={opening}
-                onChange={(e) => setOpening(e.target.value)}
-                rows={2}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500">結(成果・結論)</label>
-              <textarea
-                value={closing}
-                onChange={(e) => setClosing(e.target.value)}
-                rows={2}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500">使用技術(読点区切り・検索対象になります)</label>
-              <input
-                value={techUsed}
-                onChange={(e) => setTechUsed(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500">1ページ集約本文</label>
-              <textarea
-                value={onePageBody}
-                onChange={(e) => setOnePageBody(e.target.value)}
-                rows={5}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSubmittedAt(formatDateTimeNow())}
-                className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-              >
-                提出する
-              </button>
-              {submittedAt && <span className="text-xs text-emerald-600">提出済み(最終更新 {submittedAt})</span>}
-            </div>
-          </div>
+  const allowed = isOwnTeam(currentUser, team.id);
 
-          <div>
-            <p className="text-xs font-medium text-slate-500">プレビュー(統一レイアウト)</p>
-            <div className="mt-2 aspect-[210/297] w-full overflow-y-auto rounded-lg border border-slate-300 bg-white p-6 text-xs shadow-sm">
-              <p className="text-sm font-bold text-slate-900">{team.projectTitle}</p>
-              <p className="mt-0.5 text-[10px] text-slate-400">{team.name} ／ {team.members.join("、")}</p>
-              <p className="mt-3 whitespace-pre-wrap text-slate-700">{background || "(背景・動機は未入力)"}</p>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div>
-                  <p className="font-semibold text-slate-500">起</p>
-                  <p className="whitespace-pre-wrap text-slate-700">{opening || "-"}</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-500">結</p>
-                  <p className="whitespace-pre-wrap text-slate-700">{closing || "-"}</p>
-                </div>
-              </div>
-              <p className="mt-3 whitespace-pre-wrap text-slate-700">{onePageBody || "(本文は未入力)"}</p>
-              <p className="mt-3 text-[10px] text-slate-400">
-                使用技術：{techUsed || "(未入力)"}
-              </p>
-            </div>
-          </div>
+  const breadcrumbs = (
+    <Breadcrumbs
+      items={[
+        { label: "ホーム", href: "/" },
+        { label: "発表会一覧", href: "/announcements" },
+        { label: a.title, href: `/announcements/${a.id}` },
+        { label: "概要入力" },
+      ]}
+    />
+  );
+
+  if (!allowed) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        {breadcrumbs}
+        <PageHeader title="概要入力" meta={`${team.name} / ${a.title}`} />
+        <div className="mt-6">
+          <InlineNotice tone="warning">
+            この操作は発表する生徒(自チームのメンバー)のみ行えます。
+          </InlineNotice>
         </div>
       </div>
-    </RoleGate>
+    );
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSummary({
+      background,
+      techUsed: techUsedText
+        .split(/[、,]/)
+        .map((t) => t.trim())
+        .filter(Boolean),
+      opening,
+      closing,
+      onePageBody,
+      submittedAt: new Date().toISOString(),
+    });
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      {breadcrumbs}
+      <PageHeader
+        title="概要入力"
+        meta={
+          <>
+            <span>{a.title}</span>
+            {summary && <Badge tone="emerald">提出済み</Badge>}
+          </>
+        }
+      />
+
+      <div className="mt-4">
+        <InlineNotice tone="info">
+          概要はシステム統一レイアウトで概要集に束ねられます。フォント・レイアウトの個別調整はできません。
+        </InlineNotice>
+      </div>
+
+      {summary && (
+        <p className="mt-2 text-xs text-slate-400">最終提出 {formatDateTime(summary.submittedAt)}</p>
+      )}
+
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col">
+        <FormField
+          label="背景・動機"
+          htmlFor="background"
+          required
+          hint="なぜこの制作に取り組んだのか。渡部先生は背景・動機の明確さを重視します。"
+        >
+          <textarea
+            id="background"
+            required
+            rows={3}
+            className={fieldClassName}
+            value={background}
+            onChange={(e) => setBackground(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="使用技術" htmlFor="techUsed" hint="読点(、)またはカンマ区切りで入力してください。アーカイブ検索の対象になります。">
+          <input
+            id="techUsed"
+            className={fieldClassName}
+            placeholder="Next.js、TypeScript、PostgreSQL"
+            value={techUsedText}
+            onChange={(e) => setTechUsedText(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="起(オープニング)" htmlFor="opening" required hint="発表の起点となる一文。">
+          <textarea
+            id="opening"
+            required
+            rows={2}
+            className={fieldClassName}
+            value={opening}
+            onChange={(e) => setOpening(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="結(クロージング)" htmlFor="closing" required hint="発表の締めとなる一文。">
+          <textarea
+            id="closing"
+            required
+            rows={2}
+            className={fieldClassName}
+            value={closing}
+            onChange={(e) => setClosing(e.target.value)}
+          />
+        </FormField>
+
+        <FormField
+          label="1ページ本文"
+          htmlFor="onePageBody"
+          required
+          hint="概要集の1ページに収まる分量で。プレゼン資料からの抜粋を推奨します。"
+        >
+          <textarea
+            id="onePageBody"
+            required
+            rows={6}
+            className={fieldClassName}
+            value={onePageBody}
+            onChange={(e) => setOnePageBody(e.target.value)}
+          />
+        </FormField>
+
+        <Button type="submit" variant="primary" className="self-start">
+          {summary ? "概要を更新する" : "概要を提出する"}
+        </Button>
+      </form>
+
+      <Link href={`/announcements/${a.id}/teams/${team.id}`} className="mt-6 inline-block text-sm text-brand-600 hover:underline">
+        発表詳細へ戻る →
+      </Link>
+    </div>
   );
 }

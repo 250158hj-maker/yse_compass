@@ -1,86 +1,103 @@
 "use client";
 
 import { useState } from "react";
-import { RoleGate, TeacherOnlyNotice } from "@/components/ui/RoleGate";
-import { LateBadge, StatusBadge } from "@/components/ui/Badge";
-import { isLateSubmission } from "@/lib/mock";
-import type { Announcement, Submission, Team } from "@/lib/types";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { PhaseBadge, StatusBadge, LateBadge } from "@/components/ui/Badge";
+import { RoleGate, TeacherOnlyNotice } from "@/components/session/RoleGate";
+import { Button } from "@/components/ui/Button";
+import { formatDateTime } from "@/lib/format";
+import { getTeamsByYear, getSubmission, isLateSubmission } from "@/lib/mock";
+import type { Announcement } from "@/lib/types";
 
-export default function SubmissionsMatrixClient({
-  announcement,
-  entries,
-}: {
-  announcement: Announcement;
-  entries: { team: Team; submission: Submission }[];
-}) {
-  const [onlyUnsubmitted, setOnlyUnsubmitted] = useState(false);
+export function SubmissionsMatrixClient({ announcement: a }: { announcement: Announcement }) {
+  const teams = getTeamsByYear(a.yearId);
+  const [onlyIncomplete, setOnlyIncomplete] = useState(false);
 
-  const rows = onlyUnsubmitted
-    ? entries.filter((e) => e.submission.materials.some((m) => m.status === "未提出"))
-    : entries;
+  const rows = teams.filter((team) => {
+    if (!onlyIncomplete) return true;
+    const submission = getSubmission(a.id, team.id);
+    return a.materialSlots.some(
+      (slot) => submission?.materials.find((m) => m.name === slot.name)?.status !== "提出済み"
+    );
+  });
 
   return (
-    <RoleGate allow={["teacher"]} fallback={<div className="mx-auto max-w-6xl px-6 py-16"><TeacherOnlyNotice /></div>}>
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <h1 className="text-2xl font-bold text-slate-900">提出状況一覧</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {announcement.title} ／ 締切 {announcement.submissionDeadline}
-        </p>
+    <RoleGate allow={["teacher"]} fallback={<TeacherOnlyNotice />}>
+      <div className="mx-auto max-w-6xl">
+        <Breadcrumbs
+          items={[
+            { label: "ホーム", href: "/" },
+            { label: "発表会一覧", href: "/announcements" },
+            { label: a.title, href: `/announcements/${a.id}` },
+            { label: "提出状況一覧" },
+          ]}
+        />
+        <PageHeader
+          title="提出状況一覧"
+          meta={`${a.title}・締切 ${formatDateTime(a.submissionDeadline)}`}
+          actions={
+            <Button variant="secondary" onClick={() => setOnlyIncomplete((v) => !v)}>
+              {onlyIncomplete ? "すべて表示" : "未提出のみ表示"}
+            </Button>
+          }
+        />
 
-        <label className="mt-4 flex w-fit items-center gap-2 text-sm text-slate-600">
-          <input
-            type="checkbox"
-            checked={onlyUnsubmitted}
-            onChange={(e) => setOnlyUnsubmitted(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300"
-          />
-          未提出があるチームのみ表示
-        </label>
-
-        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="w-full min-w-[640px] text-sm">
+        <div className="mt-6 overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-500">
-                <th className="px-4 py-3 font-medium">チーム</th>
-                {announcement.materialSlots.map((slot) => (
-                  <th key={slot.id} className="px-4 py-3 font-medium">
+              <tr className="border-b border-slate-200 text-left text-slate-500">
+                <th className="py-2 pr-4 font-medium">チーム</th>
+                {a.materialSlots.map((slot) => (
+                  <th key={slot.id} className="py-2 pr-4 font-medium">
                     {slot.name}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ team, submission }) => (
-                <tr key={team.id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-3 font-medium text-slate-800">{team.name}</td>
-                  {announcement.materialSlots.map((slot) => {
-                    const material = submission.materials.find((m) => m.name === slot.name);
-                    if (!material) return <td key={slot.id} className="px-4 py-3">-</td>;
-                    const late = isLateSubmission(material.updatedAt, announcement.submissionDeadline);
-                    return (
-                      <td key={slot.id} className="px-4 py-3">
-                        <div className="flex flex-col gap-1">
-                          <span className="flex items-center gap-2">
-                            <StatusBadge status={material.status} />
-                            {late && <LateBadge />}
-                          </span>
-                          {material.updatedAt && <span className="text-xs text-slate-400">{material.updatedAt}</span>}
-                          {material.driveUrl && (
-                            <a
-                              href={material.driveUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-brand-600 hover:underline"
-                            >
-                              資料を開く
-                            </a>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {rows.map((team) => {
+                const submission = getSubmission(a.id, team.id);
+                return (
+                  <tr key={team.id} className="border-b border-slate-100">
+                    <td className="py-3 pr-4 font-medium text-slate-900">
+                      <div className="flex items-center gap-2">
+                        <PhaseBadge phase={a.phase} />
+                        {team.name}
+                      </div>
+                    </td>
+                    {a.materialSlots.map((slot) => {
+                      const material = submission?.materials.find((m) => m.name === slot.name);
+                      const late = material
+                        ? isLateSubmission(a.submissionDeadline, material.updatedAt)
+                        : false;
+                      return (
+                        <td key={slot.id} className="py-3 pr-4">
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="flex items-center gap-1">
+                              <StatusBadge status={material?.status ?? "未提出"} />
+                              {late && <LateBadge />}
+                            </span>
+                            {material?.driveUrl && (
+                              <a
+                                href={material.driveUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-brand-600 hover:underline"
+                              >
+                                資料を開く
+                              </a>
+                            )}
+                            {material?.updatedAt && (
+                              <span className="text-xs text-slate-400">{formatDateTime(material.updatedAt)}</span>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

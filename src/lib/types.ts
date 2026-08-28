@@ -1,12 +1,11 @@
 // モック画面用の型定義。DB/API実装前の仮スキーマであり、Prisma導入時にスキーマへ移行する想定。
 // 出典: docs/requirements.md, docs/screens.md
 
-export type Role = "teacher" | "presenter" | "viewer";
+export type Role = "teacher" | "student";
 
 export const roleLabels: Record<Role, string> = {
   teacher: "先生",
-  presenter: "生徒(発表側 / S1)",
-  viewer: "生徒(視聴側 / S2)",
+  student: "生徒",
 };
 
 export type Year = {
@@ -16,6 +15,9 @@ export type Year = {
 };
 
 export type AnnouncementPhase = "企画" | "設計" | "試作" | "最終";
+
+// 発表会一覧・年度セットアップでの並び順、概要集の束ね順の基準となる固定順序。
+export const ANNOUNCEMENT_PHASE_ORDER: AnnouncementPhase[] = ["企画", "設計", "試作", "最終"];
 
 export type MaterialSlot = {
   id: string;
@@ -46,21 +48,23 @@ export type Template = {
   url: string;
 };
 
-export type TimetableSlot = {
-  id: string;
-  teamId: string;
-  order: number;
-  startTime: string;
-  durationMin: number;
-  isBreak: false;
-} | {
-  id: string;
-  order: number;
-  startTime: string;
-  durationMin: number;
-  isBreak: true;
-  breakLabel: string;
-};
+export type TimetableSlot =
+  | {
+      id: string;
+      teamId: string;
+      order: number;
+      startTime: string;
+      durationMin: number;
+      isBreak: false;
+    }
+  | {
+      id: string;
+      order: number;
+      startTime: string;
+      durationMin: number;
+      isBreak: true;
+      breakLabel: string;
+    };
 
 export type Timetable = {
   announcementId: string;
@@ -133,7 +137,7 @@ export type Submission = {
 export type AppUser = {
   id: string;
   name: string;
-  role: "teacher" | "student";
+  role: Role;
   className: string | null;
   teamId: string | null;
 };

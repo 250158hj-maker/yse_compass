@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { getAnnouncementById, getSubmissionsForAnnouncement } from "@/lib/mock";
-import SubmissionsMatrixClient from "./SubmissionsMatrixClient";
+import { getAnnouncementById } from "@/lib/mock";
+import { SubmissionsMatrixClient } from "./SubmissionsMatrixClient";
 
-export default async function SubmissionsMatrixPage({
+export default async function SubmissionsPage({
   params,
 }: {
   params: Promise<{ announcementId: string }>;
@@ -11,7 +11,5 @@ export default async function SubmissionsMatrixPage({
   const announcement = getAnnouncementById(announcementId);
   if (!announcement) notFound();
 
-  const entries = getSubmissionsForAnnouncement(announcementId);
-
-  return <SubmissionsMatrixClient announcement={announcement} entries={entries} />;
+  return <SubmissionsMatrixClient announcement={announcement} />;
 }

@@ -1,138 +1,204 @@
 "use client";
 
 import { useState } from "react";
-import { RoleGate, TeacherOnlyNotice } from "@/components/ui/RoleGate";
-import type { Announcement, Team, TimetableSlot } from "@/lib/types";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { PhaseBadge, Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { InlineNotice } from "@/components/ui/InlineNotice";
+import { fieldClassName } from "@/components/ui/FormField";
+import { RoleGate, TeacherOnlyNotice } from "@/components/session/RoleGate";
+import { getTeamsByYear } from "@/lib/mock";
+import type { Announcement, Timetable, TimetableSlot } from "@/lib/types";
 
-let breakIdSeq = 0;
-function nextBreakId() {
-  breakIdSeq += 1;
-  return `new-break-${breakIdSeq}`;
+let localIdCounter = 0;
+function newLocalId() {
+  localIdCounter += 1;
+  return `tt-local-${localIdCounter}`;
 }
 
-function withOrder(slots: TimetableSlot[]): TimetableSlot[] {
-  return slots.map((s, i) => ({ ...s, order: i + 1 }));
-}
-
-export default function TimetableEditClient({
-  announcement,
-  teams,
-  initialSlots,
+export function TimetableEditClient({
+  announcement: a,
+  timetable,
 }: {
   announcement: Announcement;
-  teams: Team[];
-  initialSlots: TimetableSlot[];
+  timetable: Timetable | null;
 }) {
-  const [slots, setSlots] = useState<TimetableSlot[]>(withOrder(initialSlots));
+  const teams = getTeamsByYear(a.yearId);
+  const [slots, setSlots] = useState<TimetableSlot[]>(timetable?.slots ?? []);
+  const [currentPresentingTeamId, setCurrentPresentingTeamId] = useState<string | null>(
+    timetable?.currentPresentingTeamId ?? null
+  );
   const [saved, setSaved] = useState(false);
 
-  function move(index: number, direction: -1 | 1) {
-    setSlots((prev) => {
-      const next = [...prev];
-      const target = index + direction;
-      if (target < 0 || target >= next.length) return prev;
-      [next[index], next[target]] = [next[target], next[index]];
-      return withOrder(next);
-    });
-  }
+  const ordered = [...slots].sort((x, y) => x.order - y.order);
 
-  function updateField(id: string, patch: Partial<TimetableSlot>) {
+  function updateSlot(id: string, patch: Partial<TimetableSlot>) {
     setSlots((prev) => prev.map((s) => (s.id === id ? ({ ...s, ...patch } as TimetableSlot) : s)));
+    setSaved(false);
   }
 
   function removeSlot(id: string) {
-    setSlots((prev) => withOrder(prev.filter((s) => s.id !== id)));
+    setSlots((prev) => prev.filter((s) => s.id !== id));
+    if (!slots.find((s) => s.id === id && !s.isBreak && s.teamId === currentPresentingTeamId)) return;
+    setCurrentPresentingTeamId(null);
   }
 
-  function addBreak() {
-    setSlots((prev) =>
-      withOrder([
-        ...prev,
-        { id: nextBreakId(), order: 0, startTime: "12:00", durationMin: 10, isBreak: true, breakLabel: "休憩" },
-      ]),
-    );
+  function move(id: string, direction: -1 | 1) {
+    const index = ordered.findIndex((s) => s.id === id);
+    const target = index + direction;
+    if (target < 0 || target >= ordered.length) return;
+    const reordered = [...ordered];
+    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    setSlots(reordered.map((s, i) => ({ ...s, order: i + 1 })));
+    setSaved(false);
   }
 
-  function teamName(teamId: string) {
-    return teams.find((t) => t.id === teamId)?.name ?? teamId;
+  function addPresentationSlot() {
+    const firstTeam = teams[0];
+    if (!firstTeam) return;
+    setSlots((prev) => [
+      ...prev,
+      {
+        id: newLocalId(),
+        teamId: firstTeam.id,
+        order: prev.length + 1,
+        startTime: "09:00",
+        durationMin: 10,
+        isBreak: false,
+      },
+    ]);
+    setSaved(false);
+  }
+
+  function addBreakSlot() {
+    setSlots((prev) => [
+      ...prev,
+      {
+        id: newLocalId(),
+        order: prev.length + 1,
+        startTime: "09:00",
+        durationMin: 10,
+        isBreak: true,
+        breakLabel: "休憩",
+      },
+    ]);
+    setSaved(false);
   }
 
   return (
-    <RoleGate allow={["teacher"]} fallback={<div className="mx-auto max-w-6xl px-6 py-16"><TeacherOnlyNotice /></div>}>
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <h1 className="text-2xl font-bold text-slate-900">タイムテーブル編集</h1>
-        <p className="mt-1 text-sm text-slate-500">{announcement.title}</p>
-        <p className="mt-2 rounded-lg bg-brand-50 px-4 py-3 text-xs text-brand-700">
-          この発表順は概要集の生成順にもそのまま使われます。並び替えの際はご注意ください。
-        </p>
+    <RoleGate allow={["teacher"]} fallback={<TeacherOnlyNotice />}>
+      <div className="mx-auto max-w-3xl">
+        <Breadcrumbs
+          items={[
+            { label: "ホーム", href: "/" },
+            { label: "発表会一覧", href: "/announcements" },
+            { label: a.title, href: `/announcements/${a.id}` },
+            { label: "タイムテーブル編集" },
+          ]}
+        />
+        <PageHeader eyebrow={a.title} title="タイムテーブル編集" meta={<PhaseBadge phase={a.phase} />} />
 
-        <div className="mt-6 flex flex-col gap-2">
-          {slots.map((slot, index) => (
-            <div key={slot.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-3">
-              <div className="flex flex-col">
-                <button type="button" onClick={() => move(index, -1)} disabled={index === 0} className="text-xs text-slate-400 disabled:opacity-30">
+        <div className="mt-4">
+          <InlineNotice tone="info">
+            発表中の切り替えは先生の手動操作です。時刻連動の自動進行はありません。
+          </InlineNotice>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3">
+          {ordered.map((slot, index) => (
+            <div key={slot.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => move(slot.id, -1)}
+                  disabled={index === 0}
+                  className="text-xs text-slate-400 hover:text-brand-600 disabled:opacity-30"
+                >
                   ▲
                 </button>
                 <button
                   type="button"
-                  onClick={() => move(index, 1)}
-                  disabled={index === slots.length - 1}
-                  className="text-xs text-slate-400 disabled:opacity-30"
+                  onClick={() => move(slot.id, 1)}
+                  disabled={index === ordered.length - 1}
+                  className="text-xs text-slate-400 hover:text-brand-600 disabled:opacity-30"
                 >
                   ▼
                 </button>
               </div>
-              <span className="w-6 text-center text-xs text-slate-400">{slot.order}</span>
-
-              {slot.isBreak ? (
-                <input
-                  value={slot.breakLabel}
-                  onChange={(e) => updateField(slot.id, { breakLabel: e.target.value })}
-                  className="flex-1 rounded-lg border border-dashed border-slate-300 px-3 py-1 text-sm"
-                />
-              ) : (
-                <span className="flex-1 text-sm font-medium text-slate-800">{teamName(slot.teamId)}</span>
-              )}
 
               <input
+                type="time"
+                className={`${fieldClassName} w-28`}
                 value={slot.startTime}
-                onChange={(e) => updateField(slot.id, { startTime: e.target.value })}
-                className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                onChange={(e) => updateSlot(slot.id, { startTime: e.target.value })}
               />
               <input
                 type="number"
+                min={1}
+                className={`${fieldClassName} w-20`}
                 value={slot.durationMin}
-                onChange={(e) => updateField(slot.id, { durationMin: Number(e.target.value) })}
-                className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                onChange={(e) => updateSlot(slot.id, { durationMin: Number(e.target.value) })}
               />
               <span className="text-xs text-slate-400">分</span>
+
+              {slot.isBreak ? (
+                <input
+                  className={`${fieldClassName} flex-1`}
+                  value={slot.breakLabel}
+                  onChange={(e) => updateSlot(slot.id, { breakLabel: e.target.value })}
+                />
+              ) : (
+                <select
+                  className={`${fieldClassName} flex-1`}
+                  value={slot.teamId}
+                  onChange={(e) => updateSlot(slot.id, { teamId: e.target.value })}
+                >
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {!slot.isBreak && (
+                <Button
+                  variant={currentPresentingTeamId === slot.teamId ? "primary" : "secondary"}
+                  onClick={() =>
+                    setCurrentPresentingTeamId((prev) => (prev === slot.teamId ? null : slot.teamId))
+                  }
+                >
+                  {currentPresentingTeamId === slot.teamId ? "発表中" : "発表中にする"}
+                </Button>
+              )}
 
               <button
                 type="button"
                 onClick={() => removeSlot(slot.id)}
-                className="rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                aria-label="削除"
+                className="ml-auto text-slate-400 hover:text-rose-600"
               >
-                削除
+                ✕
               </button>
             </div>
           ))}
         </div>
 
-        <div className="mt-4 flex items-center gap-3">
-          <button type="button" onClick={addBreak} className="text-xs font-medium text-brand-600 hover:underline">
-            ＋休憩枠を挿入
-          </button>
+        <div className="mt-4 flex gap-2">
+          <Button variant="secondary" onClick={addPresentationSlot} disabled={teams.length === 0}>
+            + 発表枠を追加
+          </Button>
+          <Button variant="secondary" onClick={addBreakSlot}>
+            + 休憩を追加
+          </Button>
         </div>
 
-        <div className="mt-8 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setSaved(true)}
-            className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-          >
+        <div className="mt-6 flex items-center gap-3">
+          <Button variant="primary" onClick={() => setSaved(true)}>
             保存する
-          </button>
-          {saved && <span className="text-xs text-emerald-600">保存しました(モックのため実データには反映されません)</span>}
+          </Button>
+          {saved && <Badge tone="emerald">保存しました(モック内のみ)</Badge>}
         </div>
       </div>
     </RoleGate>

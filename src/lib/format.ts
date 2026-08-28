@@ -1,5 +1,21 @@
-export function formatDateTimeNow(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
+const dateTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+export function formatDate(iso: string): string {
+  return dateFormatter.format(new Date(iso));
+}
+
+export function formatDateTime(iso: string): string {
+  return dateTimeFormatter.format(new Date(iso));
 }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { getAnnouncementById, getTeamById, getTimetable } from "@/lib/mock";
-import TimetableClient from "./TimetableClient";
+import { getAnnouncementById, getTimetableFor } from "@/lib/mock";
+import { TimetableClient } from "./TimetableClient";
 
 export default async function TimetablePage({
   params,
@@ -11,16 +11,7 @@ export default async function TimetablePage({
   const announcement = getAnnouncementById(announcementId);
   if (!announcement) notFound();
 
-  const timetable = getTimetable(announcementId) ?? null;
-  const slotsWithTeam = timetable
-    ? timetable.slots.map((slot) => ({ slot, team: slot.isBreak ? null : getTeamById(slot.teamId) ?? null }))
-    : [];
+  const timetable = getTimetableFor(announcementId);
 
-  return (
-    <TimetableClient
-      announcement={announcement}
-      initialCurrentPresentingTeamId={timetable?.currentPresentingTeamId ?? null}
-      slotsWithTeam={slotsWithTeam}
-    />
-  );
+  return <TimetableClient announcement={announcement} timetable={timetable} />;
 }

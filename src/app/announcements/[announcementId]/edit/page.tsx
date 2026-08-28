@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { getAnnouncementById } from "@/lib/mock";
-import { templates } from "@/lib/mock/announcements";
-import EditAnnouncementClient from "./EditAnnouncementClient";
+import { EditAnnouncementClient } from "./EditAnnouncementClient";
 
 export default async function EditAnnouncementPage({
   params,
@@ -12,5 +11,5 @@ export default async function EditAnnouncementPage({
   const announcement = getAnnouncementById(announcementId);
   if (!announcement) notFound();
 
-  return <EditAnnouncementClient announcement={announcement} templates={templates} />;
+  return <EditAnnouncementClient announcement={announcement} />;
 }

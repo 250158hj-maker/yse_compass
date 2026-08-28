@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useRole } from "@/context/RoleContext";
-import { roleLabels, type Role } from "@/lib/types";
+import { useSession } from "@/context/SessionContext";
+import { PersonaSwitcher } from "@/components/session/PersonaSwitcher";
+import { isTeacher } from "@/lib/session-helpers";
 
 const navLinks = [
   { href: "/", label: "ホーム" },
@@ -12,77 +12,42 @@ const navLinks = [
   { href: "/archive", label: "アーカイブ" },
 ];
 
-const teacherNavLinks = [
+const adminLinks = [
   { href: "/admin/years", label: "年度管理" },
   { href: "/admin/publish-permissions", label: "公開許可管理" },
   { href: "/admin/users", label: "ユーザー管理" },
 ];
 
-const roleOptions: { value: Role; label: string }[] = [
-  { value: "teacher", label: roleLabels.teacher },
-  { value: "presenter", label: roleLabels.presenter },
-  { value: "viewer", label: roleLabels.viewer },
-];
-
-export default function Header() {
-  const pathname = usePathname();
-  const { role, setRole } = useRole();
-
-  if (pathname === "/login") {
-    return null;
-  }
-
-  const links = role === "teacher" ? [...navLinks, ...teacherNavLinks] : navLinks;
+export function Header() {
+  const { currentUser } = useSession();
 
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.08)]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center justify-between gap-6">
-          <Link href="/" className="text-lg font-bold text-brand-600">
-            YSE Compass
-          </Link>
-        </div>
+    <header className="border-b border-slate-200 bg-white">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+        <Link href={currentUser ? "/" : "/login"} className="text-lg font-bold text-brand-700">
+          YSE Compass
+        </Link>
 
-        <nav className="flex flex-wrap gap-x-5 gap-y-1 text-sm font-medium text-slate-600">
-          {links.map((link) => {
-            const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={
-                  active
-                    ? "border-b-2 border-brand-600 pb-0.5 text-brand-600"
-                    : "border-b-2 border-transparent pb-0.5 hover:text-brand-600"
-                }
-              >
+        {currentUser && (
+          <nav className="flex flex-1 items-center gap-4 text-sm text-slate-600">
+            {navLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="hover:text-brand-700">
                 {link.label}
               </Link>
-            );
-          })}
-        </nav>
-
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1.5">
-            {roleOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setRole(option.value)}
-                className={`rounded-lg border px-3 py-1 text-xs font-medium transition ${
-                  role === option.value
-                    ? "border-brand-600 bg-brand-50 text-brand-700"
-                    : "border-slate-200 text-slate-500 hover:border-slate-300"
-                }`}
-              >
-                {option.label}
-              </button>
             ))}
-          </div>
-          <Link href="/login" className="text-xs font-medium text-slate-400 hover:text-slate-700">
-            ログイン画面へ
-          </Link>
-        </div>
+            {isTeacher(currentUser) && (
+              <span className="flex items-center gap-4 border-l border-slate-200 pl-4">
+                {adminLinks.map((link) => (
+                  <Link key={link.href} href={link.href} className="hover:text-brand-700">
+                    {link.label}
+                  </Link>
+                ))}
+              </span>
+            )}
+          </nav>
+        )}
+
+        {currentUser && <PersonaSwitcher layout="dropdown" />}
       </div>
     </header>
   );

@@ -15,6 +15,8 @@ docker compose up --build
 
 ソースコードはバインドマウントされているため、ホスト側での編集がそのままコンテナ内の Next.js dev server に反映される（ホットリロード）。`node_modules` と `.next` はコンテナ専用の匿名ボリュームなので、依存関係を変更した場合は `docker compose up --build` でイメージを作り直す。
 
+> **Note**: `next dev` の既定バンドラである Turbopack は、Windows の Docker Desktop 経由のバインドマウントだとホスト側のファイル変更を検知できないことがある（ネイティブのファイル監視イベントがコンテナへ届かない）。そのため `docker-compose.yml` の `app` サービスは `next dev --webpack` で起動し、`WATCHPACK_POLLING=true` と組み合わせてポーリング監視にしている。ホストで直接 `pnpm dev` する場合は Turbopack のままで問題ない。
+
 停止・データ削除:
 
 ```bash

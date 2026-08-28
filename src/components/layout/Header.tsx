@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "@/context/SessionContext";
-import { PersonaSwitcher } from "@/components/session/PersonaSwitcher";
 import { isTeacher } from "@/lib/session-helpers";
+import { roleLabels } from "@/lib/types";
 
 const navLinks = [
   { href: "/", label: "ホーム" },
@@ -19,7 +20,13 @@ const adminLinks = [
 ];
 
 export function Header() {
-  const { currentUser } = useSession();
+  const { currentUser, signOut } = useSession();
+  const router = useRouter();
+
+  function handleSignOut() {
+    signOut();
+    router.push("/login");
+  }
 
   return (
     <header className="border-b border-slate-200 bg-white">
@@ -47,7 +54,21 @@ export function Header() {
           </nav>
         )}
 
-        {currentUser && <PersonaSwitcher />}
+        {currentUser && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-700">
+              {currentUser.name}
+              <span className="ml-1 text-xs text-slate-400">({roleLabels[currentUser.role]})</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              ログアウト
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

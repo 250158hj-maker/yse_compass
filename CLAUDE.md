@@ -25,8 +25,10 @@
 
 | やること | 読む順 |
 | --- | --- |
-| ER・テーブル定義・API 設計 | `docs/glossary.md` → `docs/requirements.md` → `docs/open-questions.md` |
-| 画面・モック・UI | `docs/screens.md` → `docs/requirements.md` |
+| ER・テーブル定義・API 設計 | `docs/glossary.md` → `docs/requirements.md` → `docs/open-questions.md` → `docs/design/06-data.md` |
+| 画面・モック・UI | `docs/design/04-screen.md` → `docs/requirements.md` |
+| **設計書を書く・読む** | `docs/design/00-conventions.md`（書き方の規約と未決マップ）→ 該当章 |
+| **実装しようとして決まっていなかった** | `docs/findings.md` に書く → `docs/open-questions.md` にも1件立てる |
 | 「作るか作らないか」の判断 | `docs/decisions.md` → `docs/requirements.md` §1 |
 | 「なぜこうなっているか」を知りたい | `docs/decisions.md`（根拠の列） |
 | 先生の実運用・一次情報を知りたい | `docs/hearing.md` |
@@ -57,7 +59,8 @@
 
 6. **確度が `暫定` のファイルを、決定の根拠として引用しない。**
    参照するのは自由だが、そこに書いてあることを「決まっている」と扱わない。
-   現時点の該当：**`docs/screens.md`**（水戸が即席で作成・鈴木のレビュー未了）
+   現時点の該当：**`docs/design/` 配下の全ファイル**（基本設計書。全章が確度 `暫定` でレビュー未了）
+   2026-09-03 変更：それ以前は `docs/screens.md` が該当だった。同日に `docs/design/04-screen.md` へ吸収し、暫定性もそのまま引き継いでいる。
 
 ---
 

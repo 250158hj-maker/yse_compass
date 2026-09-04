@@ -53,7 +53,8 @@
     - **バンドラ非依存の代替がある** — Next.js 16 は `next.config.ts` にトップレベルの `watchOptions.pollIntervalMs` を持つ（`node_modules/next/dist/server/config-schema.js:723`・`config-shared.d.ts:1247` で確認）。Turbopack のまま解決できる可能性がある（**Turbopack のウォッチャに実際に効くかは未実測**）
     - **環境差を共有ファイルに固定している** — 必要なのが特定メンバーの環境だけなら、`docker-compose.yml` ではなく `docker-compose.override.yml` や各自の設定で吸収すべき層の話
 - why   : webpack 強制にも理はある。**リポジトリの置き場所に関係なく全員の環境で確実に HMR が動く**ことは、3名でセットアップの統一が難しい状況では速度より優先されうる。一方 Turbopack 維持は、build とバンドラが揃って dev/prod 差分に起因するバグを避けられ、ポーリングの常時 CPU コストも払わない。**どちらを取るかは「再現条件」が分からないと決められない**（全員に必要なら前者、1名だけなら後者）
-- 決着  : （未決着。次の一歩＝**蒲山への確認**：リポジトリの置き場所（`~/` か `/mnt/c` か）と、実際に HMR が効かなかったか）
+- 追記  : 2026-09-04、`--webpack` の初出は `fe4eab6`（2026-08-28・鈴木・`feature/mock`）と判明。PR #6 はそれを `main` 側へ揃えただけで、**導入者・追随者のいずれも再現条件を確認していなかった**
+- 決着  : **2026-09-04 決着**（`decisions.md`）。**Docker 管理は PostgreSQL のみ**とし、Next.js アプリはホスト直起動へ。**バンドラは Turbopack に固定**（`package.json` の `dev`／`build` に `--turbopack` を明示）。回避策の要否を判定する代わりに、**回避策を必要にしていた構成そのもの（アプリのコンテナ化）をやめた**。反映先：`docker-compose.yml`（`app` サービスと `Dockerfile` を削除）・`.env.example`・`package.json`・`design/08-architecture.md` 8-1／8-6
 
 ### 引き継ぎ予定（着手前スパイクの検証メモ・未決着）
 

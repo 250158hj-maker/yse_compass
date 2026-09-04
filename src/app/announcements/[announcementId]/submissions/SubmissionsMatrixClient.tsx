@@ -14,12 +14,13 @@ export function SubmissionsMatrixClient({ announcement: a }: { announcement: Ann
   const teams = getTeamsByYear(a.yearId);
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
 
+  // 進捗の分母は必須枠のみに統一する。任意枠の未提出はここでの「未提出」に数えない(open-questions.md H-15)。
   const rows = teams.filter((team) => {
     if (!onlyIncomplete) return true;
     const submission = getSubmission(a.id, team.id);
-    return a.materialSlots.some(
-      (slot) => submission?.materials.find((m) => m.name === slot.name)?.status !== "提出済み"
-    );
+    return a.materialSlots
+      .filter((slot) => slot.required)
+      .some((slot) => submission?.materials.find((m) => m.name === slot.name)?.status !== "提出済み");
   });
 
   return (
@@ -51,6 +52,7 @@ export function SubmissionsMatrixClient({ announcement: a }: { announcement: Ann
                 {a.materialSlots.map((slot) => (
                   <th key={slot.id} className="py-2 pr-4 font-medium">
                     {slot.name}
+                    <span className="ml-1 font-normal text-slate-400">{slot.required ? "(必須)" : "(任意)"}</span>
                   </th>
                 ))}
               </tr>

@@ -10,7 +10,9 @@ import { Badge, PhaseBadge, StatusBadge, LateBadge } from "@/components/ui/Badge
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { RoleGate } from "@/components/session/RoleGate";
+import { TimetableRows } from "@/components/timetable/TimetableRows";
 import { useSession } from "@/context/SessionContext";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -18,6 +20,7 @@ import {
   getYearById,
   getTemplateById,
   getTeamsByYear,
+  getTimetableFor,
   getSubmission,
   isLateSubmission,
 } from "@/lib/mock";
@@ -27,11 +30,33 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
   const { currentUser } = useSession();
   const year = getYearById(a.yearId);
   const teams = getTeamsByYear(a.yearId);
+  const timetable = getTimetableFor(a.id);
   const teacher = isTeacher(currentUser);
   const ownTeam = teams.find((t) => isOwnTeam(currentUser, t.id)) ?? null;
 
   const [isPublished, setIsPublished] = useState(a.isPublished);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // 提出側(先生・自チームあり)はテンプレ確認等のため非公開でも開ける。閲覧する生徒だけは非公開の発表会に入れない
+  // (発表会一覧のグレーアウトは導線上の見た目でしかないため、実体のガードはここに置く)。
+  const isPureViewer = !teacher && !ownTeam;
+  if (isPureViewer && !isPublished) {
+    return (
+      <div className="mx-auto max-w-6xl">
+        <Breadcrumbs
+          items={[
+            { label: "ホーム", href: "/" },
+            { label: "発表会一覧", href: "/announcements" },
+            { label: a.title },
+          ]}
+        />
+        <PageHeader eyebrow={year?.label} title={a.title} meta={<PhaseBadge phase={a.phase} />} />
+        <div className="mt-6">
+          <EmptyState message="この発表会はまだ公開されていません。先生が公開すると、ここから発表を閲覧できます。" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -82,49 +107,43 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
         </div>
       </RoleGate>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2 flex flex-col gap-6">
-          <div>
-            <SectionHeading>資料枠</SectionHeading>
-            <div className="flex flex-col gap-2">
-              {a.materialSlots.map((slot) => {
-                const template = slot.templateId ? getTemplateById(slot.templateId) : null;
-                return (
-                  <div
-                    key={slot.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4"
-                  >
-                    <div>
-                      <span className="font-medium text-slate-900">{slot.name}</span>
-                      {slot.required && <span className="ml-2 text-xs text-rose-600">必須</span>}
+      <div className={`mt-6 grid gap-6 ${ownTeam ? "md:grid-cols-3" : ""}`}>
+        <div className={`flex flex-col gap-6 ${ownTeam ? "md:col-span-2" : ""}`}>
+          {!isPureViewer && (
+            <div>
+              <SectionHeading>資料枠</SectionHeading>
+              <div className="flex flex-col gap-2">
+                {a.materialSlots.map((slot) => {
+                  const template = slot.templateId ? getTemplateById(slot.templateId) : null;
+                  return (
+                    <div
+                      key={slot.id}
+                      className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4"
+                    >
+                      <div>
+                        <span className="font-medium text-slate-900">{slot.name}</span>
+                        {slot.required && <span className="ml-2 text-xs text-rose-600">必須</span>}
+                      </div>
+                      {template && (
+                        <a
+                          href={template.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-brand-600 hover:underline"
+                        >
+                          テンプレートを開く →
+                        </a>
+                      )}
                     </div>
-                    {template && (
-                      <a
-                        href={template.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-brand-600 hover:underline"
-                      >
-                        テンプレートを開く →
-                      </a>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
-            <SectionHeading
-              action={
-                <Link href={`/announcements/${a.id}/timetable`} className="text-sm text-brand-600 hover:underline">
-                  タイムテーブルを見る →
-                </Link>
-              }
-            >
-              進行
-            </SectionHeading>
-            <p className="text-sm text-slate-500">発表順・時刻・当日の進行状況を確認できます。</p>
+            <SectionHeading>進行</SectionHeading>
+            <TimetableRows timetable={timetable} announcementId={a.id} />
           </div>
 
           <div>

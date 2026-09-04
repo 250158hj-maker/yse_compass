@@ -7,7 +7,6 @@ import { isTeacher } from "@/lib/session-helpers";
 import { roleLabels } from "@/lib/types";
 
 const navLinks = [
-  { href: "/", label: "ホーム" },
   { href: "/announcements", label: "発表会一覧" },
   { href: "/teams", label: "チーム一覧" },
   { href: "/archive", label: "アーカイブ" },

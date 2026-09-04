@@ -76,8 +76,8 @@ function StatTile({
 }) {
   return (
     <CardLink href={href} className={`rounded-r-lg rounded-l-none border-l-4 ${accent}`}>
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-slate-900">{value}</p>
+      <p className="text-xl font-semibold text-slate-900">{label}</p>
+      <p className="mt-1 text-xs text-slate-500">{value}</p>
       <p className="mt-1 text-xs text-slate-400">{caption}</p>
     </CardLink>
   );

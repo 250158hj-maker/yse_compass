@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-04（蒲山）
+> **最終更新**：2026-09-04（蒲山・水戸レビュー指摘1〜4を反映）
 
 ## この章が答える問い
 
@@ -27,27 +27,28 @@
 
 | 層 | 採用 | バージョン方針 | 採用理由 | 出典 |
 | --- | --- | --- | --- | --- |
-| 言語 | TypeScript（strict） | Ph.2 で `package.json` 固定 | Next.js 標準構成。`strict` により実装時の型不整合を設計段階の意図から検出できる | `../../CLAUDE.md` §5 |
-| フレームワーク | Next.js 16（App Router） | 同上 | 要件の中心は CRUD とメタデータ表示（実体レス・§1-1）で、Server Component 優先の App Router により API 層を薄く保てる | `../../CLAUDE.md` §5 |
-| UI ライブラリ | React 19 ＋ React Compiler 有効 | 同上 | 手動メモ化（`useMemo`/`useCallback`）を書かずに再描画コストを抑制できる。`next.config.ts` の `reactCompiler: true` で有効化済み | `../../CLAUDE.md` §5 |
-| スタイル | Tailwind CSS 4 | 同上 | ユーティリティクラスで完結し、画面数が多い割にデザインシステムを別途持つ規模ではない | `../../CLAUDE.md` §5 |
-| DB | PostgreSQL 16（Docker イメージ `postgres:16-alpine`） | 同上 | `../../CLAUDE.md` §5 の確定採用。関係モデルで足りるデータ形状（§06-data.md） | `../../CLAUDE.md` §5・`docker-compose.yml` |
+| 言語 | TypeScript（strict） | Ph.2 で `package.json` 固定 | Next.js 標準構成。`strict` により実装時の型不整合を設計段階の意図から検出できる | `tsconfig.json`（`../../CLAUDE.md` §5 はフレームワークとしての TypeScript 採用のみを定め、`strict` 化は実装側の判断） |
+| フレームワーク | Next.js 16（App Router） | 同上 | 要件の中心は CRUD とメタデータ表示（実体レス・§1-1）で、Server Component 優先の App Router により API 層を薄く保てる | `package.json`（`../../CLAUDE.md` §5 は Next.js 採用のみを定め、具体バージョンは「Ph.2 で固定」としか言っていない） |
+| UI ライブラリ | React 19 ＋ React Compiler 有効 | 同上 | 手動メモ化（`useMemo`/`useCallback`）を書かずに再描画コストを抑制できる。`next.config.ts` の `reactCompiler: true` で有効化済み | `package.json`・`next.config.ts`（**React Compiler の採用は `../../CLAUDE.md` §5・企画書 §2-3 いずれにも記載が無い。`../open-questions.md` H-18 参照**） |
+| スタイル | Tailwind CSS 4 | 同上 | ユーティリティクラスで完結し、画面数が多い割にデザインシステムを別途持つ規模ではない | `package.json`（**採用は `../../CLAUDE.md` §5・企画書 §2-3 いずれにも記載が無い。`../open-questions.md` H-18 参照**） |
+| DB | PostgreSQL 16（Docker イメージ `postgres:16-alpine`） | 同上 | `../../CLAUDE.md` §5 の確定採用。関係モデルで足りるデータ形状（06 データ設計は未着手のため詳細は未定） | `../../CLAUDE.md` §5・`docker-compose.yml` |
 | DB アクセス | **`pg`（Node.js 標準ドライバ）を直接使用** ← 正典（Prisma）との乖離あり | 未確定 | 下記「ORM の採用方針」参照 | `src/app/api/health/db/route.ts` |
 | 認証 | Auth.js ＋ Google Workspace OAuth（未実装・未検証） | 検証は設計フェーズ後半 | 学校 Google アカウントとの統合が前提。**OAuth が通るかが最大の技術リスク** | `../requirements.md` §5 |
 | パッケージマネージャ | pnpm | — | `../../CLAUDE.md` 既定 | `../../CLAUDE.md` |
 | 開発環境 | Docker（`node:24-alpine` ベース、`dev` ステージ） | — | ホストの Node バージョン差異を吸収。DB のみ Docker・アプリはホスト直起動も選択可（8-6） | `Dockerfile`・`docker-compose.yml` |
 
-### ORM の採用方針 — 正典との乖離が未決着（新規：H-17）
+### ORM の採用方針 — 正典との乖離が未決着（旧 監査 M-1・H-17 として正式昇格）
 
-`../../CLAUDE.md` §5 は ORM に **Prisma** を挙げているが、現状の実装（`src/app/api/health/db/route.ts` の DB 疎通確認）は `pg` の `Pool` を直接使っており、`package.json` に Prisma 系パッケージは無い。
+`../../CLAUDE.md` §5 は ORM に **Prisma** を挙げているが、`main` の現状の実装（`src/app/api/health/db/route.ts` の DB 疎通確認）は `pg` の `Pool` を直接使っており、`package.json` に Prisma 系パッケージは無い。**この乖離自体は 2026-09-03 の三者整合性監査で M-1 として既に見つかっていたが、`open-questions.md` への起票が漏れていた。本章の執筆時に実物を再確認し、H-17 として正式に昇格させた。**
 
-- **現状の性質**：DB 疎通確認用の 1 エンドポイントのみで、業務データへのアクセス層はまだ存在しない（一覧・提出・コメント等はすべて `src/lib/mock/*` のインメモリデータ）。**まだ「実装が正典から逸脱した」と断定できる規模ではない**が、正典と実態が食い違ったまま次の実装（06 データ設計に基づくアクセス層）に入ると、どちらを正として書けばよいか判断できない
-- **判断が要る点**：06 データ設計のテーブル定義をコードに落とす際、Prisma のスキーマ駆動（マイグレーション・型生成）を使うか、`pg` を直接使い続けるか
-- **先行方針（Stage 1）**：`pg` 直接のまま実装を継続する。理由は次の2点
-  1. 現時点のテーブル数・クエリの複雑さ（§06-data.md）は素朴な SQL で十分足りる規模で、ORM の抽象化コストに見合う複雑さがまだ無い
+- **現状の性質**：`main` の `src/` は DB 疎通確認用の 1 エンドポイントのみで、業務データへのアクセス層はまだ存在しない（`src/lib/mock/*` 等のモックデータは鈴木さんの `feature/mock`（未マージ）側にあり、統合後に業務データのアクセス層を書く際に本項の判断が要る）
+- **Prisma の出どころ**：`CLAUDE.md` §5 の Prisma は独自の技術選定ではなく、**企画書 §2-3「ソフトウェア構成」に明記された、凍結済み Ph.0 成果物**が出どころ。現行スケジュールの **W13（9/11〜9/17）に「DB接続・Prisma セットアップ・マイグレーション」が予定**されている
+- **判断が要る点**：06 データ設計のテーブル定義をコードに落とす際、Prisma のスキーマ駆動（マイグレーション・型生成）を使うか、`pg` を直接使い続けるか。**採否の決着は水戸が `decisions.md` で行う（期限：W13 開始＝9/11）**
+- **先行方針（Stage 1）**：06 のアクセス層に着手するまでは `pg` 直接のまま。理由は次の2点
+  1. 06 データ設計が未着手で ER の形（H-6・H-3・#7・#8・#10・`cond`）がこれから動くため、いま ORM を決める判断材料が揃っていない。かつ、決めなくても現時点では何も壊れない
   2. `pg` は既に疎通確認で動作しており、切り替えは後からでも移行コストが局所的（アクセス層はまだ 1 箇所）
 - **決着したときに変わる箇所**：本表の「DB アクセス」行、`../../CLAUDE.md` §5 の ORM 行、`06-data.md` のスキーマ定義の書式
-- **未決 ID**：`../open-questions.md` **H-17**（本章執筆時に新規起票）
+- **未決 ID**：`../open-questions.md` **H-17**（旧 M-1）
 
 ---
 
@@ -105,8 +106,8 @@ flowchart TB
 ```
 
 - **責務分界の原則**：一覧・詳細等の**読み取り**は Server Component が Data Access 層を直接呼ぶ。**書き込みと機微な読み取り**（ロール判定が要るもの）は必ず Server Action / Route Handler を経由させ、そこで権限判定を行う。画面側の表示制御は二次的な UX であって防御ではない（`../open-questions.md` **H-16** 先行方針をそのまま適用）
-- **現状の実態との差分**：現時点の実装は Data Access 層・Server Action層とも未着手で、すべての画面が `src/lib/mock/*` のインメモリ配列を直接参照している。認可も `SessionContext`（`localStorage` の persona 切り替え）による**クライアント側の見た目の出し分けのみ**で、H-16 が指摘する状態そのもの。06 データ設計の骨格が引けた時点（K2）で、Data Access 層と Server Action の導入に着手する
-- **Client Component の範囲は限定する**：セッション状態（`SessionContext`）、認証ガード（`AuthGuard`）、ロールに応じた表示切り替え（`RoleGate`）、フォームの入力状態、モーダル・確認ダイアログの開閉。**一覧・詳細のデータ取得を Client Component 側で行わない**（Server Component 優先の原則・8-4）
+- **現状の実態との差分**：`main` の `src/` は DB 疎通確認（`api/health/db/route.ts`）と雛形の4ファイル（`layout.tsx`／`page.tsx`／`globals.css`／`favicon.ico`）のみで、Data Access 層・Server Action 層は存在しない。**`src/lib/mock/*`・`SessionContext`・`AuthGuard`・`RoleGate` は、鈴木さんの `feature/mock`（未マージ）に実装されているモックであり、`main` にはまだ無い。** 統合後の実態としては、すべての画面が `src/lib/mock/*` のインメモリ配列を直接参照し、認可も `SessionContext`（`localStorage` の persona 切り替え）による**クライアント側の見た目の出し分けのみ**という、H-16 が指摘する状態そのものになる見込み。06 データ設計の骨格が引けた時点（K2）で、Data Access 層と Server Action の導入に着手する
+- **Client Component の範囲は限定する**：セッション状態、認証ガード、ロールに応じた表示切り替え、フォームの入力状態、モーダル・確認ダイアログの開閉。**一覧・詳細のデータ取得を Client Component 側で行わない**（Server Component 優先の原則・8-4）。`feature/mock`（未マージ）はこの範囲を `SessionContext`／`AuthGuard`／`RoleGate` として実装しており、統合後の実装もこの3コンポーネントの役割分担を踏襲する想定
 
 ---
 
@@ -138,7 +139,7 @@ flowchart TB
 
 - `Dockerfile`：`node:24-alpine` ベース。`deps` ステージで `pnpm install --frozen-lockfile`、`dev` ステージでソース一式をコピーし `pnpm dev` を実行
 - `docker-compose.yml`：`db`（`postgres:16-alpine`）と `app`（`Dockerfile` の `dev` ターゲット）の2サービス。`app` は `db` の healthcheck 通過後に起動する
-- **Turbopack の制約**：`next dev` の既定バンドラ（Turbopack）は、Windows の Docker Desktop 経由のバインドマウントだとホスト側のファイル変更を検知できないことがあるため、`app` サービスは `pnpm exec next dev --webpack` ＋ `WATCHPACK_POLLING=true` で起動する。ホストで直接 `pnpm dev` する場合は Turbopack のままでよい
+- **Turbopack の制約**：`next dev` の既定バンドラ（Turbopack）は、Windows の Docker Desktop 経由のバインドマウントだとホスト側のファイル変更を検知できないことがある。`docker-compose.yml` は `WATCHPACK_POLLING=true`（webpack 用のポーリング監視フラグ）を既に設定していたが、`app` サービスの起動コマンドが既定の Turbopack のままで、このフラグが効いていなかった。**本 PR で `app` サービスに `command: pnpm exec next dev --webpack` を追加し、変数を実際に効かせるようにした。** ホストで直接 `pnpm dev` する場合は Turbopack のままでよい
 
 ### 環境変数
 
@@ -170,4 +171,9 @@ flowchart TB
 
 **書き切った。8-7（デプロイ構成）のみ、本番環境の未確定により保留。**
 
-執筆にあたり新たに見つかった未決を1件、`../open-questions.md` に起票した（H-17：ORM が正典（Prisma）と実装（`pg` 直接）で乖離している）。あわせて `../findings.md` に F-01 として記録した。
+執筆・レビューにあたり `../open-questions.md` を2件更新した。
+
+- **H-17**：ORM が正典（Prisma）と実装（`pg` 直接）で乖離している。2026-09-03 の三者整合性監査で M-1 として既出だったが起票が漏れていたものを、本章の執筆時に正式に昇格させた（`../findings.md` F-01）
+- **H-18**（新規）：UI 層の追加採用（Tailwind CSS 4・React Compiler）が `../../CLAUDE.md` §5・企画書 §2-3 いずれにも記載が無いまま実装されている（レビュー指摘を受けて起票）
+
+あわせて、`docker-compose.yml` の `WATCHPACK_POLLING=true` が Turbopack 起動のため効いていなかった不整合を修正し（`app` サービスに `command: pnpm exec next dev --webpack` を追加）、8-3・8-6 の「現状の実装」の記述を `main` の実態（`feature/mock` は未マージ）に合わせて訂正した。

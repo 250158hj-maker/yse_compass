@@ -1,82 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YSE Compass
 
-## Docker での開発環境
+**卒業制作発表会の運営プラットフォーム。** 資料を提出するという行為が、提出管理・発表順の整理・アーカイブを副産物として成立させることを狙う。
 
-アプリと PostgreSQL を Docker Compose で起動できる。DB の中身（スキーマ）は未確定のため、まだ空のデータベースを用意するだけの構成。
+卒業制作チーム **Cheers**（水戸・蒲山・鈴木）が開発している。
+
+## 開発環境のセットアップ
+
+**Docker で管理するのは PostgreSQL のみ。Next.js アプリはホストで直接起動する**（2026-09-04 決定・`docs/decisions.md`）。DB の中身（スキーマ）は未確定のため、まだ空のデータベースを用意するだけの構成。
 
 ```bash
 cp .env.example .env
-docker compose up --build
-```
-
-- アプリ: http://localhost:3000
-- DB: localhost:5432（`.env` の値で接続）
-- DB接続確認: http://localhost:3000/api/health/db が `{"status":"ok"}` を返せば接続成功
-
-ソースコードはバインドマウントされているため、ホスト側での編集がそのままコンテナ内の Next.js dev server に反映される（ホットリロード）。`node_modules` と `.next` はコンテナ専用の匿名ボリュームなので、依存関係を変更した場合は `docker compose up --build` でイメージを作り直す。
-
-停止・データ削除:
-
-```bash
-docker compose down        # 停止（DBデータは残る）
-docker compose down -v     # 停止 + DBデータも削除
-```
-
-### アプリはホストで直接動かし、DBだけDockerを使う場合
-
-DBコンテナだけ起動する:
-
-```bash
 docker compose up -d db
-```
-
-`.env.local` を作成し、`DATABASE_URL` のホストを `db` から `localhost` に変更する（Next.js は `.env.local` を自動で読み込み、`.env` より優先する）。
-
-```bash
-# .env.local
-DATABASE_URL=postgresql://yse_compass:yse_compass@localhost:5432/yse_compass
-```
-
-```bash
 pnpm install
 pnpm dev
 ```
 
-http://localhost:3000/api/health/db が `{"status":"ok"}` を返せば接続成功。
+- アプリ: http://localhost:3000
+- DB: localhost:5432（`.env` の値で接続）
+- DB 接続確認: http://localhost:3000/api/health/db が `{"status":"ok"}` を返せば接続成功
 
-> **注意**: 一度 `docker compose up` でアプリコンテナを起動すると、`.next` ディレクトリがroot所有で作られ、その後ホストで直接 `pnpm dev` すると権限エラー（`EACCES`）で起動に失敗することがある。その場合は `rm -rf .next` で削除してから `pnpm dev` を実行し直す。
-
-## Getting Started
-
-First, run the development server:
+停止・データ削除:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose down        # 停止（DB データは残る）
+docker compose down -v     # 停止 + DB データも削除
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> **この構成の正典は `docs/design/08-architecture.md` 8-6（開発・実行環境）。**
+> Node / pnpm のバージョンをどこで固定しているか、バンドラを Turbopack に固定した理由、そして **旧構成（アプリもコンテナで動かしていた期間）から移るときに 1 回だけ必要な対処 3 件** はそちらにある。**この README には転記しない**（`CLAUDE.md` 禁則2・二重管理の回避）。
+>
+> 上の 4 行は CI（`.github/workflows/docker-smoke-test.yml`）が実行している手順そのものなので、**この手順が壊れると CI が落ちる。**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 設計ドキュメント
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**設計の正典は `docs/`。索引は [`docs/README.md`](docs/README.md) が持つ。**
 
-## Learn More
+| 知りたいこと | 見るファイル |
+| --- | --- |
+| 何を作り、何を作らないか | [`docs/requirements.md`](docs/requirements.md) |
+| なぜいまの設計がこうなっているか | [`docs/decisions.md`](docs/decisions.md) |
+| まだ決まっていないこと・決まるまでの先行方針 | [`docs/open-questions.md`](docs/open-questions.md) |
+| 技術スタックと採用理由 | [`docs/design/08-architecture.md`](docs/design/08-architecture.md) 8-1 |
+| 基本設計書（01〜10 章） | [`docs/design/`](docs/design/) — **全章が確度「暫定」** |
 
-To learn more about Next.js, take a look at the following resources:
+> **設計に関する問いの答えは `docs/` にある。** Notion に同じ内容が見つかった場合、**そちらが古い**（2026-08-30 決定・`docs/decisions.md`）。
+> プロダクト定義・機能一覧・スケジュール（Ph.0・凍結）は Notion `YSE COMPASS COMP.` の企画書が正典。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+リポジトリでの作業ルール（正典マップ・禁則・役割分担）は [`CLAUDE.md`](CLAUDE.md) にある。

@@ -1,4 +1,4 @@
-name: Docker smoke test
+name: Dev environment smoke test
 
 on:
   pull_request:
@@ -6,13 +6,23 @@ on:
     branches: [main]
 
 jobs:
+  # ジョブ ID は既存のチェック名を保つためそのまま（実体は「DB は Docker・アプリはホスト」の疎通確認）
   docker-compose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build and start containers
-        run: docker compose up --build -d
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Start PostgreSQL
+        run: |
+          cp .env.example .env
+          docker compose up -d db
 
       - name: Wait for db healthcheck
         run: |
@@ -25,6 +35,14 @@ jobs:
           done
           echo "db did not become healthy in time"
           exit 1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start the app on the runner
+        run: |
+          nohup pnpm dev > dev.log 2>&1 &
+          sleep 1
 
       - name: Check app -> db connection
         run: |
@@ -39,7 +57,9 @@ jobs:
 
       - name: Show logs on failure
         if: failure()
-        run: docker compose logs
+        run: |
+          cat dev.log || true
+          docker compose logs
 
       - name: Tear down
         if: always()

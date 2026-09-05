@@ -16,23 +16,5 @@ services:
       timeout: 5s
       retries: 10
 
-  app:
-    build:
-      context: .
-      target: dev
-    command: pnpm exec next dev --webpack
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-yse_compass}:${POSTGRES_PASSWORD:-yse_compass}@db:5432/${POSTGRES_DB:-yse_compass}
-      WATCHPACK_POLLING: "true"
-    ports:
-      - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
-    depends_on:
-      db:
-        condition: service_healthy
-
 volumes:
   db_data:

@@ -10,6 +10,14 @@
 !.yarn/releases
 !.yarn/versions
 
+# 他のパッケージマネージャのロックファイル（pnpm-lock.yaml と競合する）
+# scripts/only-pnpm.mjs が install 自体を止めるが、npm は止まる前に
+# ロックファイルを書くことがあるため、コミットも止める
+package-lock.json
+yarn.lock
+bun.lockb
+bun.lock
+
 # testing
 /coverage
 

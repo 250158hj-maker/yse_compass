@@ -94,7 +94,8 @@
 | パッケージマネージャ | pnpm |
 | 開発環境 | Docker |
 
-**認証（Auth.js ＋ 学校 Google アカウントで OAuth が通るか）が最大の技術リスク。** 詳細は `docs/requirements.md` §5、未決の中身は `docs/open-questions.md` H-10。
+**認証（Auth.js ＋ 学校 Google アカウントで OAuth が通るか）が最大の技術リスク。** 詳細は `docs/requirements.md` §5。
+その手前にあったロール解決（H-10）は **2026-09-05 に先生ホワイトリスト方式で決着**した（`docs/decisions.md`）ので、**残る技術リスクは OAuth 自体の可否だけ**になっている。
 
 ---
 

@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-06（水戸・H-16 決着＝認可の一次防衛線をデータアクセス層に置く。8-3 の責務分界を書き換え）
+> **最終更新**：2026-09-06（水戸・H-16 決着＝認可の一次防衛線をデータアクセス層に置く。8-3 の責務分界を書き換え／H-18 決着＝UI 層の追加採用を `CLAUDE.md` §5 へ正典化。8-1 の出典を更新）
 
 ## この章が答える問い
 
@@ -29,8 +29,8 @@
 | --- | --- | --- | --- | --- |
 | 言語 | TypeScript（strict） | Ph.2 で `package.json` 固定 | Next.js 標準構成。`strict` により実装時の型不整合を設計段階の意図から検出できる | `tsconfig.json`（`../../CLAUDE.md` §5 はフレームワークとしての TypeScript 採用のみを定め、`strict` 化は実装側の判断） |
 | フレームワーク | Next.js 16（App Router） | 同上 | 要件の中心は CRUD とメタデータ表示（実体レス・§1-1）で、Server Component 優先の App Router により API 層を薄く保てる | `package.json`（`../../CLAUDE.md` §5 は Next.js 採用のみを定め、具体バージョンは「Ph.2 で固定」としか言っていない） |
-| UI ライブラリ | React 19 ＋ React Compiler 有効 | 同上 | 手動メモ化（`useMemo`/`useCallback`）を書かずに再描画コストを抑制できる。`next.config.ts` の `reactCompiler: true` で有効化済み | `package.json`・`next.config.ts`（**React Compiler の採用は `../../CLAUDE.md` §5・企画書 §2-3 いずれにも記載が無い。`../open-questions.md` H-18 参照**） |
-| スタイル | Tailwind CSS 4 | 同上 | ユーティリティクラスで完結し、画面数が多い割にデザインシステムを別途持つ規模ではない | `package.json`（**採用は `../../CLAUDE.md` §5・企画書 §2-3 いずれにも記載が無い。`../open-questions.md` H-18 参照**） |
+| UI ライブラリ | React 19 ＋ React Compiler 有効 | 同上 | 手動メモ化（`useMemo`/`useCallback`）を書かずに再描画コストを抑制できる。`next.config.ts` の `reactCompiler: true` で有効化済み | `package.json`・`next.config.ts`・**`../../CLAUDE.md` §5**（**企画書 §2-3 には記載が無く、2026-09-06 に `../decisions.md` を出典として §5 へ正典化した — H-18 決着**） |
+| スタイル | Tailwind CSS 4 | 同上 | ユーティリティクラスで完結し、画面数が多い割にデザインシステムを別途持つ規模ではない | `package.json`・**`../../CLAUDE.md` §5**（**企画書 §2-3 には記載が無く、2026-09-06 に `../decisions.md` を出典として §5 へ正典化した — H-18 決着**） |
 | DB | PostgreSQL 16（Docker イメージ `postgres:16-alpine`） | 同上 | `../../CLAUDE.md` §5 の確定採用。関係モデルで足りるデータ形状（06 データ設計は未着手のため詳細は未定） | `../../CLAUDE.md` §5・`docker-compose.yml` |
 | DB アクセス | **Prisma**（2026-09-05 に採用決定・**未導入**） | Ph.2 で `package.json` 固定 | `../../CLAUDE.md` §5・企画書 §2-3 の正典どおり。導入は W13（9/11〜）。疎通確認の `pg` 直接使用は暫定で、業務データのアクセス層には持ち込まない。下記「ORM の採用方針」参照 | `../decisions.md`（2026-09-05）・`src/app/api/health/db/route.ts`（現状の実装） |
 | PDF 生成 | 純粋 JS の PDF ライブラリ（ヘッドレスブラウザ非依存） | 銘柄は実装着手時に確定 | Chromium 同梱を避ける（K3 検証・`../decisions.md` 2026-09-04） | `../decisions.md`・`05-output.md` 5-4 |
@@ -202,7 +202,7 @@ pnpm dev
 執筆・レビューにあたり `../open-questions.md` を2件更新した。
 
 - **H-17**：ORM が正典（Prisma）と実装（`pg` 直接）で乖離している。2026-09-03 の三者整合性監査で M-1 として既出だったが起票が漏れていたものを、本章の執筆時に正式に昇格させた（`../findings.md` F-01）。→ **2026-09-05 に Prisma 採用で決着**（`../decisions.md`）。8-1 に反映済み
-- **H-18**（新規）：UI 層の追加採用（Tailwind CSS 4・React Compiler）が `../../CLAUDE.md` §5・企画書 §2-3 いずれにも記載が無いまま実装されている（レビュー指摘を受けて起票）
+- **H-18**（新規）：UI 層の追加採用（Tailwind CSS 4・React Compiler）が `../../CLAUDE.md` §5・企画書 §2-3 いずれにも記載が無いまま実装されている（レビュー指摘を受けて起票）。→ **2026-09-06 に「§5 へ追記して正典化する」で決着**（`../decisions.md`）。**§5 には出典列が新設され、企画書由来か本ログ由来かが行ごとに読める**。8-1 に反映済み
 
 8-3・8-6 の「現状の実装」の記述は、`main` の実態（`feature/mock` は未マージ）に合わせてある。
 

@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-05（水戸・H-17 決着＝Prisma 採用を 8-1 へ反映／蒲山・K3 決着分を 8-1 へ反映）
+> **最終更新**：2026-09-06（水戸・H-16 決着＝認可の一次防衛線をデータアクセス層に置く。8-3 の責務分界を書き換え）
 
 ## この章が答える問い
 
@@ -93,10 +93,10 @@ flowchart TB
         CC["Client Component<br/>(セッション状態・フォーム入力・モーダル等のUIローカル状態のみ)"]
     end
     subgraph "Application(未実装)"
-        SA["Server Action / Route Handler<br/>(書き込み・機微な読み取りの入口)"]
+        SA["Server Action / Route Handler<br/>(書き込みの入口)"]
     end
     subgraph "Data Access(未実装)"
-        Repo["データアクセス層<br/>(想定：06-dataのテーブル定義への薄いラッパー)"]
+        Repo["データアクセス層<br/><b>権限判定の一次防衛線</b><br/>(想定：06-dataのテーブル定義への薄いラッパー)"]
     end
     DB[("PostgreSQL")]
 
@@ -106,8 +106,11 @@ flowchart TB
     Repo --> DB
 ```
 
-- **責務分界の原則**：一覧・詳細等の**読み取り**は Server Component が Data Access 層を直接呼ぶ。**書き込みと機微な読み取り**（ロール判定が要るもの）は必ず Server Action / Route Handler を経由させ、そこで権限判定を行う。画面側の表示制御は二次的な UX であって防御ではない（`../open-questions.md` **H-16** 先行方針をそのまま適用）
-- **現状の実態との差分**：`main` の `src/` は DB 疎通確認（`api/health/db/route.ts`）と雛形の4ファイル（`layout.tsx`／`page.tsx`／`globals.css`／`favicon.ico`）のみで、Data Access 層・Server Action 層は存在しない。**`src/lib/mock/*`・`SessionContext`・`AuthGuard`・`RoleGate` は、鈴木さんの `feature/mock`（未マージ）に実装されているモックであり、`main` にはまだ無い。** 統合後の実態としては、すべての画面が `src/lib/mock/*` のインメモリ配列を直接参照し、認可も `SessionContext`（`localStorage` の persona 切り替え）による**クライアント側の見た目の出し分けのみ**という、H-16 が指摘する状態そのものになる見込み。06 データ設計の骨格が引けた時点（K2）で、Data Access 層と Server Action の導入に着手する
+- **責務分界の原則**：一覧・詳細等の**読み取り**は Server Component がデータアクセス層を直接呼ぶ。**書き込み**は Server Action / Route Handler を経由させる。**経路は 2 本あるが、権限判定は 1 か所でしか行わない**（下記）
+- **権限判定の一次防衛線はデータアクセス層に置く**（2026-09-06・H-16 決着・`../decisions.md`／`../requirements.md` §4 セキュリティ）。**読み取りか書き込みかを問わず、データアクセス層を通る際に必ずロールと文脈（その発表が自チームか否か）を判定する。** Server Action / Route Handler の入口での判定は多層防御の 2 枚目として置いてよいが、**一次防衛線の代替ではない**。画面側の表示制御は二次的な UX であって防御ではない
+  > **旧・先行方針（「書き込みと機微な読み取り」だけ Server Action 経由で判定）は採らない。** 8-3 の構成では**読み取りが Server Action を通らない**ため、公開前の資料（`../requirements.md` §3-3）・公開許可のない作品（同 §3-7）という**認可の主戦場である一覧画面が防衛線の外に出る**。かといって「機微な読み取り」を広く取ると 8-4 の Server Component 優先が崩れる。**データアクセス層へ移すとこの二択自体が消えるため、「機微な読み取り」という区別は設計から削除した。**
+  > **文脈（自チームか否か）の判定の実装は 06 データ設計に依存する**（所属関係の照会が要る）。層の決定は 06 と独立だが、判定の具体は 06 の後
+- **現状の実態との差分**：`main` の `src/` は DB 疎通確認（`api/health/db/route.ts`）と雛形の4ファイル（`layout.tsx`／`page.tsx`／`globals.css`／`favicon.ico`）のみで、Data Access 層・Server Action 層は存在しない。**`src/lib/mock/*`・`SessionContext`・`AuthGuard`・`RoleGate` は、鈴木さんの `feature/mock`（未マージ）に実装されているモックであり、`main` にはまだ無い。** 統合後の実態としては、すべての画面が `src/lib/mock/*` のインメモリ配列を直接参照し、認可も `SessionContext`（`localStorage` の persona 切り替え）による**クライアント側の見た目の出し分けのみ**という、**H-16 が指摘していた状態そのもの**になる見込み（**2026-09-06 に決着したので、統合時にデータアクセス層での判定へ寄せる**）。06 データ設計の骨格が引けた時点（K2）で、Data Access 層と Server Action の導入に着手する
 - **Client Component の範囲は限定する**：セッション状態、認証ガード、ロールに応じた表示切り替え、フォームの入力状態、モーダル・確認ダイアログの開閉。**一覧・詳細のデータ取得を Client Component 側で行わない**（Server Component 優先の原則・8-4）。`feature/mock`（未マージ）はこの範囲を `SessionContext`／`AuthGuard`／`RoleGate` として実装しており、統合後の実装もこの3コンポーネントの役割分担を踏襲する想定
 
 ---

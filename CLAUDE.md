@@ -32,8 +32,9 @@
 | 「作るか作らないか」の判断 | `docs/decisions.md` → `docs/requirements.md` §1 |
 | 「なぜこうなっているか」を知りたい | `docs/decisions.md`（根拠の列） |
 | 先生の実運用・一次情報を知りたい | `docs/hearing.md` |
+| **スケジュール・タスクの割り付け** | `pm/README.md` → `pm/wbs-source.md` |
 
-全ファイルの一覧と役割は **`docs/README.md`**。
+全ファイルの一覧と役割は **`docs/README.md`**。**進め方（スケジュール・WBS）の文書は `pm/README.md`。**
 
 ---
 

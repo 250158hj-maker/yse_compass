@@ -46,4 +46,13 @@ docker compose down -v     # 停止 + DB データも削除
 > **設計に関する問いの答えは `docs/` にある。** Notion に同じ内容が見つかった場合、**そちらが古い**（2026-08-30 決定・`docs/decisions.md`）。
 > プロダクト定義・機能一覧・スケジュール（Ph.0・凍結）は Notion `YSE COMPASS COMP.` の企画書が正典。
 
+## プロジェクト運営
+
+**スケジュール・WBS・タスクの割り付けは `pm/`。** 設計の正典（`docs/`）とは分けてある（2026-09-10 決定・[`docs/decisions.md`](docs/decisions.md)）。
+
+| 知りたいこと | 見るファイル |
+| --- | --- |
+| いつ・誰が・何を・どの順でやるか | [`pm/README.md`](pm/README.md) |
+| WBS を組むための事実（タスク台帳・依存・稼働時間） | [`pm/wbs-source.md`](pm/wbs-source.md) — **使い捨て** |
+
 リポジトリでの作業ルール（正典マップ・禁則・役割分担）は [`CLAUDE.md`](CLAUDE.md) にある。

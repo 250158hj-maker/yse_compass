@@ -5,7 +5,7 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-11（水戸・H-21 決着＝`hearing.md` §7-2 現物照合の結果、`teams.number` を置かないことを確定）／2026-09-11（蒲山・水戸レビュー2周目（PR #23）対応。N-1〜N-6 を反映。H-21・H-22 は引き続き水戸の判断待ち）／2026-09-11（蒲山・水戸レビュー（PR #23）対応。A-1〜A-5・B-2・C-1〜C-4・D-1〜D-3 を反映し、B-1・B-3 は水戸の判断待ちとして `open-questions.md` H-21・H-22 へ起票）／2026-09-11（蒲山・6-1〜6-6 の初稿を執筆。H-20 を新規起票し、時刻枠は先行方針で除外して組んだ）
+> **最終更新**：2026-09-11（蒲山・水戸レビュー3周目（PR #23）対応。M-1〜M-6 を反映し H-22 を決着。`works` の公開許可列を boolean から `publication_consent`（3値）＋ `consent_set_by` へ変更）／2026-09-11（水戸・H-21 決着＝`hearing.md` §7-2 現物照合の結果、`teams.number` を置かないことを確定）／2026-09-11（蒲山・水戸レビュー2周目（PR #23）対応。N-1〜N-6 を反映。H-21・H-22 は引き続き水戸の判断待ち）／2026-09-11（蒲山・水戸レビュー（PR #23）対応。A-1〜A-5・B-2・C-1〜C-4・D-1〜D-3 を反映し、B-1・B-3 は水戸の判断待ちとして `open-questions.md` H-21・H-22 へ起票）／2026-09-11（蒲山・6-1〜6-6 の初稿を執筆。H-20 を新規起票し、時刻枠は先行方針で除外して組んだ）
 
 ## この章が答える問い
 
@@ -60,7 +60,6 @@
 | **T-3** | 使用技術欄の表記ゆれ（自由記述か統制語彙か） | — |
 | **H-14**（旧 `cond`） | 試作品一式は「必須／任意」の 2 値で表せない | 必須／任意の 2 値のまま組み、部分提出は表現しない |
 | **H-20**（新規・2026-09-11 起票） | 当日タイムテーブルの「時刻枠」の中身（開始時刻・所要・休憩）が未定義 | 発表エンティティは発表順（整数）のみを持つ。時刻枠の列は追加しない |
-| **H-22**（新規・2026-09-11 起票・水戸レビュー B-3） | 公開許可の値が2値（許可／非表示）か3値（＋拒否）かが未決 | `works.is_public_approved` は boolean のまま。「拒否」の区別は表現しない |
 
 ### 既存モック実装との差（2026-09-03 監査）
 
@@ -79,7 +78,7 @@
 
 ## 現在の状態
 
-**2周目のレビュー指摘（N-1〜N-6）まで対応済み**（2026-09-11・蒲山）。水戸の1周目レビュー（PR #23・Request changes）のA〜D群、2周目のN-1〜N-6群とも本稿に反映した。**H-21（チーム番号）は水戸が現物照合し決着**（`number`列を置かない）。残るのは**H-22（公開許可の値の数）のみ**。**全体が確度「暫定」でレビュー未了**（`CLAUDE.md` 禁則6）— 水戸の Approve が済むまで、他章から「決定」として引用しないこと。
+**3周目のレビュー指摘（M-1〜M-6）まで対応済み**（2026-09-11・蒲山）。水戸の1周目レビュー（PR #23・Request changes）のA〜D群、2周目のN-1〜N-6群、3周目のM-1〜M-6群とも本稿に反映した。**H-21（チーム番号）・H-22（公開許可の値の数）とも水戸が決着させた。** 蒲山側の宿題は残っていない。**全体が確度「暫定」でレビュー未了**（`CLAUDE.md` 禁則6）— 水戸の Approve と確度引き上げの1コミットが済むまで、他章から「決定」として引用しないこと。
 
 **この章が開くと 03・04・05・07 が一斉に開く**（`00-conventions.md` §5-4）。逆に言えば、ここを開けない限り設計書は完成しない。
 
@@ -145,7 +144,8 @@ erDiagram
         int id PK
         int team_id FK, UK
         string title "nullable・C-3"
-        boolean is_public_approved
+        string publication_consent
+        int consent_set_by FK "nullable"
     }
     USER {
         int id PK
@@ -216,6 +216,7 @@ erDiagram
     FISCAL_YEAR ||--o{ EVENT_OCCASION : has
     SCHOOL_CLASS ||--o{ TEAM : has
     TEAM ||--|| WORK : has
+    USER |o--o{ WORK : "consent_set_by"
     TEAM ||--o{ USER : has
     TEAM |o--o| USER : "leader_user_id"
     EVENT_OCCASION ||--o{ MATERIAL_SLOT : has
@@ -283,11 +284,12 @@ erDiagram
 | id | serial | NOT NULL | — | PK | — |
 | team_id | int | NOT NULL | — | FK → teams.id・UNIQUE | 作品はチームが1つ持つ（`glossary.md` §3） |
 | title | varchar | NULL | — | — | アーカイブ導線「年度→**作品名**」（`requirements.md` §3-7）から正典化（2026-09-11）。**NULL 可**（水戸レビュー C-3）：チーム作成時点（先生が担任として作成・#6 決着）で作品名が決まっている保証は正典に無い。行はチーム作成と同時に生成し、名称は後から編集する |
-| is_public_approved | boolean | NOT NULL | false | — | 公開許可は既定**非表示**（2026-07-26）。**「拒否」を含む値の数は未決 — `open-questions.md` H-22 参照**（水戸レビュー B-3。`requirements.md` §3-7 受け入れ基準に「未設定・**拒否**」の語があり、2値で組んだ暫定実装は水戸の決定待ち） |
+| publication_consent | varchar | NOT NULL | 'unset' | CHECK (publication_consent IN ('unset','approved','rejected')) | 公開許可の状態（H-22 決着・2026-09-11）。既定＝`'unset'`＝非表示（2026-07-26）。`'unset'` と `'rejected'` は表示上は同じ非表示だが、先生の代理設定（`requirements.md` §3-7）の対象を判別するために区別が要る |
+| consent_set_by | int | NULL | — | FK → users.id・CHECK ((publication_consent = 'unset') = (consent_set_by IS NULL)) | 公開許可を最後に設定した人（H-22 決着・2026-09-11・**正典からの帰結ではなく設計判断**）。代理設定が正典（`requirements.md` §3-7）にある以上「本人の設定」と「先生の代理設定」が実在し、記録しなければ後から復元できない。訂正履歴は持たない（ログ要件は G-5 で一括して決める） |
 
 > **作品の年度は `team → class → fiscal_year` で導出できるため、独立した列を持たない**（6-6）。
 > **行の生成タイミング**：チーム作成（先生の操作・#6 決着）と同時に1行生成する。`title` は空で作成でき、後から編集できる（水戸レビュー C-3）。
-> **`title` はアプリ層で「公開許可の設定時点」に必須化する**（水戸レビュー N-6）：`is_public_approved = true` に更新する操作は、`title` が NULL の作品に対して拒否する。これにより `requirements.md` §3-7 のアーカイブ導線「年度→作品名」に無名の作品が並ぶ経路を塞ぐ。DB 制約（CHECK）ではなくアプリ層のバリデーションとする — 公開許可の設定操作自体がアプリ層の処理であり、二重に守る必要がない
+> **`title` はアプリ層で「公開許可の設定時点」に必須化する**（水戸レビュー N-6）：`publication_consent` を `'approved'` に更新する操作は、`title` が NULL の作品に対して拒否する。これにより `requirements.md` §3-7 のアーカイブ導線「年度→作品名」に無名の作品が並ぶ経路を塞ぐ。**`'rejected'` への更新では `title` を必須にしない**（拒否された作品はアーカイブに載らないため、`title` が無くても「無名の作品が一覧に並ぶ」経路には当たらない）。DB 制約（CHECK）ではなくアプリ層のバリデーションとする — 公開許可の設定操作自体がアプリ層の処理であり、二重に守る必要がない
 
 ### `users`（ユーザー）
 
@@ -426,6 +428,7 @@ erDiagram
 | **資料枠種類**（`material_slots.slot_type`） | 概要／プレゼン資料／概要設計書／詳細設計書／試作品一式／完成作品一式（概要は全4発表会に1件） | `requirements.md` §3-1（2026-08-18 ヒヤリング回答）。各発表会への割り当ての逐語は `hearing.md` §7-2 |
 | **ロール**（`users.role`） | 先生 ／ 生徒 | `glossary.md` §3（2026-09-05・H-10） |
 | **コメントラベル**（`comments.label`） | 感想 ／ 批評 ／ その他 | `requirements.md` §3-9（企画書 §5-2 継承） |
+| **公開許可の状態**（`works.publication_consent`・**順序なし**） | 未設定 ／ 許可 ／ 拒否（`unset` / `approved` / `rejected`） | `requirements.md` §3-7・`04-screen.md` SC-18（2026-09-11・H-22） |
 
 > **クラス・資料枠種類は CHECK 制約で固定しない。** 年度セットアップが生成する運用データであり（`decisions.md` 2026-09-04）、学校側の事情（学科新設・組数変更）で来年度以降に値が増減しうるため、コードの列挙は「初期投入値」であって「取りうる値の全集合を保証する制約」ではない。**回種別・ロール・コメントラベルは仕様上閉じた集合**なので CHECK 制約を張る。
 
@@ -442,7 +445,7 @@ erDiagram
 | タイムテーブル表示（発表順に並べる） | `presentations(event_occasion_id, display_order)` | §3-10・概要集の並び順の源（H-5） |
 | 「いま発表中」の参照 | `event_occasions.current_presentation_id` は単一値参照のため追加索引は不要 | §3-10 |
 | 発表詳細のコメント一覧（スレッド表示） | `comments(presentation_id, created_at)`・`comments(parent_comment_id)` | §3-5・§3-9 |
-| アーカイブ検索（基本メタデータ：年度・チーム名・作品名・資料種別） | `teams(name)`・`works(title)`・`material_slots(slot_type)` への通常インデックス（`works(is_public_approved)` の部分インデックス `WHERE is_public_approved = true` と組み合わせる） | §3-7 受け入れ基準（水戸レビュー D-3）。検索対象は公開許可済みのみ |
+| アーカイブ検索（基本メタデータ：年度・チーム名・作品名・資料種別） | `teams(name)`・`works(title)`・`material_slots(slot_type)` への通常インデックス（`works(id)` の部分インデックス `WHERE publication_consent = 'approved'` と組み合わせる） | §3-7 受け入れ基準（水戸レビュー D-3）。検索対象は公開許可済みのみ |
 | アーカイブ検索（概要の本文・使用技術欄） | `summaries.tech_stack` への全文検索用インデックス（GIN、日本語形態素解析は Ph.2 で検証）。**「概要の本文」は列自体が未定**（現行テンプレ現物未入手・`open-questions.md` §6 保留）のため索引方針も保留 | §3-7。検索対象は公開許可済みのみ |
 | ユーザーのロール判定（認可の一次防衛線・H-16） | `users(email)` UNIQUE（既存）で足りる。全読み取りがここを通る（`design/09-nfr.md` 9-4） | §4 セキュリティ |
 

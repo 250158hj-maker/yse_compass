@@ -139,7 +139,7 @@ erDiagram
     }
     WORK {
         int id PK
-        int team_id FK UK
+        int team_id FK, UK
         string title
         boolean is_public_approved
     }

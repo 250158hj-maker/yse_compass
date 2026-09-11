@@ -88,9 +88,9 @@
 
 ```mermaid
 erDiagram
-    FISCAL_YEAR ||--o{ CLASS : "生成する"
+    FISCAL_YEAR ||--o{ SCHOOL_CLASS : "生成する"
     FISCAL_YEAR ||--o{ EVENT_OCCASION : "4回持つ"
-    CLASS ||--o{ TEAM : "属する"
+    SCHOOL_CLASS ||--o{ TEAM : "属する"
     TEAM ||--|| WORK : "1つ持つ"
     TEAM ||--o{ USER : "所属する（生徒）"
     TEAM |o--o{ USER : "代表する（リーダー）"
@@ -126,7 +126,7 @@ erDiagram
         int year UK
         boolean is_archived
     }
-    CLASS {
+    SCHOOL_CLASS {
         int id PK
         int fiscal_year_id FK
         string name
@@ -209,9 +209,9 @@ erDiagram
         int user_id FK
     }
 
-    FISCAL_YEAR ||--o{ CLASS : has
+    FISCAL_YEAR ||--o{ SCHOOL_CLASS : has
     FISCAL_YEAR ||--o{ EVENT_OCCASION : has
-    CLASS ||--o{ TEAM : has
+    SCHOOL_CLASS ||--o{ TEAM : has
     TEAM ||--|| WORK : has
     TEAM ||--o{ USER : has
     TEAM |o--o{ USER : "leader_user_id"

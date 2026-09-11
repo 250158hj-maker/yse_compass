@@ -4,7 +4,7 @@
 > **確度**：確定（**個々の発見は事実。ただし決定ではない**）
 > **正典**：このファイル
 > **更新のしかた**：**追記のみ。決着しても削除せず、決着日と反映先を追記する**
-> **最終更新**：2026-09-04（蒲山）
+> **最終更新**：2026-09-05（水戸）
 
 ---
 
@@ -42,7 +42,19 @@
 - steps : 08 方式設計（8-1 技術スタック）を書くために既存実装を確認した際、`src/app/api/health/db/route.ts`（DB 疎通確認エンドポイント、`main` に存在）が `pg` の `Pool` を直接使っているのを確認。`package.json` に Prisma 系パッケージは無い。**この乖離自体は 2026-09-03 の三者整合性監査で M-1 として既に見つかっていたが、`open-questions.md` への起票が漏れていた。** 08 執筆時に実物を再確認し、未決 ID（H-17）へ正式に昇格させた
 - what  : `CLAUDE.md` §5 は ORM＝Prisma を挙げているが、実装で最初に書かれた DB アクセスコードは `pg` 直接だった。`main` の業務データのアクセス層はまだ未着手（`src/` は疎通確認と雛形のみ。`src/lib/mock/*` 等のモックデータは鈴木さんの `feature/mock`（未マージ）側にあり、`main` にはまだ無い）
 - why   : Prisma は型生成・マイグレーションの恩恵があるが、06 データ設計が未着手で ER の形（H-6・H-3・#7・#8・#10・`cond`）がこれから動くため、いま ORM を決める判断材料が揃っていない。かつ決めなくても現時点では何も壊れない。一方 `CLAUDE.md` が示す Prisma 採用は企画書 §2-3 由来（凍結済み Ph.0 成果物）で、変更するなら正典側の更新が要り、かつ現行スケジュールの W13（9/11〜9/17）に Prisma セットアップが予定されている。どちらにも理があり、実装側だけで決め切れない
-- 決着  : （未決着 → `open-questions.md` **H-17** に起票。2026-09-04）
+- 決着  : **2026-09-05 決着**（`decisions.md`）。**Prisma を採用する。** これは正典（`../CLAUDE.md` §5・企画書 §2-3）どおりに戻す決定であって、**正典の変更ではない**。06 データ設計のテーブル定義は Prisma のスキーマ駆動で実装へ落とし、`pg` の直接使用は疎通確認エンドポイントに限った暫定として業務データのアクセス層には持ち込まない。**W9 の Prisma 技術検証が未実施のまま正典に従う判断である点は明示しておく**（検証で不成立が判明した場合は `decisions.md` へ【変更】として追記する）。反映先：`design/08-architecture.md` 8-1／`open-questions.md`（H-17 の削除・§7 先行方針表の行）
+
+### F-02  dev と build でバンドラが分かれている（dev＝webpack 強制／build＝Turbopack 既定）
+
+- ref   : `design/08-architecture.md` 8-6（開発・実行環境）／`docker-compose.yml`
+- steps : PR #6 のレビューで 8-6 の記述と `docker-compose.yml` を突き合わせた際、`WATCHPACK_POLLING=true`（watchpack＝**webpack のファイル監視ライブラリ専用**の変数）が設定されているのに、`app` サービスが Next.js 16 の既定バンドラ（Turbopack）で起動していて**変数が効いていない**ことが判明。同 PR で `command: pnpm exec next dev --webpack` を追加し、変数が効く状態に揃えた（2026-09-04 マージ済み）
+- what  : 整合は取れたが、**dev だけ webpack になった**。Next.js 16 は `next build` も Turbopack が既定（`--webpack` は opt-out フラグ）なので、**開発時と本番ビルドで別のバンドラを通る**。加えて次の3点が未確認のまま共有設定に入っている
+    - **再現条件が特定されていない** — ポーリングが要るのは Windows 側ファイルシステム（`/mnt/c`・9p/virtiofs 越え）に置いた場合で、WSL2 ネイティブ（`~/workspace`）なら inotify は伝播する。Notion「WSL 開発環境セットアップ・ハンドブック」は `~/workspace` へのクローンを指示しており、**標準セットアップでは不要の可能性がある**
+    - **バンドラ非依存の代替がある** — Next.js 16 は `next.config.ts` にトップレベルの `watchOptions.pollIntervalMs` を持つ（`node_modules/next/dist/server/config-schema.js:723`・`config-shared.d.ts:1247` で確認）。Turbopack のまま解決できる可能性がある（**Turbopack のウォッチャに実際に効くかは未実測**）
+    - **環境差を共有ファイルに固定している** — 必要なのが特定メンバーの環境だけなら、`docker-compose.yml` ではなく `docker-compose.override.yml` や各自の設定で吸収すべき層の話
+- why   : webpack 強制にも理はある。**リポジトリの置き場所に関係なく全員の環境で確実に HMR が動く**ことは、3名でセットアップの統一が難しい状況では速度より優先されうる。一方 Turbopack 維持は、build とバンドラが揃って dev/prod 差分に起因するバグを避けられ、ポーリングの常時 CPU コストも払わない。**どちらを取るかは「再現条件」が分からないと決められない**（全員に必要なら前者、1名だけなら後者）
+- 追記  : 2026-09-04、`--webpack` の初出は `fe4eab6`（2026-08-28・鈴木・`feature/mock`）と判明。PR #6 はそれを `main` 側へ揃えただけで、**導入者・追随者のいずれも再現条件を確認していなかった**
+- 決着  : **2026-09-04 決着**（`decisions.md`）。**Docker 管理は PostgreSQL のみ**とし、Next.js アプリはホスト直起動へ。**バンドラは Turbopack に固定**（`package.json` の `dev`／`build` に `--turbopack` を明示）。回避策の要否を判定する代わりに、**回避策を必要にしていた構成そのもの（アプリのコンテナ化）をやめた**。反映先：`docker-compose.yml`（`app` サービスと `Dockerfile` を削除）・`.env.example`・`package.json`・`design/08-architecture.md` 8-1／8-6
 
 ### 引き継ぎ予定（着手前スパイクの検証メモ・未決着）
 

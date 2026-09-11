@@ -32,8 +32,9 @@
 | 「作るか作らないか」の判断 | `docs/decisions.md` → `docs/requirements.md` §1 |
 | 「なぜこうなっているか」を知りたい | `docs/decisions.md`（根拠の列） |
 | 先生の実運用・一次情報を知りたい | `docs/hearing.md` |
+| **スケジュール・タスクの割り付け** | `pm/README.md` → `pm/wbs-source.md` |
 
-全ファイルの一覧と役割は **`docs/README.md`**。
+全ファイルの一覧と役割は **`docs/README.md`**。**進め方（スケジュール・WBS）の文書は `pm/README.md`。**
 
 ---
 
@@ -82,19 +83,24 @@
 
 ## 5. 技術構成
 
-企画書 §2-3・§3 に準拠。**具体的なバージョンは Ph.2 で `package.json` と Docker に固定する**（それまでは最新安定版・Node.js は LTS）。
+**企画書 §2-3・§3 を基礎に、そこに記載の無い採用を `docs/decisions.md` を出典として加えたもの。** 本表は企画書の上位集合であり、そのままの写しではない。**具体的なバージョンは Ph.2 で `package.json` と Docker に固定する**（それまでは最新安定版・Node.js は LTS）。
 
-| 層 | 採用 |
-| --- | --- |
-| 言語 | TypeScript |
-| フレームワーク | Next.js（App Router） |
-| ORM | Prisma |
-| DB | PostgreSQL |
-| 認証 | Auth.js（Google Provider・学校 Workspace アカウント） |
-| パッケージマネージャ | pnpm |
-| 開発環境 | Docker |
+**「出典」列は、その採用がどこで決まったかを示す。** 企画書は凍結済み Ph.0 成果物なので書き換えられない。**企画書に無い採用は `docs/decisions.md` を出典として本表に持たせる**（2026-09-06・H-18 決着）。
 
-**認証（Auth.js ＋ 学校 Google アカウントで OAuth が通るか）が最大の技術リスク。** 詳細は `docs/requirements.md` §5、未決の中身は `docs/open-questions.md` H-10。
+| 層 | 採用 | 出典 |
+| --- | --- | --- |
+| 言語 | TypeScript | 企画書 §2-3 |
+| フレームワーク | Next.js（App Router） | 企画書 §2-3 |
+| ORM | Prisma | 企画書 §2-3 |
+| DB | PostgreSQL | 企画書 §2-3 |
+| 認証 | Auth.js（Google Provider・学校 Workspace アカウント） | 企画書 §2-3 |
+| スタイル | Tailwind CSS 4 | `docs/decisions.md`（2026-09-06） |
+| UI 最適化 | React Compiler（`next.config.ts` の `reactCompiler: true`） | `docs/decisions.md`（2026-09-06） |
+| パッケージマネージャ | pnpm | `docs/decisions.md`（2026-09-06） |
+| 開発環境 | Docker | 企画書 §3-1 |
+
+**認証（Auth.js ＋ 学校 Google アカウントで OAuth が通るか）が最大の技術リスク。** 詳細は `docs/requirements.md` §5。
+その手前にあったロール解決（H-10）は **2026-09-05 に先生ホワイトリスト方式で決着**した（`docs/decisions.md`）ので、**残る技術リスクは OAuth 自体の可否だけ**になっている。
 
 ---
 

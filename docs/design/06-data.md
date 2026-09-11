@@ -5,7 +5,7 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-11（蒲山・6-1〜6-6 の初稿を執筆。H-20 を新規起票し、時刻枠は先行方針で除外して組んだ）
+> **最終更新**：2026-09-11（蒲山・水戸レビュー（PR #23）対応。A-1〜A-5・B-2・C-1〜C-4・D-1〜D-3 を反映し、B-1・B-3 は水戸の判断待ちとして `open-questions.md` H-21・H-22 へ起票）／2026-09-11（蒲山・6-1〜6-6 の初稿を執筆。H-20 を新規起票し、時刻枠は先行方針で除外して組んだ）
 
 ## この章が答える問い
 
@@ -60,6 +60,8 @@
 | **T-3** | 使用技術欄の表記ゆれ（自由記述か統制語彙か） | — |
 | **H-14**（旧 `cond`） | 試作品一式は「必須／任意」の 2 値で表せない | 必須／任意の 2 値のまま組み、部分提出は表現しない |
 | **H-20**（新規・2026-09-11 起票） | 当日タイムテーブルの「時刻枠」の中身（開始時刻・所要・休憩）が未定義 | 発表エンティティは発表順（整数）のみを持つ。時刻枠の列は追加しない |
+| **H-21**（新規・2026-09-11 起票・水戸レビュー B-1） | チーム番号（`number`）がチームの属性として実在するかが未確認 | `teams` に `number` 列を置かない |
+| **H-22**（新規・2026-09-11 起票・水戸レビュー B-3） | 公開許可の値が2値（許可／非表示）か3値（＋拒否）かが未決 | `works.is_public_approved` は boolean のまま。「拒否」の区別は表現しない |
 
 ### 既存モック実装との差（2026-09-03 監査）
 
@@ -72,11 +74,13 @@
 | 締切 | **資料枠**の属性（確定・2026-07-26） | 発表会に 1 つだけ |
 | 発表順 | 発表エンティティの整数属性 | タイムテーブル行にのみ存在 |
 | 提出日時 | 2 値で組んでよい（H-6） | 単一フィールド（**H-6 の破綻形**） |
-| 正典に無い属性 | — | 発表会の3値ステータス／Template エンティティと形式区分／Team.summary／Material.driveUrl／公開許可の「拒否」 |
+| 正典に無い属性 | — | 発表会の3値ステータス／Template エンティティと形式区分／Team.summary／Material.driveUrl |
+
+> **訂正（水戸レビュー B-3）**：上表はモック実装の「公開許可の『拒否』」を正典に無い属性と分類していたが、これは誤り。`requirements.md` §3-7 受け入れ基準に「公開許可が**未設定・拒否**の作品は…表示されない」と明記されており、「拒否」は正典に実在する語である。**H-22 として起票し直した。**
 
 ## 現在の状態
 
-**初稿執筆中**（2026-09-11・蒲山）。6-1〜6-6 を以下に置く。**全体が確度「暫定」でレビュー未了**（`CLAUDE.md` 禁則6）— 水戸のレビューが済むまで、他章から「決定」として引用しないこと。
+**初稿はレビュー済み・指摘対応中**（2026-09-11・蒲山）。水戸のレビュー（PR #23・Request changes）のA〜D群は本稿に反映した。B-1（チーム番号）・B-3（公開許可の拒否）は水戸の判断待ちで、`open-questions.md` H-21・H-22 として起票済み。**全体が確度「暫定」でレビュー未了**（`CLAUDE.md` 禁則6）— 水戸の再レビュー（Approve）が済むまで、他章から「決定」として引用しないこと。
 
 **この章が開くと 03・04・05・07 が一斉に開く**（`00-conventions.md` §5-4）。逆に言えば、ここを開けない限り設計書は完成しない。
 
@@ -134,13 +138,13 @@ erDiagram
     TEAM {
         int id PK
         int class_id FK
-        int number
+        string name
         int leader_user_id FK "nullable"
     }
     WORK {
         int id PK
         int team_id FK, UK
-        string title
+        string title "nullable・C-3"
         boolean is_public_approved
     }
     USER {
@@ -170,7 +174,6 @@ erDiagram
         int id PK
         int team_id FK
         int material_slot_id FK
-        int event_occasion_id FK "非正規化"
         string url
         timestamp first_submitted_at
         timestamp last_submitted_at
@@ -180,14 +183,14 @@ erDiagram
         int team_id FK
         int event_occasion_id FK
         text tech_stack "nullable・T-3未決"
-        timestamp first_submitted_at "nullable"
-        timestamp last_submitted_at "nullable"
+        timestamp first_submitted_at
+        timestamp last_submitted_at
     }
     PRESENTATION {
         int id PK
         int team_id FK
         int event_occasion_id FK
-        int order "nullable・H-5確定分のみ"
+        int display_order "nullable・H-5確定分のみ"
     }
     COMMENT {
         int id PK
@@ -214,9 +217,9 @@ erDiagram
     SCHOOL_CLASS ||--o{ TEAM : has
     TEAM ||--|| WORK : has
     TEAM ||--o{ USER : has
-    TEAM |o--o{ USER : "leader_user_id"
+    TEAM |o--o| USER : "leader_user_id"
     EVENT_OCCASION ||--o{ MATERIAL_SLOT : has
-    EVENT_OCCASION |o--o{ PRESENTATION : "current_presentation_id"
+    EVENT_OCCASION |o--o| PRESENTATION : "current_presentation_id"
     TEAM ||--o{ PRESENTATION : has
     EVENT_OCCASION ||--o{ PRESENTATION : has
     TEAM ||--o{ SUBMISSION : has
@@ -264,10 +267,12 @@ erDiagram
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
 | class_id | int | NOT NULL | — | FK → classes.id | チームはクラスに属する |
-| number | int | NOT NULL | — | UNIQUE(class_id, number) | Drive ディレクトリ命名「番号_発表名」（`glossary.md` §3）から正典化（2026-09-11） |
-| leader_user_id | int | NULL | — | FK → users.id | チームの属性としてのリーダー参照。ロールではない（2026-09-04 決着） |
+| name | varchar | NOT NULL | — | UNIQUE(class_id, name) | チーム名。`requirements.md:181`・`glossary.md:195`「検索対象は基本メタデータ（年度・**チーム名**・作品名・資料種別）」／`hearing.md:35`「タイムテーブル・**チーム名**・作品・メンバーをスプレッドシートで手作業管理」（水戸レビュー A-1・現行運用に実在） |
+| leader_user_id | int | NULL | — | FK → users.id・複合 FK（後述） | チームの属性としてのリーダー参照。ロールではない（2026-09-04 決着） |
 
 > **生徒はチームを作成できない**（#6 決着）。作成主体は先生だが、作成者列は監査要件（G-5・未決）待ちのため持たない。
+> **`number`（チーム番号）は置かない。** 当初 Drive ディレクトリ命名「番号_発表名」（`glossary.md` §3）から正典化したが、水戸のレビュー（PR #23）でクラス略称が「番号_発表名」の**下位**にある構造だと指摘され、`番号` がチームの属性である根拠が崩れた。**`open-questions.md` H-21 として起票**（`decisions.md` 2026-09-11）
+> **`leader_user_id` の複合 FK**：`teams(leader_user_id, id)` → `users(id, team_id)`（`users` 側に `UNIQUE(id, team_id)` を張る）。**リーダーは必ずそのチームに所属する生徒でなければならない**（`glossary.md` §3 リーダー＝チームの属性）ため、他チームの生徒を代表者に設定できないよう DB レベルで塞ぐ（水戸レビュー C-1）。**行の投入順**：チーム作成 → メンバー（`users.team_id`）割当 → リーダー指定、の順でなければ複合 FK を満たせない
 
 ### `works`（作品）
 
@@ -277,10 +282,11 @@ erDiagram
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
 | team_id | int | NOT NULL | — | FK → teams.id・UNIQUE | 作品はチームが1つ持つ（`glossary.md` §3） |
-| title | varchar | NOT NULL | — | — | アーカイブ導線「年度→**作品名**」（`requirements.md` §3-7）から正典化（2026-09-11） |
-| is_public_approved | boolean | NOT NULL | false | — | 公開許可は**2値**。既定は**非表示**（2026-07-26）。「拒否」状態は持たない（既存モック実装の乖離を踏襲しない） |
+| title | varchar | NULL | — | — | アーカイブ導線「年度→**作品名**」（`requirements.md` §3-7）から正典化（2026-09-11）。**NULL 可**（水戸レビュー C-3）：チーム作成時点（先生が担任として作成・#6 決着）で作品名が決まっている保証は正典に無い。行はチーム作成と同時に生成し、名称は後から編集する |
+| is_public_approved | boolean | NOT NULL | false | — | 公開許可は既定**非表示**（2026-07-26）。**「拒否」を含む値の数は未決 — `open-questions.md` H-22 参照**（水戸レビュー B-3。`requirements.md` §3-7 受け入れ基準に「未設定・**拒否**」の語があり、2値で組んだ暫定実装は水戸の決定待ち） |
 
 > **作品の年度は `team → class → fiscal_year` で導出できるため、独立した列を持たない**（6-6）。
+> **行の生成タイミング**：チーム作成（先生の操作・#6 決着）と同時に1行生成する。`title` は空で作成でき、後から編集できる（水戸レビュー C-3）。
 
 ### `users`（ユーザー）
 
@@ -292,7 +298,7 @@ erDiagram
 | email | varchar | NOT NULL | — | UNIQUE | 学校 Workspace ドメインのアカウント（`requirements.md` §5） |
 | name | varchar | NOT NULL | — | — | 実名表示（2026-07-24。匿名化機能を持たない） |
 | role | varchar | NOT NULL | 'student' | CHECK (role IN ('teacher','student')) | **先生／生徒の2値で足りる**（2026-09-05・H-10 先生ホワイトリスト方式）。既定は生徒（誤判定は安全側に倒す） |
-| team_id | int | NULL | — | FK → teams.id | 生徒は1チームに所属（単純外部キー・2026-09-11 設計判断）。先生は NULL |
+| team_id | int | NULL | — | FK → teams.id・UNIQUE(id, team_id) | 生徒は1チームに所属（単純外部キー・2026-09-11 設計判断）。先生は NULL。**`UNIQUE(id, team_id)` は `teams.leader_user_id` からの複合 FK（C-1）を成立させるための制約**であり、それ自体は「1人が複数チームに所属しない」ことの追加保証にはならない |
 
 > **ホワイトリストの実体は `role = 'teacher'` の行そのもの。** 別テーブルは持たない（役割そのものが登録の有無を表すため）。1人目の投入・「自分自身のロールを解除できない」という不変条件の実現方法は `../requirements.md` §3-6・**`design/10-operation.md` 10-2 で確定させる**（H-11 決着分）。
 
@@ -307,9 +313,10 @@ erDiagram
 | kind | varchar | NOT NULL | — | CHECK（6-4 の4値） | 固定4種・順序つきの列挙（2026-07-24） |
 | event_date | date | NULL | — | — | 「日程は個別編集できる」（`requirements.md` §3-1） |
 | is_published | boolean | NOT NULL | false | — | 公開は発表会単位の先生の明示操作（2026-07-26） |
-| current_presentation_id | int | NULL | — | FK → presentations.id | 「いま発表中のチーム」の手動切替（`requirements.md` §3-10）。**H-20（時刻枠未定義）とは別の確定済み機能** |
+| current_presentation_id | int | NULL | — | 複合 FK（後述） | 「いま発表中のチーム」の手動切替（`requirements.md` §3-10）。**H-20（時刻枠未定義）とは別の確定済み機能** |
 
 > **回種別の並び順は列を持たず、コード定義の順序（6-4）から導出する**（6-6）。
+> **`current_presentation_id` の複合 FK**：`presentations` に `UNIQUE(id, event_occasion_id)` を張り、`event_occasions(current_presentation_id, id)` → `presentations(id, event_occasion_id)` とする。**「いま発表中」は自分自身の発表会に属する発表しか指せない**（水戸レビュー C-1。単純な単一列 FK では他発表会の発表を指せてしまう）。
 
 ### `material_slots`（資料枠）
 
@@ -318,8 +325,8 @@ erDiagram
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
-| event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 発表会が複数持つ |
-| slot_type | varchar | NOT NULL | — | CHECK（6-4 の6値） | 定番構成はコード定義（2026-07-24） |
+| event_occasion_id | int | NOT NULL | — | FK → event_occasions.id・UNIQUE(event_occasion_id, slot_type) | 発表会が複数持つ。UNIQUE は `summaries`（`material_slot_id` を持たない）が `event_occasion_id` から概要枠を一意に引くための整合性制約（水戸レビュー A-4） |
+| slot_type | varchar | NOT NULL | — | — | 定番構成はコード定義（2026-07-24）。**CHECK 制約は張らない**（水戸レビュー A-3）：6-4 の6値は「初期投入値」であって全集合ではなく、`hearing.md` §7-2 に実在する任意枠「その他補足資料」が6値に含まれていない。CHECK を張ると `requirements.md` §3-1「資料枠は個別に編集できる — 運用データ」と矛盾する |
 | deadline | timestamp | NOT NULL | — | — | **ソフトデッドライン**（超過しても提出可・2026-07-26） |
 | is_required | boolean | NOT NULL | — | — | 必須／任意の2値（2026-08-18）。**H-14（試作品一式）は2値のまま先行** |
 | template_url | text | NULL | — | — | テンプレート参照（任意・2026-07-24） |
@@ -334,14 +341,14 @@ erDiagram
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
 | team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, material_slot_id) | 提出の粒度＝チーム×発表会×資料枠 |
-| material_slot_id | int | NOT NULL | — | FK → material_slots.id | 同上 |
-| event_occasion_id | int | NOT NULL | — | FK → event_occasions.id（非正規化） | 提出状況一覧（§3-2）の当日進行系 p95≦1秒（`requirements.md` §4）のため、結合を経ずに発表会単位で絞れるようにする（2026-09-11 設計判断） |
+| material_slot_id | int | NOT NULL | — | FK → material_slots.id | 同上。発表会への参照は `material_slots.event_occasion_id` 経由で辿る |
 | url | text | NOT NULL | — | — | 形式検証のみ実施（2026-07-26）。アクセス可否は検証しない |
 | first_submitted_at | timestamp | NOT NULL | — | — | **H-6 の2値方式**（初回提出日時。差し替えでも変わらない） |
 | last_submitted_at | timestamp | NOT NULL | — | — | **H-6 の2値方式**（最終更新日時。差し替えのたびに上書き） |
 
 > **状態列を持たない。** 「未提出／提出済み」（2値・`glossary.md` §4）は行の有無で導出する（6-6）。**版履歴は持たない**（2026-07-24）— 上書きは `url`・`last_submitted_at` の UPDATE で表現し、別テーブルへの追記はしない。
 > **年度アーカイブ後は編集不可**（2026-07-26）だが、アプリ層の制御であり列は追加しない（`fiscal_years.is_archived` を経由して判定）。
+> **`event_occasion_id` の非正規化は撤回した**（水戸レビュー B-2）。①遅延判定（6-6）が `material_slots.deadline` との結合を既に要求しており、非正規化で削減できる結合が無い ②年間の行数は概算1,000行未満（`hearing.md` §7-1）で、索引付き結合が p95≦1秒の予算に影響しない ③本 PR の他の判断（いいねの多態却下・中間テーブル却下・状態列却下）と同じ「正典に無い要件を先取りしない」原則（禁則1）に反していた。
 
 ### `summaries`（概要）
 
@@ -353,8 +360,8 @@ erDiagram
 | team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, event_occasion_id) | 1チーム×1発表会（年4件・A-3 決着） |
 | event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 同上 |
 | tech_stack | text | NULL | — | — | **使用技術欄**。アーカイブ検索の対象（2026-07-26）。**自由記述かどうかは T-3 未決 — 暫定で自由記述（text）とする** |
-| first_submitted_at | timestamp | NULL | — | — | H-6 の2値方式を提出と同じ形で適用 |
-| last_submitted_at | timestamp | NULL | — | — | 同上 |
+| first_submitted_at | timestamp | NOT NULL | — | — | H-6 の2値方式を提出と同じ形で適用。**`submissions` と NULL 可否を揃えた**（水戸レビュー A-2）：行の存在＝提出済みという 6-6 の導出規則を保つため、行は初回提出時にしか作らない |
+| last_submitted_at | timestamp | NOT NULL | — | — | 同上 |
 
 > **入力欄の具体（背景・動機／起・結／1ページ集約に対応する列）はここに含めない。** 現行テンプレの現物が未入手のため（`../open-questions.md` §6 保留）。決着まではアプリ層で構造化データを持たせる場合も本ファイルへの列追加はせず、決着後にまとめて反映する。
 > **「概要」は資料枠（`material_slots.slot_type = '概要'`）の締切・必須／任意を参照する。** ただし `summaries` は `material_slot_id` を持たない — 概要枠は全発表会に1件ずつ存在する定番枠のため、`event_occasion_id` から一意に引ける（`material_slots` に `UNIQUE(event_occasion_id, slot_type)` を張ることで整合性を保証する）。
@@ -365,12 +372,14 @@ erDiagram
 
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
-| id | serial | NOT NULL | — | PK | — |
+| id | serial | NOT NULL | — | PK・UNIQUE(id, event_occasion_id) | — |
 | team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, event_occasion_id) | 発表の粒度＝チーム×発表会 |
-| event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 同上 |
-| order | int | NULL | — | — | 発表エンティティの整数属性（H-5 決着）。**開始時刻・所要・休憩の列は追加しない（H-20・新規未決）** |
+| event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 同上。`UNIQUE(id, event_occasion_id)` は `event_occasions.current_presentation_id` の複合 FK（6-3 `event_occasions`・C-1）を成立させるための制約 |
+| display_order | int | NULL | — | UNIQUE(event_occasion_id, display_order) DEFERRABLE INITIALLY DEFERRED | 発表エンティティの整数属性（H-5 決着）。**開始時刻・所要・休憩の列は追加しない（H-20・新規未決）**。**列名は `order` から改名**（水戸レビュー C-4）：`ORDER` は PostgreSQL の予約語で、生 SQL・ビュー・手動マイグレーションで引用符が必要になり事故りやすい |
 
 > **コメント・いいねのアンカーはこのテーブル**（2026-07-24）。差し替え・リンク変更で対象がずれない安定エンティティ。
+> **一意制約は `DEFERRABLE INITIALLY DEFERRED`**（水戸レビュー C-2）：発表順の並び替えは「ほぼ毎回」起きる主要操作（`hearing.md` §7-1）で、2チームの順番を1トランザクション内で入れ替える際に一時的な重複が生じうる。トランザクション終了時まで制約チェックを遅延させることで、一括更新を1本のUPDATEで書ける。**`display_order` が NULL の行**（発表順がまだ決まっていない）は、タイムテーブル・概要集の並びでは最後尾に置く
+> **行の生成タイミング**：チーム作成時点で、そのチームの年度に紐づく4発表会分の `presentations` 行をまとめて生成する（`display_order` は NULL のまま）。コメント・いいねのアンカーとして発表会当日より前から存在している必要があるため（水戸レビュー C-3）。
 
 ### `comments`（コメント）
 
@@ -422,12 +431,13 @@ erDiagram
 
 | クエリ | インデックス | 根拠 |
 | --- | --- | --- |
-| 発表会ごとの提出状況一覧（チーム×資料枠のマトリクス） | `submissions(event_occasion_id, material_slot_id)`・`submissions(event_occasion_id, team_id)` | §3-2。非正規化した `event_occasion_id` に直接張る（6-3） |
-| 概要の提出状況（同上のマトリクスに合流） | `summaries(event_occasion_id, team_id)` | 同上 |
-| タイムテーブル表示（発表順に並べる） | `presentations(event_occasion_id, order)` | §3-10・概要集の並び順の源（H-5） |
+| 発表会ごとの提出状況一覧（チーム×資料枠のマトリクス） | `material_slots(event_occasion_id)`（既存 FK 索引）を起点に `submissions(material_slot_id)`・`submissions(team_id)` を結合 | §3-2。**`event_occasion_id` の非正規化は撤回した**（水戸レビュー B-2）。年間 1,000 行未満（`hearing.md` §7-1）の規模では索引付き結合が p95≦1秒の予算に測定可能な影響を与えない |
+| 概要の提出状況（同上のマトリクスに合流） | `summaries(event_occasion_id, team_id)` | 同上（`summaries` は `event_occasion_id` を直接持つため結合不要） |
+| タイムテーブル表示（発表順に並べる） | `presentations(event_occasion_id, display_order)` | §3-10・概要集の並び順の源（H-5） |
 | 「いま発表中」の参照 | `event_occasions.current_presentation_id` は単一値参照のため追加索引は不要 | §3-10 |
 | 発表詳細のコメント一覧（スレッド表示） | `comments(presentation_id, created_at)`・`comments(parent_comment_id)` | §3-5・§3-9 |
-| アーカイブ検索（メタデータ＋使用技術欄） | `works(is_public_approved)` の部分インデックス（`WHERE is_public_approved = true`）＋ `summaries.tech_stack` への全文検索用インデックス（GIN、日本語形態素解析は Ph.2 で検証） | §3-7。検索対象は公開許可済みのみ |
+| アーカイブ検索（基本メタデータ：年度・チーム名・作品名・資料種別） | `teams(name)`・`works(title)`・`material_slots(slot_type)` への通常インデックス（`works(is_public_approved)` の部分インデックス `WHERE is_public_approved = true` と組み合わせる） | §3-7 受け入れ基準（水戸レビュー D-3）。検索対象は公開許可済みのみ |
+| アーカイブ検索（概要の本文・使用技術欄） | `summaries.tech_stack` への全文検索用インデックス（GIN、日本語形態素解析は Ph.2 で検証）。**「概要の本文」は列自体が未定**（現行テンプレ現物未入手・`open-questions.md` §6 保留）のため索引方針も保留 | §3-7。検索対象は公開許可済みのみ |
 | ユーザーのロール判定（認可の一次防衛線・H-16） | `users(email)` UNIQUE（既存）で足りる。全読み取りがここを通る（`design/09-nfr.md` 9-4） | §4 セキュリティ |
 
 > **「それ以外」区分（p95 ≦ 3秒）のクエリは、上記に付随して素朴な外部キー索引で足りる。** 個別のチューニングは詳細設計の範囲（本章の書かないもの）。
@@ -445,7 +455,7 @@ erDiagram
 | 回種別の並び順 | `event_occasions.kind` をコード定義（6-4）の列挙順で並べる。DB列は持たない | 2026-07-24 |
 | 作品の年度 | `teams.class_id → classes.fiscal_year_id` | `glossary.md` §6（作品はチーム×年度だが、チームは常に1年度のクラスに属するため独立列が不要） |
 | 資料枠の未提出集計（進捗の分母） | **必須枠（`is_required = true`）のみを分母とする。** 任意枠は未提出でも警告色を使わない | H-15 先行方針（決着まで全画面この規則で揃える） |
-| 発表会単位の提出率 | `Σ(提出済みの必須資料枠数) / (必須資料枠数 × チーム数)` | §3-2・H-15 先行方針の帰結 |
+| 発表会単位の提出率 | `Σ(submissions の提出済み必須資料枠数 + summaries の提出済み必須資料枠数) / (必須資料枠数 × チーム数)`。**概要枠は `summaries`、他の必須枠は `submissions` に分かれているため分子は両テーブルの合算**（水戸レビュー D-2） | §3-2・H-15 先行方針の帰結 |
 | 「いま発表中」のハイライト | `event_occasions.current_presentation_id` を直接参照（導出ではなく列だが、状態遷移は先生の手動操作のみで自動遷移はしない） | §3-10。設計原則（`requirements.md` §3 冒頭） |
 | 当日タイムテーブルの時刻表示 | **現時点では導出できない。** H-20（時刻枠の中身）決着後に定義する | H-20（新規） |
 

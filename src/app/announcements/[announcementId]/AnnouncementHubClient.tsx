@@ -10,7 +10,6 @@ import { Badge, PhaseBadge, StatusBadge, LateBadge } from "@/components/ui/Badge
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { RoleGate } from "@/components/session/RoleGate";
 import { TimetableRows } from "@/components/timetable/TimetableRows";
 import { useSession } from "@/context/SessionContext";
@@ -37,26 +36,9 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
   const [isPublished, setIsPublished] = useState(a.isPublished);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // 提出側(先生・自チームあり)はテンプレ確認等のため非公開でも開ける。閲覧する生徒だけは非公開の発表会に入れない
-  // (発表会一覧のグレーアウトは導線上の見た目でしかないため、実体のガードはここに置く)。
+  // 公開/非公開が制御するのは資料(発表一覧)であって、進行(タイムテーブル)ではない(要件定義書の決定事項)。
+  // そのため、閲覧する生徒でもこのページ自体は開ける。資料枠は提出に関わる情報なので閲覧する生徒には出さない。
   const isPureViewer = !teacher && !ownTeam;
-  if (isPureViewer && !isPublished) {
-    return (
-      <div className="mx-auto max-w-6xl">
-        <Breadcrumbs
-          items={[
-            { label: "ホーム", href: "/" },
-            { label: "発表会一覧", href: "/announcements" },
-            { label: a.title },
-          ]}
-        />
-        <PageHeader eyebrow={year?.label} title={a.title} meta={<PhaseBadge phase={a.phase} />} />
-        <div className="mt-6">
-          <EmptyState message="この発表会はまだ公開されていません。先生が公開すると、ここから発表を閲覧できます。" />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -142,8 +124,28 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
           )}
 
           <div>
-            <SectionHeading>進行</SectionHeading>
-            <TimetableRows timetable={timetable} announcementId={a.id} />
+            {isPureViewer ? (
+              <>
+                <SectionHeading>進行</SectionHeading>
+                <TimetableRows timetable={timetable} announcementId={a.id} />
+              </>
+            ) : (
+              <>
+                <SectionHeading
+                  action={
+                    <Link
+                      href={`/announcements/${a.id}/timetable`}
+                      className="text-sm text-brand-600 hover:underline"
+                    >
+                      タイムテーブルを見る →
+                    </Link>
+                  }
+                >
+                  進行
+                </SectionHeading>
+                <p className="text-sm text-slate-500">発表順・時刻・当日の進行状況を確認できます。</p>
+              </>
+            )}
           </div>
 
           <div>

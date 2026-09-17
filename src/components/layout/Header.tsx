@@ -22,6 +22,10 @@ export function Header() {
   const { currentUser, signOut } = useSession();
   const router = useRouter();
 
+  // このモックでは「閲覧する生徒」(野村あかり)のみteamIdを持たないstudentのため、
+  // この判定で野村あかりの画面だけを特定できる。先生・提出する生徒の見た目には影響しない。
+  const isPureViewer = currentUser?.role === "student" && !currentUser.teamId;
+
   function handleSignOut() {
     signOut();
     router.push("/login");
@@ -69,6 +73,9 @@ export function Header() {
           </div>
         )}
       </div>
+      {isPureViewer && (
+        <div className="h-[3px] w-full bg-gradient-to-r from-brand-500 via-brand-400 to-brand-200" />
+      )}
     </header>
   );
 }

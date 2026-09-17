@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useSession } from "@/context/SessionContext";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import {
@@ -67,19 +68,72 @@ function StatTile({
   value,
   caption,
   accent,
+  icon,
+  iconColor,
 }: {
   href: string;
   label: string;
   value: string;
   caption: string;
-  accent: string;
+  accent?: string;
+  icon?: ReactNode;
+  iconColor?: string;
 }) {
+  if (icon) {
+    return (
+      <CardLink
+        href={href}
+        className="flex items-center gap-4 shadow-sm shadow-slate-900/5 hover:-translate-y-0.5 hover:shadow-md hover:shadow-brand-500/20"
+      >
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${iconColor}`}>
+          {icon}
+        </div>
+        <div>
+          <p className="text-xl font-semibold text-slate-900">{label}</p>
+          <p className="mt-1 text-xs text-slate-500">{value}</p>
+          <p className="mt-1 text-xs text-slate-400">{caption}</p>
+        </div>
+      </CardLink>
+    );
+  }
+
   return (
     <CardLink href={href} className={`rounded-r-lg rounded-l-none border-l-4 ${accent}`}>
       <p className="text-xl font-semibold text-slate-900">{label}</p>
       <p className="mt-1 text-xs text-slate-500">{value}</p>
       <p className="mt-1 text-xs text-slate-400">{caption}</p>
     </CardLink>
+  );
+}
+
+// 閲覧する生徒のホーム画面StatTileでのみ使用するアイコン(丸背景)。他ロールの画面には表示されない。
+function AnnounceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <path d="M12 3a1 1 0 0 1 1 1v1.1a6 6 0 0 1 5 5.9v3.3l1.3 1.5a.9.9 0 0 1-.7 1.5H5.4a.9.9 0 0 1-.7-1.5L6 14.3V11a6 6 0 0 1 5-5.9V4a1 1 0 0 1 1-1Z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
+function TeamIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <circle cx="9" cy="8" r="3" />
+      <circle cx="17" cy="9.5" r="2.3" />
+      <path d="M4 19c0-2.8 2.2-5 5-5s5 2.2 5 5" />
+      <path d="M14.8 14.3c2.1.4 3.7 2.2 3.7 4.7" />
+    </svg>
+  );
+}
+
+function ArchiveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <rect x="3.5" y="5.5" width="17" height="4" rx="1" />
+      <path d="M5 9.5V18a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
+      <path d="M10 13.5h4" />
+    </svg>
   );
 }
 
@@ -236,21 +290,24 @@ export default function HomePage() {
               label="発表会"
               value={`${announcements.length}件`}
               caption={`${publishedCount}件公開中`}
-              accent="border-l-brand-600"
+              icon={<AnnounceIcon />}
+              iconColor="bg-brand-50 text-brand-600"
             />
             <StatTile
               href="/teams"
               label="チーム"
               value={`${teams.length}チーム`}
               caption="発表チームを見る"
-              accent="border-l-violet-500"
+              icon={<TeamIcon />}
+              iconColor="bg-violet-50 text-violet-500"
             />
             <StatTile
               href="/archive"
               label="アーカイブ"
               value={`${archivedYears.length}年度分`}
               caption="過去の卒業制作を検索・閲覧"
-              accent="border-l-slate-500"
+              icon={<ArchiveIcon />}
+              iconColor="bg-slate-100 text-slate-500"
             />
           </div>
         )}

@@ -1,5 +1,5 @@
 // モック画面用の型定義。DB/API実装前の仮スキーマであり、Prisma導入時にスキーマへ移行する想定。
-// 出典: docs/requirements.md, docs/screens.md
+// 出典: docs/requirements.md, docs/design/04-screen.md
 
 export type Role = "teacher" | "student";
 

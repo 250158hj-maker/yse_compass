@@ -11,7 +11,6 @@ import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
 import { RoleGate } from "@/components/session/RoleGate";
 import { useSession } from "@/context/SessionContext";
-import { isOwnTeam } from "@/lib/session-helpers";
 import { getAnnouncementsByYear, getSubmission, getYearById } from "@/lib/mock";
 import type { Team } from "@/lib/types";
 
@@ -20,7 +19,7 @@ export function TeamDetailClient({ team }: { team: Team }) {
   const year = getYearById(team.yearId);
   const announcements = getAnnouncementsByYear(team.yearId);
   const allEnded = announcements.length > 0 && announcements.every((a) => a.status === "終了");
-  const ownTeam = isOwnTeam(currentUser, team.id);
+  const isLeader = currentUser?.name === team.leaderName;
   const [publishPermission, setPublishPermission] = useState(team.publishPermission);
 
   return (
@@ -101,7 +100,7 @@ export function TeamDetailClient({ team }: { team: Team }) {
             {!allEnded && (
               <InlineNotice tone="info">全発表会終了後に設定できるようになります。</InlineNotice>
             )}
-            {allEnded && (ownTeam || currentUser?.role === "teacher") && (
+            {allEnded && (isLeader || currentUser?.role === "teacher") && (
               <div className="flex flex-col gap-2">
                 <p className="text-xs text-slate-500">
                   アーカイブでの作品公開に同意しますか?(同意者: チーム代表者)

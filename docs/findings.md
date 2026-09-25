@@ -4,7 +4,7 @@
 > **確度**：確定（**個々の発見は事実。ただし決定ではない**）
 > **正典**：このファイル
 > **更新のしかた**：**追記のみ。決着しても削除せず、決着日と反映先を追記する**
-> **最終更新**：2026-09-18（水戸・F-05 を追記＝モックの公開許可操作が正典と一致していない）／2026-09-11（蒲山・F-04 を追記＝Auth.js × 学校Google WorkspaceのOAuth疎通検証）／2026-09-11（蒲山・F-03 を追記＝H-12 のスコープ検証）
+> **最終更新**：2026-09-25（水戸・F-08 を追記＝07 が `glossary.md` §3 の Drive 構成を転記し、誤っていたのは原文の側だった件。禁則2 の実例）
 
 ---
 
@@ -56,7 +56,7 @@
 - 追記  : 2026-09-04、`--webpack` の初出は `fe4eab6`（2026-08-28・鈴木・`feature/mock`）と判明。PR #6 はそれを `main` 側へ揃えただけで、**導入者・追随者のいずれも再現条件を確認していなかった**
 - 決着  : **2026-09-04 決着**（`decisions.md`）。**Docker 管理は PostgreSQL のみ**とし、Next.js アプリはホスト直起動へ。**バンドラは Turbopack に固定**（`package.json` の `dev`／`build` に `--turbopack` を明示）。回避策の要否を判定する代わりに、**回避策を必要にしていた構成そのもの（アプリのコンテナ化）をやめた**。反映先：`docker-compose.yml`（`app` サービスと `Dockerfile` を削除）・`.env.example`・`package.json`・`design/08-architecture.md` 8-1／8-6
 
-### F-03  `drive.file` スコープで足りるか（H-12）— 「学内限定だから審査が要らない」は成立しない
+### F-03  `drive.file` スコープで足りるか（H-12）— 「学内限定だから審査が要らない」は成立しない（2026-09-24 追記で訂正）
 
 - ref   : `open-questions.md` #10・H-12／`requirements.md` §5
 - steps : #10（Drive 統合）の H-12（要求スコープの選択が管理者の承認負担を左右する）を判断するため、Google の公式ドキュメント（restricted scope verification／Drive API 認可ガイド）を確認した（技術検証・蒲山）
@@ -65,6 +65,37 @@
   2. **`drive` / `drive.readonly` は「制限されたスコープ（restricted scope）」で、検証が必須。** かつ **「組織内限定（Internal user type・学校 Workspace ドメイン内だけで使う）」であっても、この検証は免除されない。** 免除されるのはブランド確認（同意画面の警告表示）だけで、restricted scope 自体の検証は組織内限定アプリにも適用される
 - why   : H-12 の論点は「学内専用アプリだから瀬戸先生（管理者）の承認だけで `drive` 全体を要求できるのでは」という期待に対する反証になる。**学内限定は Google 審査を代替しない** — `drive`/`drive.readonly` を選ぶ限り、瀬戸先生の承認とは別に Google 自身の検証プロセスを通す必要がある。一方 `drive.file` はこの検証が丸ごと不要になる
 - 決着  : **未決着（H-12 本体はチーム合意・機能スコープの決定が別途要る）。** ただし本件で「組織内限定なら審査不要」という誤った前提は排除できたため、**#10 の判断材料としてこの事実を `open-questions.md` #10 へ反映する**
+- 追記  : 2026-09-24（蒲山）。水戸さんの指摘（PR #32）を受け、Google公式ドキュメント（Restricted scope verification）の「Exceptions to verification requirements」原文を確認した。
+
+  **例外の前提条件（原文どおり）**：「Internal use only」の項には条件が2つある。
+
+  > This means the app is used only by people in your Google Workspace or Cloud Identity organization. The project must be owned by the organization, and its OAuth consent screen needs to be configured for an Internal user type. In this case, your app might need approval from an organization administrator.
+
+  つまり例外が成立するのは「**Cloud プロジェクトを組織（学校）が所有し、かつ同意画面を Internal ユーザータイプに設定した場合に限る**」。この条件を満たせば、原文は "you don't need to submit it for review" と明言しており、**Google 自身の審査（review）は不要**。ただしこれとは別に、**組織管理者（瀬戸先生）の承認が要ることがある**（"might need approval from an organization administrator"）。**この2つは別の関門であり、混同しない。**
+
+  what の2点目「組織内限定であっても検証は免除されない」は、上の条件（組織所有のプロジェクト・Internal設定）を満たす場合には**成立しない**（訂正が要る）。条件を満たさない場合（例：組織に属さないプロジェクト。個人の Gmail アカウントで作ったものなど）は、what の記述どおり検証が要る。
+
+  **「免除されるのはブランド確認だけ」の出どころ**：同じ例外一覧の「Domain-wide installation」の項の記述だった（水戸さんが原文確認済み）。
+
+  > If you plan for your app to only target users of a Google Workspace or Cloud Identity organization and always use domain-wide installation, then your app won't require brand verification. However, if your app utilizes restricted or sensitive scopes, app verification is required.
+
+  **用語の整理**：本追記でいう「Internal」は Google OAuth 同意画面のユーザータイプ設定（日本語表記「社内専用」）を指し、`requirements.md` §1-1・`decisions.md` が使う「学内限定」（本システムの利用範囲・製品スコープ）とは別の概念。以後は「Internal（同意画面のユーザーの種類）」と書き、Google の日本語表記「社内専用」は括弧で一度だけ添える。
+
+  **決着欄の「誤った前提は排除できた」は、この追記で覆る。未決着のまま** — 組織所有のプロジェクトかつ Internal の場合に、実際に Google Cloud Console で `drive` スコープを要求したとき Google の検証画面が出ないか、組織管理者の承認画面のみで完結するかは未検証。**実機での確認が要る**（水戸さんの提案：F-04 の OAuth スパイクに `drive.readonly` スコープを足してサインインを試す。同意画面がそのまま出れば例外が実際に効いている、管理者ポリシー（`admin_policy_enforced` 等）でブロックされれば組織管理者の承認が要ると分かる。F-04 のプロジェクトは Internal 設定で `@yse-c.net` アカウントのサインインが通っているため、すでに組織所有と考えられる。**F-04 の steps にある「個人の Google Cloud プロジェクト」は、蒲山個人が作成したという意味であって、組織の外にあるという意味ではない**。Internal は組織が所有するプロジェクトでしか選べないため、この2つは矛盾しない）。
+
+  **`open-questions.md` #10（H-12）の「学内限定（Internal user type）であっても restricted scope 検証が免除されない」という行は、本追記と食い違う。訂正は別 PR（水戸が #33 マージ後に対応）。**
+
+- 追記  : 2026-09-25（蒲山）。上記の実機での確認を行った。F-04 の OAuth スパイク（`src/auth.ts`）の認可リクエストに `https://www.googleapis.com/auth/drive.readonly` を一時的に追加し、`@yse-c.net` アカウントでサインインを試した（ローカル環境・`pnpm dev`）。
+
+  **結果：通常の同意画面が表示され、権限の許可までそのまま完了した。** 組織管理者の承認画面や `admin_policy_enforced` 等のブロックは一切発生せず、Google の検証待ちを示す警告も出なかった。検証後、`src/auth.ts` の変更は元に戻した（コミットしていない・一時的な確認のみ）。
+
+  **上の追記の「実機での確認が要る」はこれで解消。** 少なくとも**蒲山（生徒）のアカウントでは**、`drive.readonly`（restricted scope）を Internal 設定で要求しても、Google の外部審査・組織管理者の承認のどちらも発生しないことが実機で確認できた。**先生のアカウントでは未確認**（瀬戸先生への質問に含める）。ただしこれは今の管理者ポリシー設定での結果であり、瀬戸先生が今後ポリシーを変更すれば挙動が変わりうる。また `drive.readonly` 止まりの確認であり、`drive`（読み書き）や他の restricted scope で同じ結果になるかは未確認
+
+  **追加確認（2026-09-25・水戸さんの指摘）**：同意画面が通ってトークンが取れることと、Drive API を実際に呼び出せることは別（[Resolve errors](https://developers.google.com/drive/api/guides/handle-errors) に、ドメイン管理者が Drive アプリを無効化している場合の 403 `domainPolicy` が載っている）。同じアクセストークンで `GET https://www.googleapis.com/drive/v3/files?pageSize=1` を実行して確認した。
+
+  **結果：`200`が返り、ファイル一覧を取得できた。** `domainPolicy` エラーは発生しなかった（蒲山のアカウントでの結果。先生のアカウントでは未確認）。なお最初の呼び出しは `403 SERVICE_DISABLED`（このプロジェクトで Drive API 自体が無効化されていた）だったため、Google Cloud Console で Drive API を有効化してから再実行している。これは Workspace のドメインポリシーとは無関係な、プロジェクト側の設定不足だった。
+
+  **Domain-wide installation の引用は蒲山自身も Google 公式ページ（`restricted-scope-verification`）を直接開いて確認した。** 水戸さんの引用と一字一句一致している
 
 ### F-04  Auth.js × 学校 Google Workspace アカウントで OAuth サインインが通るか
 
@@ -72,6 +103,7 @@
 - steps : 個人の Google Cloud プロジェクトを新規作成し、OAuth 同意画面を「内部（Internal）」で構成、リダイレクト URI `http://localhost:3000/api/auth/callback/google` で OAuth クライアント（ウェブアプリケーション）を発行。`next-auth`（v5 beta）に Google Provider を設定し、`hd`（hosted domain）をリクエストパラメータに付与したうえで `signIn` コールバックでサーバー側から再検証する構成（`src/auth.ts`・`spike/authjs-oauth` ブランチ）で、実際の `@yse-c.net` アカウントを使って `pnpm dev` 環境からサインインを試した（蒲山・2026-09-11）
 - what  : サインインは**成功し、エラーなく `/` へリダイレクトされた**。「Sign in with Google」ボタン押下 → Google の同意画面 → 承認 → アプリへ復帰、まで一連の流れが詰まらずに完了した
 - why   : `requirements.md` §5 はこの疎通確認自体を「認証周りの検証は設計フェーズ後半へ委譲する」として先送りしていた（H-10 決着によりロール解決はこの検証に依存しない設計になっていたため、急ぎではなかった）。今回は個人の Cloud プロジェクト・ローカル環境という**最小構成**での確認であり、①本番のリダイレクト URI・ドメイン ②学校 Workspace 組織が管理する Cloud プロジェクトとしての正式な OAuth クライアント発行 ③学校側の第三者アプリ許可ポリシー、の3点は未検証のまま残る。**「原理的に破綻していないか」を確認する一次検証**であって、本番投入可否の最終確認ではない
+- 追記  : 2026-09-17（蒲山）。上記の検証は**学校内の PC・校内 Wi-Fi から実施したもの**だった（why 欄が「ローカル環境」とのみ書いており、環境の所在が曖昧だったため明記）。`pnpm dev` のサーバープロセスもその PC 上で動いていた。**認可コードフローでは、認可コードとトークンの交換がサーバーから Google のトークンエンドポイントへ向けて行われる。`src/auth.ts` の `signIn` コールバックが ID トークンの `profile.hd` を読めていた以上、この交換は成立している。** したがって、ブラウザ→Google の同意画面と、サーバープロセス→Google のトークンエンドポイントの両方が、**検証に使った1台の PC・1つの経路では**成立した。**ただし実証されたのは `localhost` 構成での外向き到達性のみで、イントラネット設置のサーバーへは外挿できない**（Google の Web アプリ用 redirect URI は HTTPS・公開ドメインを求め、`http://localhost` のみが例外とされるため。本リポジトリでは未確認・`open-questions.md` H-23 (d)）。他の教室・本番サーバーの設置場所は未検証（同 H-28）
 - 決着  : **未決着（本番投入の可否は別途要検証）。** ただし `requirements.md` §5 が名指しした「最大の技術リスク」のうち、**Auth.js の実装自体が学校 Google アカウントで機能しないという最悪のシナリオは排除できた**。`design/07-interface.md` 7-2 の「未検証」注記のうち、`signIn` コールバックでの `hd` 再検証の実装可否については本件で解消。本番環境・学校側ポリシーの検証は `requirements.md` §5・`open-questions.md` #10 と同じく水戸のチーム合意／ヒヤリング領域に残る
 
 ### F-05  モックの公開許可操作が、正典の「リーダー本人＋先生の代理」と一致していない
@@ -81,6 +113,22 @@
 - what  : `src/app/teams/[teamId]/TeamDetailClient.tsx` の公開許可パネルが `allEnded && (ownTeam || currentUser?.role === "teacher")` で開いている。`ownTeam` は**チーム所属者なら誰でも真**なので、**リーダー以外のチームメンバーにも「許可する／拒否する」が押せる**。同じパネルの文言は「同意者: チーム代表者」と表示しており、**モックの中で表示と挙動が食い違っている**
 - why   : **これは未決ではない。** 正典は §3-7・2026-07-26 の決定・2026-09-04 のリーダー定義の3点で一貫しており、選択肢が割れていない。**決まっていないのではなく、実装が正典に追いついていない**（`../CLAUDE.md` §6 でいう水戸の「作ったものが設計どおりかの検証」で出た乖離）。F-01 と同じ「正典と実装の乖離」の形だが、**F-01 は正典側の再確認を要したのに対し、本件は実装側を直せば閉じる。** 本欄の他の行と違って `why` に「両方の選択肢の理」が書けないのはこのため — **発見ではあるが、論点ではない**
 - 決着  : **未決着（実装修正が未了）。** 直す方向は「`ownTeam` 判定をリーダー判定へ置き換え、先生の代理は残す」で正典上は迷いがない。**ただしリーダーをどの列で持つかは 06 データ設計（未着手）待ち**なので、モック段階では既存の `team.leaderName` との突き合わせで足りる。**鈴木の `feature/mock` で修正し、本欄に決着日を追記する**
+
+### F-07  各教室が独立した Wi-Fi を持つことを、教室の PC の Wi-Fi 接続管理で確認した
+
+- ref   : `requirements.md` §5（本番環境）／`open-questions.md` H-28／`design/08-architecture.md` 8-7
+- steps : 教室の PC の Wi-Fi 接続管理（Wi-Fi の設定画面）を見て、各教室が独立した Wi-Fi を持つことを確認した（蒲山・2026-09-17）。何が表示されていたか（Wi-Fi の名前の並び・規則など）の詳細は未記録
+- what  : 各教室が独立した Wi-Fi を持つことが分かった。**確認できたのは「教室ごとに別の Wi-Fi がある」ことまでで、教室をまたいで互いに通信できるか（相互到達性）は確かめていない**
+- why   : 教室ごとに Wi-Fi が分かれていても、同じ校内ネットワークに収容されて相互に到達できる構成はありうる。逆に、教室単位でネットワークが分断されている構成もありうる。**どちらかは Wi-Fi の名前からは決まらない**ため、イントラネット案の成否（教室をまたいで校内サーバーへ到達できるか）は、別教室の端末から校内のサーバーへ実機で繋いで確かめるしかない（`open-questions.md` H-28 (b)）
+- 決着  : **未決着。** H-28 (b) の実機検証の結果を、ここへ追記する
+
+### F-08  転記と原文が食い違ったとき、原文を正として転記を直してよいか（07 が `glossary.md` §3 の Drive 構成を転記した件）
+
+- ref   : `../AGENTS.md` §3 禁則2／`glossary.md` §3 クラス（Drive のディレクトリ構成）／`design/07-interface.md` 7-3（PR #25）
+- steps : PR #25 で `design/07-interface.md` 7-3 を執筆した際（2026-09-11 13:44・`9415e59`・蒲山）、Drive のディレクトリ構成を、`glossary.md` §3 を出典に挙げて本文へ書き写した。2026-09-21 の水戸のレビュー（PR #25 の A-2）が禁則2 の違反として指摘し、同日 `glossary.md` §3 への参照に置き換えた（`31f3a55`）
+- what  : 書き写した列には、原文の「番号_発表名」の「番号_」が無かった。レビューはこれを**転記の劣化**と判定した。**ところが誤っていたのは原文の側だった。** 原文は 2026-08-30（`00f3eef`）から「番号_発表名」で、H-21 の決着（水戸が Drive の現物を直接照合・2026-09-11）で訂正されている。同じ原文から、#23 の初稿は `teams.number` を起こしてもいた（#23 の `decisions.md` 2026-09-11 行）。**ただし訂正は PR #23 にしか無く、main の原文は本項の起票時点でも訂正前のままである。** #23 の訂正コミット（`7494af4`・13:41）は 07 の書き写しの 3 分前で、どちらも蒲山のコミットである。蒲山は訂正を踏まえ、訂正後の表記を意図して書いた（本人の回答・PR #36 の review thread）。07 が挙げた出典は `glossary.md` §3 だけで、訂正が #23 にしか無いことには触れていなかった。**Drive を照合した本人のレビューでも、判定の基準は main の原文だった**
+- why   : **原文を正とする理**＝禁則2 の考え方では正典は原文の側にあり、食い違えば写しが古くなったと読むのが既定。**転記を正とする理**＝原文の訂正が未マージの PR に留まっている間は、main の原文のほうが古い。本件の訂正はリポジトリの中（#23 のブランチ）にあったが、main だけを読む人には存在しなかった。**どちらが正かは、原文と転記を読み比べても決まらない。** 決め手は、訂正を持つブランチの決定行か、リポジトリの外の現物（Drive）か、書いた本人の知識だった。書いた本人は訂正を知っていたが、それは写しの側に書かれていなかった。**二重管理のコストは、写しが古くなることだけではない。正典の訂正が未マージの間に食い違いを正典へ合わせて直すと、正しい写しを誤りへ戻しかねない**
+- 決着  : **未決着（原文の訂正が未マージ）。** 転記は #25 で参照に置き換えた（本項の起票時点で未マージ）。`glossary.md` §3 の訂正は #23 にある。#23 が main に入った日を本欄に追記する
 
 ### 引き継ぎ予定（着手前スパイクの検証メモ・未決着）
 

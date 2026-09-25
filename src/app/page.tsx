@@ -45,7 +45,10 @@ function RingTile({
   caption: string;
 }) {
   return (
-    <CardLink href={href} className="flex items-center gap-4">
+    <CardLink
+      href={href}
+      className="flex items-center gap-4 shadow-sm shadow-slate-900/5 hover:-translate-y-0.5 hover:shadow-md hover:shadow-brand-500/20"
+    >
       <div
         className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
         style={{ background: `conic-gradient(#1a73e8 0% ${percent}%, #e2e8f0 ${percent}% 100%)` }}
@@ -67,7 +70,6 @@ function StatTile({
   label,
   value,
   caption,
-  accent,
   icon,
   iconColor,
 }: {
@@ -75,38 +77,27 @@ function StatTile({
   label: string;
   value: string;
   caption: string;
-  accent?: string;
-  icon?: ReactNode;
-  iconColor?: string;
+  icon: ReactNode;
+  iconColor: string;
 }) {
-  if (icon) {
-    return (
-      <CardLink
-        href={href}
-        className="flex items-center gap-4 shadow-sm shadow-slate-900/5 hover:-translate-y-0.5 hover:shadow-md hover:shadow-brand-500/20"
-      >
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${iconColor}`}>
-          {icon}
-        </div>
-        <div>
-          <p className="text-xl font-semibold text-slate-900">{label}</p>
-          <p className="mt-1 text-xs text-slate-500">{value}</p>
-          <p className="mt-1 text-xs text-slate-400">{caption}</p>
-        </div>
-      </CardLink>
-    );
-  }
-
   return (
-    <CardLink href={href} className={`rounded-r-lg rounded-l-none border-l-4 ${accent}`}>
-      <p className="text-xl font-semibold text-slate-900">{label}</p>
-      <p className="mt-1 text-xs text-slate-500">{value}</p>
-      <p className="mt-1 text-xs text-slate-400">{caption}</p>
+    <CardLink
+      href={href}
+      className="flex items-center gap-4 shadow-sm shadow-slate-900/5 hover:-translate-y-0.5 hover:shadow-md hover:shadow-brand-500/20"
+    >
+      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${iconColor}`}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-xl font-semibold text-slate-900">{label}</p>
+        <p className="mt-1 text-xs text-slate-500">{value}</p>
+        <p className="mt-1 text-xs text-slate-400">{caption}</p>
+      </div>
     </CardLink>
   );
 }
 
-// 閲覧する生徒のホーム画面StatTileでのみ使用するアイコン(丸背景)。他ロールの画面には表示されない。
+// ホームのStatTile/RingTileで使うアイコン(丸背景)。全ロール共通。
 function AnnounceIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -133,6 +124,34 @@ function ArchiveIcon() {
       <rect x="3.5" y="5.5" width="17" height="4" rx="1" />
       <path d="M5 9.5V18a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
       <path d="M10 13.5h4" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <rect x="3.5" y="5" width="17" height="15" rx="1.5" />
+      <path d="M3.5 9.5h17" />
+      <path d="M8 3v3M16 3v3" />
+    </svg>
+  );
+}
+
+function PermissionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <path d="M12 3.3 19 6v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-2.7Z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}
+
+function UsersAdminIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5.5 19c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
     </svg>
   );
 }
@@ -216,35 +235,40 @@ export default function HomePage() {
                 label="チーム"
                 value={`${teams.length}チーム`}
                 caption="メンバー・提出資料を見る"
-                accent="border-l-violet-500"
+                icon={<TeamIcon />}
+                iconColor="bg-violet-50 text-violet-500"
               />
               <StatTile
                 href="/archive"
                 label="アーカイブ"
                 value={`${archivedYears.length}年度分`}
                 caption="過去の卒業制作を検索・閲覧"
-                accent="border-l-slate-500"
+                icon={<ArchiveIcon />}
+                iconColor="bg-slate-100 text-slate-500"
               />
               <StatTile
                 href="/admin/years"
                 label="年度管理"
                 value={year.label}
                 caption="年度の開始・アーカイブ操作"
-                accent="border-l-brand-600"
+                icon={<CalendarIcon />}
+                iconColor="bg-brand-50 text-brand-600"
               />
               <StatTile
                 href="/admin/publish-permissions"
                 label="公開許可管理"
                 value={`${permissionSetCount}/${archivedTeams.length}件設定済み`}
                 caption="卒業生の公開許可を管理"
-                accent="border-l-brand-600"
+                icon={<PermissionIcon />}
+                iconColor="bg-brand-50 text-brand-600"
               />
               <StatTile
                 href="/admin/users"
                 label="ユーザー管理"
                 value={`${users.length}アカウント`}
                 caption="ロールの確認・変更"
-                accent="border-l-brand-600"
+                icon={<UsersAdminIcon />}
+                iconColor="bg-brand-50 text-brand-600"
               />
             </div>
           </>
@@ -263,21 +287,24 @@ export default function HomePage() {
                 label="発表会"
                 value={`${announcements.length}件`}
                 caption={`${publishedCount}件公開中`}
-                accent="border-l-brand-600"
+                icon={<AnnounceIcon />}
+                iconColor="bg-brand-50 text-brand-600"
               />
               <StatTile
                 href="/teams"
                 label="チーム"
                 value={`${teams.length}チーム`}
                 caption="他チームの発表を見る"
-                accent="border-l-violet-500"
+                icon={<TeamIcon />}
+                iconColor="bg-violet-50 text-violet-500"
               />
               <StatTile
                 href="/archive"
                 label="アーカイブ"
                 value={`${archivedYears.length}年度分`}
                 caption="過去の卒業制作を検索・閲覧"
-                accent="border-l-slate-500"
+                icon={<ArchiveIcon />}
+                iconColor="bg-slate-100 text-slate-500"
               />
             </div>
           </>

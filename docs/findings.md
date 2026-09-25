@@ -4,7 +4,7 @@
 > **確度**：確定（**個々の発見は事実。ただし決定ではない**）
 > **正典**：このファイル
 > **更新のしかた**：**追記のみ。決着しても削除せず、決着日と反映先を追記する**
-> **最終更新**：2026-09-24（蒲山・F-03 に追記＝「社内専用（Internal use only）」はGoogle公式ページの検証例外一覧に明記されており、「組織内限定でも検証は免除されない」というwhatの記述は訂正が要ると判明。PR #32 水戸レビューを受けて再確認）／2026-09-18（水戸・F-05 を追記＝モックの公開許可操作が正典と一致していない）／2026-09-11（蒲山・F-04 を追記＝Auth.js × 学校Google WorkspaceのOAuth疎通検証）／2026-09-11（蒲山・F-03 を追記＝H-12 のスコープ検証）
+> **最終更新**：2026-09-25（蒲山・F-03 の追記を精緻化＝例外の前提条件（組織所有のプロジェクト＋Internal設定）を明記し、Google審査と組織管理者承認の2関門を分離。決着行は追記のみルールに従い元の位置へ復元。水戸レビュー（PR #35）を反映）／2026-09-24（蒲山・F-03 に追記＝「社内専用（Internal use only）」はGoogle公式ページの検証例外一覧に明記されており、「組織内限定でも検証は免除されない」というwhatの記述は訂正が要ると判明。PR #32 水戸レビューを受けて再確認）／2026-09-18（水戸・F-05 を追記＝モックの公開許可操作が正典と一致していない）／2026-09-11（蒲山・F-04 を追記＝Auth.js × 学校Google WorkspaceのOAuth疎通検証）／2026-09-11（蒲山・F-03 を追記＝H-12 のスコープ検証）
 
 ---
 
@@ -56,7 +56,7 @@
 - 追記  : 2026-09-04、`--webpack` の初出は `fe4eab6`（2026-08-28・鈴木・`feature/mock`）と判明。PR #6 はそれを `main` 側へ揃えただけで、**導入者・追随者のいずれも再現条件を確認していなかった**
 - 決着  : **2026-09-04 決着**（`decisions.md`）。**Docker 管理は PostgreSQL のみ**とし、Next.js アプリはホスト直起動へ。**バンドラは Turbopack に固定**（`package.json` の `dev`／`build` に `--turbopack` を明示）。回避策の要否を判定する代わりに、**回避策を必要にしていた構成そのもの（アプリのコンテナ化）をやめた**。反映先：`docker-compose.yml`（`app` サービスと `Dockerfile` を削除）・`.env.example`・`package.json`・`design/08-architecture.md` 8-1／8-6
 
-### F-03  `drive.file` スコープで足りるか（H-12）— 「学内限定だから審査が要らない」は成立しない
+### F-03  `drive.file` スコープで足りるか（H-12）— 「学内限定だから審査が要らない」は成立しない（2026-09-24 追記で訂正）
 
 - ref   : `open-questions.md` #10・H-12／`requirements.md` §5
 - steps : #10（Drive 統合）の H-12（要求スコープの選択が管理者の承認負担を左右する）を判断するため、Google の公式ドキュメント（restricted scope verification／Drive API 認可ガイド）を確認した（技術検証・蒲山）
@@ -64,10 +64,26 @@
   1. **`drive.file` は非機密スコープで、Google の検証プロセスを必要としない。** ユーザー（または本アプリ）が作成・選択したファイルにのみアクセスでき、Drive 全体へは触れない
   2. **`drive` / `drive.readonly` は「制限されたスコープ（restricted scope）」で、検証が必須。** かつ **「組織内限定（Internal user type・学校 Workspace ドメイン内だけで使う）」であっても、この検証は免除されない。** 免除されるのはブランド確認（同意画面の警告表示）だけで、restricted scope 自体の検証は組織内限定アプリにも適用される
 - why   : H-12 の論点は「学内専用アプリだから瀬戸先生（管理者）の承認だけで `drive` 全体を要求できるのでは」という期待に対する反証になる。**学内限定は Google 審査を代替しない** — `drive`/`drive.readonly` を選ぶ限り、瀬戸先生の承認とは別に Google 自身の検証プロセスを通す必要がある。一方 `drive.file` はこの検証が丸ごと不要になる
-- 追記  : 2026-09-24（蒲山）。水戸さんの指摘（PR #32）を受け、Google公式ドキュメント（restricted scope verification）の「Exceptions to verification requirements（確認要件の例外）」の原文ページを直接開いて再確認した。**「社内専用（Internal use only）」は、このページ自体（＝制限付きスコープの検証について書いたページ）の例外一覧に項目として明記されている。** what の2点目「組織内限定であっても検証は免除されない」は、この一覧の構造と食い違っており、訂正が要る。
-  ただし本文は「アプリには組織管理者の承認が必要になることがあります」とも書いており、**「Google審査が一切不要」ではなく「Googleの外部審査の代わりに、学校（Workspace）側の管理者承認で足りる」という意味に近い。** why で導いた結論「`drive`/`drive.readonly` を選ぶ限りGoogle自身の検証プロセスが要る」も、社内専用に限れば成立しない可能性がある。
-  **「免除されるのはブランド確認だけ」という一文の出どころも要確認**：同じ例外一覧の「ドメイン全体のインストール（Domain-wide installation）」の項の記述だった可能性がある（未確認）。
-- 決着  : **未決着。** 社内専用として実際に Google Cloud Console で `drive` スコープを要求した場合に、Google の検証画面が出るか（または組織管理者の承認画面だけで完結するか）は未検証。実機での確認が要る
+- 決着  : **未決着（H-12 本体はチーム合意・機能スコープの決定が別途要る）。** ただし本件で「組織内限定なら審査不要」という誤った前提は排除できたため、**#10 の判断材料としてこの事実を `open-questions.md` #10 へ反映する**
+- 追記  : 2026-09-24（蒲山）。水戸さんの指摘（PR #32）を受け、Google公式ドキュメント（Restricted scope verification）の「Exceptions to verification requirements」原文を確認した。
+
+  **例外の前提条件（原文どおり）**：「Internal use only」の項には条件が2つある。
+
+  > This means the app is used only by people in your Google Workspace or Cloud Identity organization. The project must be owned by the organization, and its OAuth consent screen needs to be configured for an Internal user type. In this case, your app might need approval from an organization administrator.
+
+  つまり例外が成立するのは「**Cloud プロジェクトを組織（学校）が所有し、かつ同意画面を Internal ユーザータイプに設定した場合に限る**」。この条件を満たせば、原文は "you don't need to submit it for review" と明言しており、**Google 自身の審査（review）は不要**。ただしこれとは別に、**組織管理者（瀬戸先生）の承認が要ることがある**（"might need approval from an organization administrator"）。**この2つは別の関門であり、混同しない。**
+
+  what の2点目「組織内限定であっても検証は免除されない」は、上の条件（組織所有のプロジェクト・Internal設定）を満たす場合には**成立しない**（訂正が要る）。条件を満たさない場合（例：個人所有の Cloud プロジェクト）は、what の記述どおり検証が要る。
+
+  **「免除されるのはブランド確認だけ」の出どころ**：同じ例外一覧の「Domain-wide installation」の項の記述だった（水戸さんが原文確認済み）。
+
+  > If you plan for your app to only target users of a Google Workspace or Cloud Identity organization and always use domain-wide installation, then your app won't require brand verification. However, if your app utilizes restricted or sensitive scopes, app verification is required.
+
+  **用語の整理**：本追記でいう「Internal」は Google OAuth 同意画面のユーザータイプ設定（日本語表記「社内専用」）を指し、`requirements.md` §1-1・`decisions.md` が使う「学内限定」（本システムの利用範囲・製品スコープ）とは別の概念。以後は「Internal（同意画面のユーザーの種類）」と書き、Google の日本語表記「社内専用」は括弧で一度だけ添える。
+
+  **決着欄の「誤った前提は排除できた」は、この追記で覆る。未決着のまま** — 組織所有のプロジェクトかつ Internal の場合に、実際に Google Cloud Console で `drive` スコープを要求したとき Google の検証画面が出ないか、組織管理者の承認画面のみで完結するかは未検証。**実機での確認が要る**（水戸さんの提案：F-04 の OAuth スパイクに `drive.readonly` スコープを足してサインインを試す。同意画面がそのまま出れば例外が実際に効いている、管理者ポリシー（`admin_policy_enforced` 等）でブロックされれば組織管理者の承認が要ると分かる。F-04 のプロジェクトは Internal 設定で `@yse-c.net` アカウントのサインインが通っているため、すでに組織所有と考えられる）。
+
+  **`open-questions.md` #10（H-12）の「学内限定（Internal user type）であっても restricted scope 検証が免除されない」という行は、本追記と食い違う。訂正は別 PR（水戸が #33 マージ後に対応）。**
 
 ### F-04  Auth.js × 学校 Google Workspace アカウントで OAuth サインインが通るか
 

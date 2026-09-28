@@ -5,7 +5,7 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-21（水戸・**採番の衝突を解消**＝本 PR が起票した **H-23 → H-26**／**H-24 → H-27**。同 ID を PR #28（H-23・2026-09-17 起票）と PR #31（H-24・2026-09-20 起票）が先に使っていた。先着優先で本 PR 側を動かした。**問い・先行方針・担当は変更していない**）
+> **最終更新**：2026-09-28（蒲山・H-29〔所属はメンバー行〕・判断1〔リーダーの参照先はメンバー行〕をER・テーブル定義へ反映。`team_members`テーブルを新設し、`users.team_id`を廃止・`teams.leader_user_id`を`leader_member_id`へ改名。H-21の出典を`hearing.md` §9へ差し替え）
 
 ## この章が答える問い
 
@@ -83,7 +83,7 @@
 
 **初稿。** 正典から直接読めない箇所は、未決 H-20・H-26・H-27 として `../open-questions.md` に起票し、先行方針（同 §7）で組んだ。**全体が確度「暫定」でレビュー未了**（`../../CLAUDE.md` 禁則6）— 他章から「決定」として引用しないこと。
 
-> **2026-09-21 更新：H-29 は同日決着したので、ER を止める要因ではなくなった。** 止まっていたのは**ユーザーとチームの所属関係**で、「どう格納するか」の手前に「**どうやって成立するか**」が未定義だった。**成立手段が決まったので、あとはこの章が引けば埋まる**（`../decisions.md` 2026-09-21 の 2 行・`../requirements.md` §3-8）。`09-nfr.md` が文脈判定を「06 待ち」と書いているのはこの箇所で、**決着前は ER を引いても答えが出ない状態だった**が、いまは 06 が引けば解消する。
+> **2026-09-28 更新：H-29（所属はメンバー行）と判断1（リーダーの参照先はメンバー行）を ER・テーブル定義へ反映した。** `team_members`（メンバー）テーブルを新設し、`users.team_id` は廃止、`teams.leader_user_id` は `teams.leader_member_id` へ改名して `team_members` を参照する形にした（6-2・6-3）。`09-nfr.md` が文脈判定を「06 待ち」と書いているのはこの箇所で、これで実行主体側の所属の取り方（`team_members.user_id` からの逆引き）が定まった。
 
 **この章が開くと 03・04・05・07 が一斉に開く**（`00-conventions.md` §5-4）。逆に言えば、ここを開けない限り設計書は完成しない。
 
@@ -99,8 +99,9 @@ erDiagram
     FISCAL_YEAR ||--o{ EVENT_OCCASION : "4回持つ"
     SCHOOL_CLASS ||--o{ TEAM : "属する"
     TEAM ||--|| WORK : "1つ持つ"
-    TEAM |o--o{ USER : "所属する（生徒）"
-    TEAM |o--o| USER : "代表する（リーダー）"
+    TEAM ||--o{ TEAM_MEMBER : "持つ（先生が割当）"
+    USER |o--o| TEAM_MEMBER : "引き換える（生徒）"
+    TEAM |o--o| TEAM_MEMBER : "代表する（リーダー）"
     EVENT_OCCASION ||--o{ MATERIAL_SLOT : "定義する"
     TEAM ||--o{ PRESENTATION : "参加する"
     EVENT_OCCASION ||--o{ PRESENTATION : "束ねる"
@@ -143,7 +144,13 @@ erDiagram
         int id PK
         int class_id FK
         string name
-        int leader_user_id FK "nullable"
+        int leader_member_id FK "nullable"
+    }
+    TEAM_MEMBER {
+        int id PK
+        int team_id FK, UK
+        string name
+        int user_id FK "nullable・UK・引き換え後に埋まる"
     }
     WORK {
         int id PK
@@ -157,7 +164,6 @@ erDiagram
         string email UK
         string name
         string role
-        int team_id FK "nullable・生徒のみ"
     }
     EVENT_OCCASION {
         int id PK
@@ -222,8 +228,9 @@ erDiagram
     SCHOOL_CLASS ||--o{ TEAM : has
     TEAM ||--|| WORK : has
     USER |o--o{ WORK : "consent_set_by"
-    TEAM |o--o{ USER : has
-    TEAM |o--o| USER : "leader_user_id"
+    TEAM ||--o{ TEAM_MEMBER : has
+    USER |o--o| TEAM_MEMBER : "user_id（引き換え）"
+    TEAM |o--o| TEAM_MEMBER : "leader_member_id"
     EVENT_OCCASION ||--o{ MATERIAL_SLOT : has
     EVENT_OCCASION |o--o| PRESENTATION : "current_presentation_id"
     TEAM ||--o{ PRESENTATION : has
@@ -274,11 +281,26 @@ erDiagram
 | id | serial | NOT NULL | — | PK | — |
 | class_id | int | NOT NULL | — | FK → classes.id | チームはクラスに属する |
 | name | varchar | NOT NULL | — | UNIQUE(class_id, name) | チーム名。`../requirements.md` §3-7・`../glossary.md` §6 アーカイブ「検索対象は基本メタデータ（年度・**チーム名**・作品名・資料種別）」／`../hearing.md` §1「タイムテーブル・**チーム名**・作品・メンバーをスプレッドシートで手作業管理」（現行運用に実在） |
-| leader_user_id | int | NULL | — | FK → users.id・複合 FK（後述） | チームの属性としてのリーダー参照。ロールではない（2026-09-04 決着） |
+| leader_member_id | int | NULL | — | FK → team_members.id・複合 FK（後述） | チームの属性としてのリーダー参照。ロールではない（2026-09-04 決着）。**参照先は `team_members`（メンバー行）であって `users`（利用者行）ではない**（判断1・2026-09-22決着） |
 
 > **生徒はチームを作成できない**（#6 決着）。作成主体は先生だが、作成者列は監査要件（G-5・未決）待ちのため持たない。
-> **`number`（チーム番号）は置かない（決着済み）。** 当初 Drive ディレクトリ命名「番号_発表名」（`../glossary.md` §3）から正典化したが、水戸のレビュー（PR #23）でクラス略称が「番号_発表名」の**下位**にある構造だと指摘された。**Drive の現物（`../hearing.md` §9）では「番号_発表名」自体は実在するが、番号は発表会（開催回）の連番でありチームの属性ではない。チーム単位のフォルダは存在しない**（H-21 決着・`../decisions.md` 2026-09-11・訂正は同 2026-09-28）
-> **`leader_user_id` の複合 FK**：`teams(leader_user_id, id)` → `users(id, team_id)`（`users` 側に `UNIQUE(id, team_id)` を張る）。**リーダーは必ずそのチームに所属する生徒でなければならない**（`../glossary.md` §3 リーダー＝チームの属性）ため、他チームの生徒を代表者に設定できないよう DB レベルで塞ぐ（`../decisions.md` 2026-09-21）。**行の投入順**：チーム作成 → メンバー（`users.team_id`）割当 → リーダー指定、の順でなければ複合 FK を満たせない
+> **`number`（チーム番号）は置かない（決着済み）。** 当初 Drive ディレクトリ命名「番号_発表名」（`../glossary.md` §3）から正典化したが、水戸のレビュー（PR #23）でクラス略称が「番号_発表名」の**下位**にある構造だと指摘された。**Drive の現物（`../hearing.md` §9）では「番号_発表名」自体は実在するが、番号は発表会（開催回）の連番でありチームの属性ではない。チーム単位のフォルダは存在しない**（H-21 決着・`../decisions.md` 2026-09-11）
+> **`leader_member_id` の複合 FK**：`teams(leader_member_id, id)` → `team_members(id, team_id)`（`team_members` 側に `UNIQUE(id, team_id)` を張る）。**リーダーは必ずそのチームに所属するメンバーでなければならない**（`../glossary.md` §3 リーダー＝チームの属性）ため、他チームのメンバーを代表者に設定できないよう DB レベルで塞ぐ（`../decisions.md` 2026-09-21・参照先は判断1〔2026-09-22〕で `users` から `team_members` へ訂正）。**行の投入順**：チーム作成 → メンバー行割当 → リーダー指定、の順でなければ複合 FK を満たせない
+
+### `team_members`（メンバー）
+
+対応する語彙：`../glossary.md` §3 メンバー／リーダー（H-29・2026-09-21 決着）
+
+| 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
+| --- | --- | --- | --- | --- | --- |
+| id | serial | NOT NULL | — | PK | — |
+| team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(id, team_id) | チームに属する（H-29）。**`UNIQUE(id, team_id)` は `teams.leader_member_id` からの複合 FK（本節）を成立させるための制約** |
+| name | varchar | NOT NULL | — | — | 先生が入力する氏名（H-29）。一度もサインインしなかった生徒を実名で残すための蓄積（`../decisions.md` 2026-09-21） |
+| user_id | int | NULL | — | FK → users.id・UNIQUE | 引き換え（本人によるサインイン時の確認）で埋まる（H-29）。**メールアドレスの列は持たない**（H-29 決着）。1人の利用者は1つのメンバー行にしか結びつかない |
+
+> **表示名の解決規則は1つだけ**：結びついた利用者（`user_id`）がいればそのフルネーム、いなければ本行の `name`（`../decisions.md` 2026-09-21）。
+> **独立した「生徒マスタ」テーブルは作らない**（H-29）。チームに属さない生徒（他学年の聴講者等）は `users` のみで足り、本テーブルの行を持たない。
+> **行の生成タイミング**：チーム作成・メンバー割り当ての操作主体は先生（`../decisions.md` 2026-09-04・#6）。本テーブルの行は、その割り当て操作で生成する。
 
 ### `works`（作品）
 
@@ -306,7 +328,8 @@ erDiagram
 | email | varchar | NOT NULL | — | UNIQUE | 学校 Workspace ドメインのアカウント（`../requirements.md` §5） |
 | name | varchar | NOT NULL | — | — | 実名表示（2026-07-24。匿名化機能を持たない） |
 | role | varchar | NOT NULL | 'student' | CHECK (role IN ('teacher','student')) | **先生／生徒の2値で足りる**（2026-09-05・H-10 先生ホワイトリスト方式）。既定は生徒（誤判定は安全側に倒す） |
-| team_id | int | NULL | — | FK → teams.id・UNIQUE(id, team_id) | 生徒は1チームに所属（単純外部キー・2026-09-11 設計判断）。先生は NULL。**`UNIQUE(id, team_id)` は `teams.leader_user_id` からの複合 FK（6-3 `teams`）を成立させるための制約**であり、それ自体は「1人が複数チームに所属しない」ことの追加保証にはならない |
+
+> **チームへの所属は本テーブルに列を持たない。** 所属は `team_members`（メンバー）の `user_id` からの参照で表す（H-29・2026-09-21 決着）。生徒は `team_members.user_id` で高々1つのメンバー行に結びつく。チームに属さない生徒（他学年の聴講者等）は、どのメンバー行にも結びつかない。
 
 > **ホワイトリストの実体の持ち方は未決（H-26）。** 先行方針は、`role = 'teacher'` の行がそのまま登録を表す形（別テーブルを持たない）。ただし `name` は OAuth のプロフィールからしか得られないため、**この定義のままでは先生を事前登録できず、先生は一度サインインしてから昇格される**ことになる。SC-20 から2人目以降の先生を追加する導線が成立するかは H-26 の決着待ち（1人目は H-11 で「DB へ直接投入」と決着済みで、この問題の外）。**前提**：`users` は現行の定義のまま。**決着時に変わる箇所**：`name` の NULL 可否／メールだけを持つ別テーブルの要否。**未決 ID**：H-26（`../open-questions.md` §2）。1人目の投入・「自分自身のロールを解除できない」という不変条件の実現方法は `../requirements.md` §3-6・**`10-operation.md` 10-2 で確定させる**（H-11 決着分）。
 
@@ -454,6 +477,7 @@ erDiagram
 | アーカイブ検索（基本メタデータ：年度・チーム名・作品名・資料種別） | `teams(name)`・`works(title)`・`material_slots(slot_type)` への通常インデックス（`works(id)` の部分インデックス `WHERE publication_consent = 'approved'` と組み合わせる） | §3-7 受け入れ基準。検索対象は公開許可済みのみ |
 | アーカイブ検索（概要の本文・使用技術欄） | `summaries.tech_stack` への全文検索用インデックス（GIN、日本語形態素解析は Ph.2 で検証）。**「概要の本文」は列自体が未定**（現行テンプレ現物未入手・`../open-questions.md` §6 保留）のため索引方針も保留 | §3-7。検索対象は公開許可済みのみ |
 | ユーザーのロール判定（認可の一次防衛線・H-16） | `users(email)` UNIQUE（既存）で足りる。全読み取りがここを通る（`09-nfr.md` 9-4） | §4 セキュリティ |
+| 実行主体の所属チーム判定（認可の文脈軸・H-16） | `team_members(user_id)` UNIQUE（既存）で足りる。`team_members` からチームへは `team_id` を直接持つため逆引きの結合は1段（`09-nfr.md` 9-4） | §4 セキュリティ |
 
 > **「それ以外」区分（p95 ≦ 3秒）のクエリは、上記に列挙した索引の外部キー列（`submissions.team_id`・`comments.presentation_id` など）に通常インデックスを明示的に張れば足りる。** PostgreSQL は主キー・UNIQUE制約には自動で索引を作るが、**外部キー列には作らない**ため「自動で足りる」という前提を置かない。個別のチューニングは詳細設計の範囲（本章の書かないもの）。
 

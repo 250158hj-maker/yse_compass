@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-21（蒲山・8-1 の認証の行を、F-04 の一次検証と 07 の 7-2 に合わせて更新）
+> **最終更新**：2026-09-28（蒲山・Prismaの配線導入〔PR #41〕を反映。8-1の「未導入」を「配線のみ導入」に訂正し、バージョン番号を`package.json`参照に差し替え）
 
 ## この章が答える問い
 
@@ -32,7 +32,7 @@
 | UI ライブラリ | React 19 ＋ React Compiler 有効 | 同上 | 手動メモ化（`useMemo`/`useCallback`）を書かずに再描画コストを抑制できる。`next.config.ts` の `reactCompiler: true` で有効化済み | `package.json`・`next.config.ts`・**`../../CLAUDE.md` §5**（**企画書 §2-3 には記載が無く、2026-09-06 に `../decisions.md` を出典として §5 へ正典化した — H-18 決着**） |
 | スタイル | Tailwind CSS 4 | 同上 | ユーティリティクラスで完結し、画面数が多い割にデザインシステムを別途持つ規模ではない | `package.json`・**`../../CLAUDE.md` §5**（**企画書 §2-3 には記載が無く、2026-09-06 に `../decisions.md` を出典として §5 へ正典化した — H-18 決着**） |
 | DB | PostgreSQL 16（Docker イメージ `postgres:16-alpine`） | 同上 | `../../CLAUDE.md` §5 の確定採用。関係モデルで足りるデータ形状（06 データ設計は未着手のため詳細は未定） | `../../CLAUDE.md` §5・`docker-compose.yml` |
-| DB アクセス | **Prisma**（2026-09-05 に採用決定・**未導入**） | Ph.2 で `package.json` 固定 | `../../CLAUDE.md` §5・企画書 §2-3 の正典どおり。導入は W13（9/11〜）。疎通確認の `pg` 直接使用は暫定で、業務データのアクセス層には持ち込まない。下記「ORM の採用方針」参照 | `../decisions.md`（2026-09-05）・`src/app/api/health/db/route.ts`（現状の実装） |
+| DB アクセス | **Prisma**（2026-09-05 に採用決定・**配線のみ導入**。空スキーマ・マイグレーション未作成） | バージョン番号は `package.json` が正 | `../../CLAUDE.md` §5・企画書 §2-3 の正典どおり。モデルとマイグレーションは 06 データ設計（#23）の後。疎通確認の `pg` 直接使用は暫定で、業務データのアクセス層には持ち込まない。下記「ORM の採用方針」参照 | `../decisions.md`（2026-09-05）・`src/app/api/health/db/route.ts`（現状の実装） |
 | PDF 生成 | 純粋 JS の PDF ライブラリ（ヘッドレスブラウザ非依存） | 銘柄は実装着手時に確定 | Chromium 同梱を避ける（K3 検証・`../decisions.md` 2026-09-04） | `../decisions.md`・`05-output.md` 5-4 |
 | 認証 | Auth.js ＋ Google Workspace OAuth（サインインの疎通は一次検証済み・ロール解決は未実装） | 本番投入可否は未検証（`07-interface.md` 7-2） | 学校 Google アカウントとの統合が前提。**OAuth が通るかが最大の技術リスク**（一次検証は通った・`../findings.md` F-04） | `../requirements.md` §5・`07-interface.md` 7-2 |
 | パッケージマネージャ | pnpm | — | `../../CLAUDE.md` 既定 | `../../CLAUDE.md` |

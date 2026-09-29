@@ -156,10 +156,10 @@ CREATE UNIQUE INDEX "fiscal_years_year_key" ON "fiscal_years"("year");
 CREATE UNIQUE INDEX "classes_fiscal_year_id_name_key" ON "classes"("fiscal_year_id", "name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "teams_class_id_name_key" ON "teams"("class_id", "name");
+CREATE INDEX "teams_name_idx" ON "teams"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "teams_leader_member_id_id_key" ON "teams"("leader_member_id", "id");
+CREATE UNIQUE INDEX "teams_class_id_name_key" ON "teams"("class_id", "name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "team_members_user_id_key" ON "team_members"("user_id");
@@ -171,13 +171,22 @@ CREATE UNIQUE INDEX "team_members_id_team_id_key" ON "team_members"("id", "team_
 CREATE UNIQUE INDEX "works_team_id_key" ON "works"("team_id");
 
 -- CreateIndex
+CREATE INDEX "works_title_idx" ON "works"("title");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "event_occasions_current_presentation_id_id_key" ON "event_occasions"("current_presentation_id", "id");
+CREATE INDEX "material_slots_event_occasion_id_idx" ON "material_slots"("event_occasion_id");
+
+-- CreateIndex
+CREATE INDEX "material_slots_slot_type_idx" ON "material_slots"("slot_type");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "submissions_team_id_material_slot_id_key" ON "submissions"("team_id", "material_slot_id");
+
+-- CreateIndex
+CREATE INDEX "summaries_event_occasion_id_team_id_idx" ON "summaries"("event_occasion_id", "team_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "summaries_team_id_event_occasion_id_key" ON "summaries"("team_id", "event_occasion_id");
@@ -187,6 +196,12 @@ CREATE UNIQUE INDEX "presentations_id_event_occasion_id_key" ON "presentations"(
 
 -- CreateIndex
 CREATE UNIQUE INDEX "presentations_team_id_event_occasion_id_key" ON "presentations"("team_id", "event_occasion_id");
+
+-- CreateIndex
+CREATE INDEX "comments_presentation_id_created_at_idx" ON "comments"("presentation_id", "created_at");
+
+-- CreateIndex
+CREATE INDEX "comments_parent_comment_id_idx" ON "comments"("parent_comment_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "presentation_likes_presentation_id_user_id_key" ON "presentation_likes"("presentation_id", "user_id");
@@ -201,7 +216,7 @@ ALTER TABLE "classes" ADD CONSTRAINT "classes_fiscal_year_id_fkey" FOREIGN KEY (
 ALTER TABLE "teams" ADD CONSTRAINT "teams_class_id_fkey" FOREIGN KEY ("class_id") REFERENCES "classes"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "teams" ADD CONSTRAINT "teams_leader_member_id_id_fkey" FOREIGN KEY ("leader_member_id", "id") REFERENCES "team_members"("id", "team_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "teams" ADD CONSTRAINT "teams_leader_member_id_id_fkey" FOREIGN KEY ("leader_member_id", "id") REFERENCES "team_members"("id", "team_id") ON DELETE RESTRICT ON UPDATE NO ACTION;
 
 -- AddForeignKey
 ALTER TABLE "team_members" ADD CONSTRAINT "team_members_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -213,13 +228,13 @@ ALTER TABLE "team_members" ADD CONSTRAINT "team_members_user_id_fkey" FOREIGN KE
 ALTER TABLE "works" ADD CONSTRAINT "works_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "works" ADD CONSTRAINT "works_consent_set_by_fkey" FOREIGN KEY ("consent_set_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "works" ADD CONSTRAINT "works_consent_set_by_fkey" FOREIGN KEY ("consent_set_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "event_occasions" ADD CONSTRAINT "event_occasions_fiscal_year_id_fkey" FOREIGN KEY ("fiscal_year_id") REFERENCES "fiscal_years"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "event_occasions" ADD CONSTRAINT "event_occasions_current_presentation_id_id_fkey" FOREIGN KEY ("current_presentation_id", "id") REFERENCES "presentations"("id", "event_occasion_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "event_occasions" ADD CONSTRAINT "event_occasions_current_presentation_id_id_fkey" FOREIGN KEY ("current_presentation_id", "id") REFERENCES "presentations"("id", "event_occasion_id") ON DELETE RESTRICT ON UPDATE NO ACTION;
 
 -- AddForeignKey
 ALTER TABLE "material_slots" ADD CONSTRAINT "material_slots_event_occasion_id_fkey" FOREIGN KEY ("event_occasion_id") REFERENCES "event_occasions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -1,12 +1,8 @@
-// このファイルは docs/design/06-data.md 6-3 から機械的に導出する（6-7）。
+// このファイルは docs/design/06-data.md 6-3 から機械的に導出する。
 // 列の型・制約を変えるときは、必ず 06-data.md を先に直してからここを追随させる。
 //
-// 06-data.md 6-7 が挙げる「Prisma の DSL で宣言できない項目」はここに書かず、
-// 最初のマイグレーション作成時に手書き SQL で追記する：
-//   - DEFERRABLE INITIALLY DEFERRED（presentations の UNIQUE(event_occasion_id, display_order)）
-//   - CHECK 制約 5件（users.role／event_occasions.kind／comments.label／
-//     works.publication_consent／works の publication_consent と consent_set_by の相関）
-//   - 部分インデックス 2件（material_slots の概要枠一意・works の publication_consent='approved'）
+// Prisma の DSL で宣言できない項目は docs/design/06-data.md 6-7 の表のとおり。
+// 初回マイグレーションの末尾に手書き SQL で置いた（再実行で失われうるので要注意）。
 // そのため役割が閉じた集合の列（role・kind・label・publication_consent）も
 // Prisma の enum ではなく String で宣言する（CHECK 側で守るため）。
 
@@ -55,16 +51,21 @@ model Team {
   work          Work?
   members       TeamMember[]   @relation("TeamMembersOfTeam")
   // 複合FK：teams(leader_member_id, id) → team_members(id, team_id)
-  // リーダーは必ずそのチームに所属するメンバー（decisions.md 2026-09-21・2026-09-22）
-  leaderMember  TeamMember?    @relation("TeamLeaderFK", fields: [leaderMemberId, id], references: [id, teamId])
+  // リーダーは必ずそのチームに所属するメンバー（decisions.md 2026-09-21・2026-09-22）。
+  // onUpdate: NoAction — 既定のCASCADEだと、リーダーのメンバー行を他チームへ移す
+  // 更新がteams.idの書き換えを試みてteams_pkeyの一意違反になる（水戸レビューPR #45確認）。
+  // 外部キー違反として拒否されるようNoActionにする（実際の移動は禁則1どおり別の設計判断が要る）
+  // 【注意】複合FKのためPrismaの関係API（connect/disconnect）は使えない
+  // （disconnectはteams.idをNULLにしようとして必ず失敗、他チームのメンバーへの
+  // connectはteams.idの書き換えを試みて一意違反になる。水戸レビューPR #45実測）。
+  // 指定・解除はleaderMemberIdを直接更新すること
+  leaderMember  TeamMember?    @relation("TeamLeaderFK", fields: [leaderMemberId, id], references: [id, teamId], onUpdate: NoAction)
   submissions   Submission[]
   summaries     Summary[]
   presentations Presentation[]
 
   @@unique([classId, name])
-  // Prismaが1-1のcomposite relationを解決するために要求する追加のunique
-  // （idは既にPKなので冗長だが、Prisma側の制約として必要。06-data.mdの定義には無い）
-  @@unique([leaderMemberId, id])
+  @@index([name])
   @@map("teams")
 }
 
@@ -75,10 +76,12 @@ model TeamMember {
   name   String @db.VarChar
   userId Int?   @unique @map("user_id")
 
-  team    Team  @relation("TeamMembersOfTeam", fields: [teamId], references: [id])
-  user    User? @relation(fields: [userId], references: [id])
-  // Team.leaderMemberId からの複合FKの受け口（1メンバーは高々1チームのリーダー）
-  ledTeam Team? @relation("TeamLeaderFK")
+  team     Team   @relation("TeamMembersOfTeam", fields: [teamId], references: [id])
+  user     User?  @relation(fields: [userId], references: [id])
+  // Team.leaderMemberId からの複合FKの受け口。リストで宣言することで、Prismaが
+  // 1-1関係のために要求する追加のunique（06-data.mdの定義には無い）を避けられる。
+  // 実際に1メンバーが持てるリーダー先は高々1チーム（複合FKで保証・水戸レビューPR #45）
+  ledTeams Team[] @relation("TeamLeaderFK")
 
   @@unique([id, teamId])
   @@map("team_members")
@@ -93,8 +96,12 @@ model Work {
   consentSetBy       Int?    @map("consent_set_by")
 
   team             Team  @relation(fields: [teamId], references: [id])
-  consentSetByUser User? @relation(fields: [consentSetBy], references: [id])
+  // onDelete: Restrict — 既定のSET NULLだと、公開許可を設定した利用者を削除したとき
+  // consent_set_byだけがNULLになり、相関CHECK（下記@@map直前）に違反して読みにくい
+  // エラーになる（水戸レビューPR #45確認）。RESTRICTで外部キー違反として先に止める
+  consentSetByUser User? @relation(fields: [consentSetBy], references: [id], onDelete: Restrict)
 
+  @@index([title])
   @@map("works")
 }
 
@@ -128,12 +135,11 @@ model EventOccasion {
   presentations       Presentation[] @relation("EventPresentations")
   summaries           Summary[]
   // 複合FK：event_occasions(current_presentation_id, id) → presentations(id, event_occasion_id)
-  // 「いま発表中」は自分自身の発表会に属する発表しか指せない（decisions.md 2026-09-21）
-  currentPresentation Presentation?  @relation("CurrentPresentationFK", fields: [currentPresentationId, id], references: [id, eventOccasionId])
+  // 「いま発表中」は自分自身の発表会に属する発表しか指せない（decisions.md 2026-09-21）。
+  // onUpdate: NoAction — teams.leaderMemberと同じ理由（水戸レビューPR #45確認）
+  // 【注意】同じ理由で関係APIは使えない。指定・解除はcurrentPresentationIdを直接更新すること
+  currentPresentation Presentation?  @relation("CurrentPresentationFK", fields: [currentPresentationId, id], references: [id, eventOccasionId], onUpdate: NoAction)
 
-  // Prismaが1-1のcomposite relationを解決するために要求する追加のunique
-  // （idは既にPKなので冗長だが、Prisma側の制約として必要。06-data.mdの定義には無い）
-  @@unique([currentPresentationId, id])
   @@map("event_occasions")
 }
 
@@ -149,6 +155,8 @@ model MaterialSlot {
   eventOccasion EventOccasion @relation(fields: [eventOccasionId], references: [id])
   submissions   Submission[]
 
+  @@index([eventOccasionId])
+  @@index([slotType])
   @@map("material_slots")
 }
 
@@ -181,6 +189,7 @@ model Summary {
   eventOccasion EventOccasion @relation(fields: [eventOccasionId], references: [id])
 
   @@unique([teamId, eventOccasionId])
+  @@index([eventOccasionId, teamId])
   @@map("summaries")
 }
 
@@ -189,20 +198,26 @@ model Presentation {
   id              Int  @id @default(autoincrement())
   teamId          Int  @map("team_id")
   eventOccasionId Int  @map("event_occasion_id")
-  // UNIQUE(event_occasion_id, display_order) は DEFERRABLE INITIALLY DEFERRED が要る
-  // （並び替え時の一時的な重複を許すため）。Prisma DSL は deferrable を宣言できない
-  // （06-data.md 6-7）ので、@@unique はここでは張らず、手書きマイグレーションで追加する。
   displayOrder    Int? @map("display_order")
 
   team          Team               @relation(fields: [teamId], references: [id])
   eventOccasion EventOccasion      @relation("EventPresentations", fields: [eventOccasionId], references: [id])
   comments      Comment[]
   likes         PresentationLike[]
-  // EventOccasion.currentPresentationId からの複合FKの受け口
-  currentFor    EventOccasion?     @relation("CurrentPresentationFK")
+  // EventOccasion.currentPresentationId からの複合FKの受け口。リストで宣言する理由は
+  // TeamMember.ledTeams と同じ（06-data.mdの定義には無い追加uniqueを避けるため）
+  currentFor    EventOccasion[]    @relation("CurrentPresentationFK")
 
   @@unique([id, eventOccasionId])
   @@unique([teamId, eventOccasionId])
+  // UNIQUE(event_occasion_id, display_order) はDBではDEFERRABLE INITIALLY DEFERRED
+  // （並び替え時の一時的な重複を許すため。手書きマイグレーションで付与）。
+  // ここで@@uniqueとして宣言しておかないと、次のprisma migrate devがこの索引を
+  // 「消すべき索引」と誤認してDROP INDEXを生成し、適用が失敗する
+  // （制約が使っている索引は消せないため。水戸レビューPR #45推奨で実測）。
+  // 【注意】PostgreSQLはDEFERRABLEな一意制約をON CONFLICTの判定に使えないため、
+  // このキーをupsertのwhereには使わないこと（Prismaはdeferrableかどうかを比較しない）
+  @@unique([eventOccasionId, displayOrder])
   @@map("presentations")
 }
 
@@ -222,6 +237,8 @@ model Comment {
   replies      Comment[]     @relation("CommentReplies")
   likes        CommentLike[]
 
+  @@index([presentationId, createdAt])
+  @@index([parentCommentId])
   @@map("comments")
 }
 

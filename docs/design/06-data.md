@@ -5,7 +5,7 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-28（蒲山・H-29〔所属はメンバー行〕・`decisions.md` 2026-09-22の行〔リーダーの参照先はメンバー行〕をER・テーブル定義へ反映。`team_members`テーブルを新設し、`users.team_id`を廃止・`teams.leader_user_id`を`leader_member_id`へ改名。H-21の出典を`hearing.md` §9へ差し替え）
+> **最終更新**：2026-09-29（蒲山・6-3から`schema.prisma`・初回マイグレーションを書き起こし、Docker上のPostgreSQLに実際に適用して検証した。6-7の「複合FKが表現できるか未確認」を解消し、確認結果を追記）
 
 ## この章が答える問い
 
@@ -520,4 +520,5 @@ erDiagram
 
 > **`DEFERRABLE` の根拠**：Prisma のスキーマ言語は deferrable 制約を宣言する構文を持たない（[prisma/prisma#8806](https://github.com/prisma/prisma/issues/8806)・[discussions#8789](https://github.com/prisma/prisma/discussions/8789)）。
 > **`prisma migrate dev` を再実行すると、この手書き部分が失われる可能性がある。** 実装時にマイグレーションファイルへコメントで明記すること。
-> **この表は 6-3 から数えたもの**で、Prisma の使用バージョンでの可否は Ph.2 で確かめる。**本表に載せていないもの**：複合外部キー2件（6-3 `teams`・`event_occasions`）を Prisma のスキーマ言語で表現できるかは**本章では未確認**（Ph.2 の技術検証で確かめる。表現できなければ本表に加える）／アーカイブ検索の全文検索用インデックス（6-5・Ph.2 で検証）。
+> **この表は 6-3 から数えたもの**で、Prisma の使用バージョンでの可否は Ph.2 で確かめる。**本表に載せていないもの**：アーカイブ検索の全文検索用インデックス（6-5・Ph.2 で検証）。
+> **複合FK2件（6-3 `teams`・`event_occasions`）は Prisma のスキーマ言語で表現できることを確認した**（2026-09-29・`prisma/schema.prisma`）。多対1側（`teams.leader_member_id`／`event_occasions.current_presentation_id`）に `fields`／`references` を2列指定する形で宣言できるが、Prisma が1対1のcomposite relationとして解決するため、参照する側（`team_members(id, team_id)`／`presentations(id, event_occasion_id)`）はすでに本章の定義どおり `UNIQUE` だが、**宣言する側（`teams`／`event_occasions`）にも `@@unique([leaderMemberId, id])`／`@@unique([currentPresentationId, id])` が追加で要る**（`id` は既にPKのため実質的に冗長だが、Prisma側の制約として必須）。この追加ユニークは本章のテーブル定義（6-3）には無い、Prisma固有の要求である。

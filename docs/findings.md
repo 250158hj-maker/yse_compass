@@ -157,11 +157,11 @@ Sources:
 
 ### F-10  Google Classroom API / People API でロール解決・名簿自動化を代替できるか（生徒アカウントでの検証）
 
-- ref   : `decisions.md` 2026-09-05（H-10・先生ホワイトリスト方式）・2026-09-21（H-29・所属はメンバー行）／`findings.md` F-06（学校配布メールアドレスは転記でしか得られない）／PR #44（`scripts/classroom-spike.mjs`・`scripts/directory-spike.mjs`）
-- steps : YSE-Compass-dev プロジェクトで Classroom API・People API を有効化し、OAuth 同意画面に `classroom.courses.readonly`／`classroom.rosters.readonly`／`classroom.profile.emails`／`directory.readonly` を追加。**使ったアカウントは生徒のみ。先生（外部講師）のアカウントでは未検証**（認証情報を借りずに先生ご本人にサインインしてもらう形で、別途実施予定）
-- what  : ①`courses.list`（teacherId=me / studentId=me）：`teacherId=me` は0件、`studentId=me` は7件。**ただしロール解決の根拠には単独では使えない**（水戸レビュー PR #44 確認2）。生徒のアカウントも `userProfiles.get().permissions` に `CREATE_COURSE` を持ち、生徒が自分でコースを作るとそのコースの教師として `teacherId=me` に当たりうる（`courses.create` の仕様：`ownerId` 側が教師として追加される）ため、0件だったことは「生徒が先生と判定されないこと」の保証にならない。②名簿自動化：Classroom API（`courses.students.list`／`courses.teachers.list`）は常に自分の分の生徒情報しか返らず、People API ディレクトリ検索（`searchDirectoryPeople`／`listDirectoryPeople`）は完全一致検索・引数無し一覧のどちらも0件（学校のWorkspace側で生徒アカウントに対するディレクトリ共有が制限されている可能性が高いと推定。原因は未確認）
-- why   : ①は `requirements.md` §3-6「誤判定は必ず安全側に倒れる。権限昇格は起きない」と、H-10 の根拠②（誤判定は安全側）・④（管理者への依存なしに自己完結）の両立を崩す。Classroom 単独でロール解決するなら、管理者側の設定（誰がコースを作れるか・`verifiedTeacher`）に依存することになり、H-10 の根拠④と両立しない。②は F-06・H-29 の前提（メールアドレスを転記なしで得る経路は本人のOAuthサインインのみ）を裏づける結果になった
-- 決着  : **未決着。H-10・H-29 は変えていない。** 採る場合は `decisions.md` に【変更】行が要る。先生のアカウントでの①②・`verifiedTeacher` フラグの再検証は保留（先生への依頼は水戸がステークホルダー対応として行う）。結果が出次第、本欄に追記する
+- ref   : `decisions.md` 2026-09-05（H-10・先生ホワイトリスト方式）・2026-09-21（H-29・所属はメンバー行）／`findings.md` F-06（決着欄）／`open-questions.md` H-31／PR #44（`scripts/classroom-spike.mjs`・`scripts/directory-spike.mjs`）
+- steps : 2026-09-29、YSE-Compass-dev プロジェクトで Classroom API・People API を有効化し、OAuth 同意画面に `classroom.courses.readonly`／`classroom.rosters.readonly`／`classroom.profile.emails`／`directory.readonly` を追加。**使ったアカウントは生徒のみ。先生のアカウントでは未検証**（認証情報を借りずに先生ご本人にサインインしてもらう形で、別途実施予定）
+- what  : ①`courses.list`（teacherId=me / studentId=me）：`teacherId=me` は0件、`studentId=me` は7件。**ただしロール解決の根拠には単独では使えない**（水戸レビュー PR #44 確認2）。生徒のアカウントも `userProfiles.get().permissions` に `CREATE_COURSE` を持ち、生徒が自分でコースを作るとそのコースの教師として `teacherId=me` に当たりうる（`courses.create` の仕様：`ownerId` 側が教師として追加される。**実際にコースを作っての確認はしていない**）ため、0件だったことは「生徒が先生と判定されないこと」の保証にならない。生徒アカウントでの `verifiedTeacher` の値は確認していない。②名簿自動化：`courses.students.list` は常に自分の分の生徒情報しか返らず、クラスメートの情報は見えない。`courses.teachers.list` はコースに登録された教師の一覧を返した（件数はコースごとに異なり、正確な件数・メールアドレスの有無は記録していない）。People API ディレクトリ検索（`searchDirectoryPeople`／`listDirectoryPeople`）は完全一致検索・引数無し一覧のどちらも0件（学校のWorkspace側で生徒アカウントに対するディレクトリ共有が制限されている可能性が高いと推定。原因は未確認）
+- why   : ①を採ると `requirements.md` §3-6「誤判定は必ず安全側に倒れる。権限昇格は起きない」と、H-10 の根拠②（誤判定は安全側）・④（管理者への依存なしに自己完結）が両立しない。Classroom 単独でロール解決するなら、管理者側の設定（誰がコースを作れるか・`verifiedTeacher`）に依存することになり、H-10 の根拠④と両立しない。②は、F-06 の決着欄と H-29 の根拠①②（`decisions.md` 2026-09-21）が置く前提と矛盾しない。ただし使ったのは生徒のアカウントだけで、前提を裏づけたことにはならない — 反証しうるのは、先生のアカウントで名簿のメールアドレスが返るか（未検証）
+- 決着  : **未決着。H-10・H-29 は変えていない。** 採る場合は `decisions.md` に【変更】行が要る（①を採るなら、H-10 に加えて 2026-09-21 の「Stage 1 で Google に要求する OAuth スコープは `openid email profile` のみ」も対象になる）。先生のアカウントでの①②・`verifiedTeacher` フラグの再検証は保留（先生への依頼は水戸がステークホルダー対応として行う）。結果が出次第、本欄に追記する
 
 ### 引き継ぎ予定（着手前スパイクの検証メモ・未決着）
 

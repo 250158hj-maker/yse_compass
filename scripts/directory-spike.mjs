@@ -55,7 +55,7 @@ oauth2Client.setCredentials(tokens);
 
 const people = google.people({ version: "v1", auth: oauth2Client });
 
-// 名簿の設計に要るのは氏名・メールアドレス・所属のみ（カナ・入学年度は
+// この検証で見るのは氏名・メールアドレス・所属のみ（カナ・入学年度は
 // 正典の名簿に無い項目で、以前の「見えた」という観測も再現できず撤回済み）
 const readMask = "names,emailAddresses,organizations";
 const query = process.argv[2];
@@ -67,7 +67,9 @@ if (query) {
     readMask,
     sources: ["DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE", "DIRECTORY_SOURCE_TYPE_DOMAIN_CONTACT"],
   });
-  console.log(JSON.stringify(res.data, null, 2));
+  const found = res.data.people ?? [];
+  const withEmail = found.filter((p) => p.emailAddresses?.length).length;
+  console.log(`件数: ${found.length}（うちメールアドレスあり: ${withEmail}）`);
 } else {
   console.log("\n===== ディレクトリ一覧（先頭5件。自分以外が含まれうる） =====");
   const res = await people.people.listDirectoryPeople({
@@ -75,5 +77,7 @@ if (query) {
     sources: ["DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE"],
     pageSize: 5,
   });
-  console.log(JSON.stringify(res.data, null, 2));
+  const found = res.data.people ?? [];
+  const withEmail = found.filter((p) => p.emailAddresses?.length).length;
+  console.log(`件数: ${found.length}（うちメールアドレスあり: ${withEmail}）`);
 }

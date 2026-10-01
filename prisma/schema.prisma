@@ -2,7 +2,7 @@
 // 列の型・制約を変えるときは、必ず 06-data.md を先に直してからここを追随させる。
 //
 // Prisma の DSL で宣言できない項目は docs/design/06-data.md 6-7 の表のとおり。
-// 初回マイグレーションの末尾に手書き SQL で置いた（再実行で失われうるので要注意）。
+// 初回マイグレーションの末尾に手書き SQL で置いた（失われうる条件は 06-data.md 6-7 の注記を参照）。
 // そのため役割が閉じた集合の列（role・kind・label・publication_consent）も
 // Prisma の enum ではなく String で宣言する（CHECK 側で守るため）。
 
@@ -97,7 +97,7 @@ model Work {
 
   team             Team  @relation(fields: [teamId], references: [id])
   // onDelete: Restrict — 既定のSET NULLだと、公開許可を設定した利用者を削除したとき
-  // consent_set_byだけがNULLになり、相関CHECK（下記@@map直前）に違反して読みにくい
+  // consent_set_byだけがNULLになり、相関CHECK（初回マイグレーションの手書き部分・06-data.md 6-7）に違反して読みにくい
   // エラーになる（水戸レビューPR #45確認）。RESTRICTで外部キー違反として先に止める
   consentSetByUser User? @relation(fields: [consentSetBy], references: [id], onDelete: Restrict)
 

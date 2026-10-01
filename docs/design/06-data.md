@@ -5,7 +5,7 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-29（蒲山・水戸レビューM-3対応。44行目の「H-6・#7等」からH-6を除去）
+> **最終更新**：2026-10-01（蒲山・H-6決着を反映。先行方針の表と44行目からH-6を除き、6-3・6-4 の根拠を決着日の参照にした）
 
 ## この章が答える問い
 
@@ -63,7 +63,7 @@
 | **H-26**（新規・2026-09-21 起票） | 先生の事前登録をメールのみで許すか、初回サインイン後の昇格のみか（`users.name NOT NULL` との関係） | `users` は現行の定義のまま、初回サインイン後の昇格のみが成立する形で組む |
 | **H-27**（新規・2026-09-21 起票） | 年度セットアップ時点で資料枠の締切が決まっているか（`material_slots.deadline` の NULL 可否） | NULL 可で組む。未設定の枠は遅延判定の対象外 |
 
-> **H-6（提出日時が単一だと期限内提出が遅延に化ける）は 2026-09-29 に決着した**（`../decisions.md`）。先行方針（2値で組む）がそのまま正式決定になったため、表からは削除した。
+> **H-6 は 2026-09-29 に決着した**（`../decisions.md`）。
 
 ### 既存モック実装との差（2026-09-03 監査）
 
@@ -378,8 +378,8 @@ erDiagram
 | team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, material_slot_id) | 提出の粒度＝チーム×発表会×資料枠 |
 | material_slot_id | int | NOT NULL | — | FK → material_slots.id | 同上。発表会への参照は `material_slots.event_occasion_id` 経由で辿る |
 | url | text | NOT NULL | — | — | 形式検証のみ実施（2026-07-26）。アクセス可否は検証しない |
-| first_submitted_at | timestamp | NOT NULL | — | — | **H-6 の2値方式**（初回提出日時。差し替えでも変わらない） |
-| last_submitted_at | timestamp | NOT NULL | — | — | **H-6 の2値方式**（最終更新日時。差し替えのたびに上書き） |
+| first_submitted_at | timestamp | NOT NULL | — | — | **2026-09-29 決着の2値方式**（初回提出日時。差し替えでも変わらない） |
+| last_submitted_at | timestamp | NOT NULL | — | — | **2026-09-29 決着の2値方式**（最終更新日時。差し替えのたびに上書き） |
 
 > **状態列を持たない。** 「未提出／提出済み」（2値・`../glossary.md` §4）は行の有無で導出する（6-6）。**版履歴は持たない**（2026-07-24）— 上書きは `url`・`last_submitted_at` の UPDATE で表現し、別テーブルへの追記はしない。
 > **年度アーカイブ後は編集不可**（2026-07-26）だが、アプリ層の制御であり列は追加しない（`fiscal_years.is_archived` を経由して判定）。
@@ -395,7 +395,7 @@ erDiagram
 | team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, event_occasion_id) | 1チーム×1発表会（年4件・A-3 決着） |
 | event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 同上 |
 | tech_stack | text | NULL | — | — | **使用技術欄**。アーカイブ検索の対象（2026-07-26）。**自由記述かどうかは T-3 未決 — 暫定で自由記述（text）とする** |
-| first_submitted_at | timestamp | NOT NULL | — | — | H-6 の2値方式を提出と同じ形で適用。**`submissions` と NULL 可否を揃えた**：行の存在＝提出済みという 6-6 の導出規則を保つため、行は初回提出時にしか作らない |
+| first_submitted_at | timestamp | NOT NULL | — | — | 2026-09-29 決着の2値方式を提出と同じ形で適用。**`submissions` と NULL 可否を揃えた**：行の存在＝提出済みという 6-6 の導出規則を保つため、行は初回提出時にしか作らない |
 | last_submitted_at | timestamp | NOT NULL | — | — | 同上 |
 
 > **入力欄の具体（背景・動機／起・結／1ページ集約に対応する列）はここに含めない。** 現行テンプレの現物が未入手のため（`../open-questions.md` §6 保留）。決着まではアプリ層で構造化データを持たせる場合も本ファイルへの列追加はせず、決着後にまとめて反映する。

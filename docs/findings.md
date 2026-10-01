@@ -4,7 +4,7 @@
 > **確度**：確定（**個々の発見は事実。ただし決定ではない**）
 > **正典**：このファイル
 > **更新のしかた**：**追記のみ。決着しても削除せず、決着日と反映先を追記する**
-> **最終更新**：2026-09-28（水戸・F-08 に追記＝2026-09-25 の追記が引いた「`glossary.md` §3 発表順」を §4 に訂正）
+> **最終更新**：2026-09-29（蒲山・F-10を新設＝Google Classroom API / People APIでのロール解決・名簿自動化の検証結果〔生徒アカウントのみ〕）
 
 ---
 
@@ -154,6 +154,14 @@ Sources:
 - [Railway vs Render 2026: Pricing & Speed Tested](https://thesoftwarescout.com/railway-vs-render-2026-best-platform-for-deploying-apps/)
 - [無料で使えるPostgreSQLサービス8選を比較！2025年版おすすめ](https://peaky.co.jp/postgresql-free/)
 - [Next.jsのホスティング選び方：Vercel/AWSなどをコストと運用負荷で比較する方法](https://sophiate.co.jp/next-js%E3%81%AE%E3%83%9B%E3%82%B9%E3%83%86%E3%82%A3%E3%83%B3%E3%82%B0%E9%81%B8%E3%81%B3%E6%96%B9%EF%BC%9Avercel-aws%E3%81%AA%E3%81%A9%E3%82%92%E3%82%B3%E3%82%B9%E3%83%88%E3%81%A8%E9%81%8B%E7%94%A8/)
+
+### F-10  Google Classroom API / People API でロール解決・名簿自動化を代替できるか（生徒アカウントでの検証）
+
+- ref   : `decisions.md` 2026-09-05（H-10・先生ホワイトリスト方式）・2026-09-21（H-29・所属はメンバー行）／`findings.md` F-06（決着欄）／`open-questions.md` H-31／PR #44（`scripts/classroom-spike.mjs`・`scripts/directory-spike.mjs`）
+- steps : 2026-09-29、YSE-Compass-dev プロジェクトで Classroom API・People API を有効化し、OAuth 同意画面に `classroom.courses.readonly`／`classroom.rosters.readonly`／`classroom.profile.emails`／`directory.readonly` を追加。**使ったアカウントは生徒のみ。先生のアカウントでは未検証**（認証情報を借りずに先生ご本人にサインインしてもらう形で、別途実施予定）
+- what  : ①`courses.list`（teacherId=me / studentId=me）：`teacherId=me` は0件、`studentId=me` は7件。**ただしロール解決の根拠には単独では使えない**（水戸レビュー PR #44 確認2）。生徒のアカウントも `userProfiles.get().permissions` に `CREATE_COURSE` を持ち、生徒が自分でコースを作るとそのコースの教師として `teacherId=me` に当たりうる（`courses.create` の仕様：`ownerId` 側が教師として追加される。**実際にコースを作っての確認はしていない**）ため、0件だったことは「生徒が先生と判定されないこと」の保証にならない。生徒アカウントでの `verifiedTeacher` の値は確認していない。②名簿自動化：`courses.students.list` は常に自分の分の生徒情報しか返らず、クラスメートの情報は見えない。`courses.teachers.list` はコースに登録された教師の一覧を返した（件数はコースごとに異なり、正確な件数・メールアドレスの有無は記録していない）。People API ディレクトリ検索（`searchDirectoryPeople`／`listDirectoryPeople`）は完全一致検索・引数無し一覧のどちらも0件（学校のWorkspace側で生徒アカウントに対するディレクトリ共有が制限されている可能性が高いと推定。原因は未確認）
+- why   : ①を採ると `requirements.md` §3-6「誤判定は必ず安全側に倒れる。権限昇格は起きない」と、H-10 の根拠②（誤判定は安全側）・④（管理者への依存なしに自己完結）が両立しない。Classroom 単独でロール解決するなら、管理者側の設定（誰がコースを作れるか・`verifiedTeacher`）に依存することになり、H-10 の根拠④と両立しない。②は、F-06 の決着欄と H-29 の根拠①②（`decisions.md` 2026-09-21）が置く前提と矛盾しない。ただし使ったのは生徒のアカウントだけで、前提を裏づけたことにはならない — 反証しうるのは、先生のアカウントで名簿のメールアドレスが返るか（未検証）
+- 決着  : **未決着。H-10・H-29 は変えていない。** 採る場合は `decisions.md` に【変更】行が要る（①を採るなら、H-10 に加えて 2026-09-21 の「Stage 1 で Google に要求する OAuth スコープは `openid email profile` のみ」も対象になる）。先生のアカウントでの①②・`verifiedTeacher` フラグの再検証は保留（先生への依頼は水戸がステークホルダー対応として行う）。結果が出次第、本欄に追記する
 
 ### 引き継ぎ予定（着手前スパイクの検証メモ・未決着）
 

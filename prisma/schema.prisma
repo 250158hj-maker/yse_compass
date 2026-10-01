@@ -1,3 +1,11 @@
+// このファイルは docs/design/06-data.md 6-3 から機械的に導出する。
+// 列の型・制約を変えるときは、必ず 06-data.md を先に直してからここを追随させる。
+//
+// Prisma の DSL で宣言できない項目は docs/design/06-data.md 6-7 の表のとおり。
+// 初回マイグレーションの末尾に手書き SQL で置いた（再実行で失われうるので要注意）。
+// そのため役割が閉じた集合の列（role・kind・label・publication_consent）も
+// Prisma の enum ではなく String で宣言する（CHECK 側で守るため）。
+
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -5,4 +13,257 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+/// 対応する語彙：glossary.md §2 年度
+model FiscalYear {
+  id         Int     @id @default(autoincrement())
+  year       Int     @unique
+  isArchived Boolean @default(false) @map("is_archived")
+
+  classes        SchoolClass[]
+  eventOccasions EventOccasion[]
+
+  @@map("fiscal_years")
+}
+
+/// 対応する語彙：glossary.md §3 クラス
+model SchoolClass {
+  id           Int    @id @default(autoincrement())
+  fiscalYearId Int    @map("fiscal_year_id")
+  name         String @db.VarChar
+
+  fiscalYear FiscalYear @relation(fields: [fiscalYearId], references: [id])
+  teams      Team[]
+
+  @@unique([fiscalYearId, name])
+  @@map("classes")
+}
+
+/// 対応する語彙：glossary.md §3 チーム／リーダー
+model Team {
+  id             Int    @id @default(autoincrement())
+  classId        Int    @map("class_id")
+  name           String @db.VarChar
+  leaderMemberId Int?   @map("leader_member_id")
+
+  class         SchoolClass    @relation(fields: [classId], references: [id])
+  work          Work?
+  members       TeamMember[]   @relation("TeamMembersOfTeam")
+  // 複合FK：teams(leader_member_id, id) → team_members(id, team_id)
+  // リーダーは必ずそのチームに所属するメンバー（decisions.md 2026-09-21・2026-09-22）。
+  // onUpdate: NoAction — 既定のCASCADEだと、リーダーのメンバー行を他チームへ移す
+  // 更新がteams.idの書き換えを試みてteams_pkeyの一意違反になる（水戸レビューPR #45確認）。
+  // 外部キー違反として拒否されるようNoActionにする（実際の移動は禁則1どおり別の設計判断が要る）
+  // 【注意】複合FKのためPrismaの関係API（connect/disconnect）は使えない
+  // （disconnectはteams.idをNULLにしようとして必ず失敗、他チームのメンバーへの
+  // connectはteams.idの書き換えを試みて一意違反になる。水戸レビューPR #45実測）。
+  // 指定・解除はleaderMemberIdを直接更新すること
+  leaderMember  TeamMember?    @relation("TeamLeaderFK", fields: [leaderMemberId, id], references: [id, teamId], onUpdate: NoAction)
+  submissions   Submission[]
+  summaries     Summary[]
+  presentations Presentation[]
+
+  @@unique([classId, name])
+  @@index([name])
+  @@map("teams")
+}
+
+/// 対応する語彙：glossary.md §3 メンバー／リーダー（H-29・2026-09-21決着）
+model TeamMember {
+  id     Int    @id @default(autoincrement())
+  teamId Int    @map("team_id")
+  name   String @db.VarChar
+  userId Int?   @unique @map("user_id")
+
+  team     Team   @relation("TeamMembersOfTeam", fields: [teamId], references: [id])
+  user     User?  @relation(fields: [userId], references: [id])
+  // Team.leaderMemberId からの複合FKの受け口。リストで宣言することで、Prismaが
+  // 1-1関係のために要求する追加のunique（06-data.mdの定義には無い）を避けられる。
+  // 実際に1メンバーが持てるリーダー先は高々1チーム（複合FKで保証・水戸レビューPR #45）
+  ledTeams Team[] @relation("TeamLeaderFK")
+
+  @@unique([id, teamId])
+  @@map("team_members")
+}
+
+/// 対応する語彙：glossary.md §6 作品／公開許可
+model Work {
+  id                 Int     @id @default(autoincrement())
+  teamId             Int     @unique @map("team_id")
+  title              String? @db.VarChar
+  publicationConsent String  @default("unset") @map("publication_consent") @db.VarChar
+  consentSetBy       Int?    @map("consent_set_by")
+
+  team             Team  @relation(fields: [teamId], references: [id])
+  // onDelete: Restrict — 既定のSET NULLだと、公開許可を設定した利用者を削除したとき
+  // consent_set_byだけがNULLになり、相関CHECK（下記@@map直前）に違反して読みにくい
+  // エラーになる（水戸レビューPR #45確認）。RESTRICTで外部キー違反として先に止める
+  consentSetByUser User? @relation(fields: [consentSetBy], references: [id], onDelete: Restrict)
+
+  @@index([title])
+  @@map("works")
+}
+
+/// 対応する語彙：glossary.md §3 ユーザーとロール
+model User {
+  id    Int    @id @default(autoincrement())
+  email String @unique @db.VarChar
+  name  String @db.VarChar
+  role  String @default("student") @db.VarChar
+
+  teamMember        TeamMember?
+  worksConsentSet   Work[]
+  comments          Comment[]
+  presentationLikes PresentationLike[]
+  commentLikes      CommentLike[]
+
+  @@map("users")
+}
+
+/// 対応する語彙：glossary.md §2 発表会
+model EventOccasion {
+  id                    Int       @id @default(autoincrement())
+  fiscalYearId          Int       @map("fiscal_year_id")
+  kind                  String    @db.VarChar
+  eventDate             DateTime? @map("event_date") @db.Date
+  isPublished           Boolean   @default(false) @map("is_published")
+  currentPresentationId Int?      @map("current_presentation_id")
+
+  fiscalYear          FiscalYear     @relation(fields: [fiscalYearId], references: [id])
+  materialSlots       MaterialSlot[]
+  presentations       Presentation[] @relation("EventPresentations")
+  summaries           Summary[]
+  // 複合FK：event_occasions(current_presentation_id, id) → presentations(id, event_occasion_id)
+  // 「いま発表中」は自分自身の発表会に属する発表しか指せない（decisions.md 2026-09-21）。
+  // onUpdate: NoAction — teams.leaderMemberと同じ理由（水戸レビューPR #45確認）
+  // 【注意】同じ理由で関係APIは使えない。指定・解除はcurrentPresentationIdを直接更新すること
+  currentPresentation Presentation?  @relation("CurrentPresentationFK", fields: [currentPresentationId, id], references: [id, eventOccasionId], onUpdate: NoAction)
+
+  @@map("event_occasions")
+}
+
+/// 対応する語彙：glossary.md §2 資料枠
+model MaterialSlot {
+  id              Int       @id @default(autoincrement())
+  eventOccasionId Int       @map("event_occasion_id")
+  slotType        String    @map("slot_type") @db.VarChar
+  deadline        DateTime?
+  isRequired      Boolean   @map("is_required")
+  templateUrl     String?   @map("template_url") @db.Text
+
+  eventOccasion EventOccasion @relation(fields: [eventOccasionId], references: [id])
+  submissions   Submission[]
+
+  @@index([eventOccasionId])
+  @@index([slotType])
+  @@map("material_slots")
+}
+
+/// 対応する語彙：glossary.md §4 提出（概要枠を除く）
+model Submission {
+  id               Int      @id @default(autoincrement())
+  teamId           Int      @map("team_id")
+  materialSlotId   Int      @map("material_slot_id")
+  url              String   @db.Text
+  firstSubmittedAt DateTime @map("first_submitted_at")
+  lastSubmittedAt  DateTime @map("last_submitted_at")
+
+  team         Team         @relation(fields: [teamId], references: [id])
+  materialSlot MaterialSlot @relation(fields: [materialSlotId], references: [id])
+
+  @@unique([teamId, materialSlotId])
+  @@map("submissions")
+}
+
+/// 対応する語彙：glossary.md §5 概要
+model Summary {
+  id               Int      @id @default(autoincrement())
+  teamId           Int      @map("team_id")
+  eventOccasionId  Int      @map("event_occasion_id")
+  techStack        String?  @map("tech_stack") @db.Text
+  firstSubmittedAt DateTime @map("first_submitted_at")
+  lastSubmittedAt  DateTime @map("last_submitted_at")
+
+  team          Team          @relation(fields: [teamId], references: [id])
+  eventOccasion EventOccasion @relation(fields: [eventOccasionId], references: [id])
+
+  @@unique([teamId, eventOccasionId])
+  @@index([eventOccasionId, teamId])
+  @@map("summaries")
+}
+
+/// 対応する語彙：glossary.md §4 発表／発表順
+model Presentation {
+  id              Int  @id @default(autoincrement())
+  teamId          Int  @map("team_id")
+  eventOccasionId Int  @map("event_occasion_id")
+  displayOrder    Int? @map("display_order")
+
+  team          Team               @relation(fields: [teamId], references: [id])
+  eventOccasion EventOccasion      @relation("EventPresentations", fields: [eventOccasionId], references: [id])
+  comments      Comment[]
+  likes         PresentationLike[]
+  // EventOccasion.currentPresentationId からの複合FKの受け口。リストで宣言する理由は
+  // TeamMember.ledTeams と同じ（06-data.mdの定義には無い追加uniqueを避けるため）
+  currentFor    EventOccasion[]    @relation("CurrentPresentationFK")
+
+  @@unique([id, eventOccasionId])
+  @@unique([teamId, eventOccasionId])
+  // UNIQUE(event_occasion_id, display_order) はDBではDEFERRABLE INITIALLY DEFERRED
+  // （並び替え時の一時的な重複を許すため。手書きマイグレーションで付与）。
+  // ここで@@uniqueとして宣言しておかないと、次のprisma migrate devがこの索引を
+  // 「消すべき索引」と誤認してDROP INDEXを生成し、適用が失敗する
+  // （制約が使っている索引は消せないため。水戸レビューPR #45推奨で実測）。
+  // 【注意】PostgreSQLはDEFERRABLEな一意制約をON CONFLICTの判定に使えないため、
+  // このキーをupsertのwhereには使わないこと（Prismaはdeferrableかどうかを比較しない）
+  @@unique([eventOccasionId, displayOrder])
+  @@map("presentations")
+}
+
+/// 対応する語彙：glossary.md §4 発表（コメントのアンカー）／requirements.md §3-9
+model Comment {
+  id              Int      @id @default(autoincrement())
+  presentationId  Int      @map("presentation_id")
+  userId          Int      @map("user_id")
+  parentCommentId Int?     @map("parent_comment_id")
+  label           String?  @db.VarChar
+  body            String   @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  presentation Presentation  @relation(fields: [presentationId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  parent       Comment?      @relation("CommentReplies", fields: [parentCommentId], references: [id])
+  replies      Comment[]     @relation("CommentReplies")
+  likes        CommentLike[]
+
+  @@index([presentationId, createdAt])
+  @@index([parentCommentId])
+  @@map("comments")
+}
+
+/// 対応する語彙：glossary.md §4／requirements.md §3-9
+model PresentationLike {
+  id             Int @id @default(autoincrement())
+  presentationId Int @map("presentation_id")
+  userId         Int @map("user_id")
+
+  presentation Presentation @relation(fields: [presentationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([presentationId, userId])
+  @@map("presentation_likes")
+}
+
+/// 対応する語彙：glossary.md §4／requirements.md §3-9
+model CommentLike {
+  id        Int @id @default(autoincrement())
+  commentId Int @map("comment_id")
+  userId    Int @map("user_id")
+
+  comment Comment @relation(fields: [commentId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([commentId, userId])
+  @@map("comment_likes")
 }

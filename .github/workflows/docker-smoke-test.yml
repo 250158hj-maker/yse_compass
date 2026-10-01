@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Type-check
+        run: pnpm exec tsc --noEmit
+
       - name: Start the app on the runner
         run: |
           nohup pnpm dev > dev.log 2>&1 &

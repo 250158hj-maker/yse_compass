@@ -520,5 +520,20 @@ erDiagram
 | 部分インデックス | 2 | 概要枠の部分ユニーク（`material_slots (event_occasion_id) WHERE slot_type = '概要'`）／`works` の `WHERE publication_consent = 'approved'`（6-5） | `material_slots`・6-5 |
 
 > **`DEFERRABLE` の根拠**：Prisma のスキーマ言語は deferrable 制約を宣言する構文を持たない（[prisma/prisma#8806](https://github.com/prisma/prisma/issues/8806)・[discussions#8789](https://github.com/prisma/prisma/discussions/8789)）。
-> **`prisma migrate dev` を再実行すると、この手書き部分が失われる可能性がある。** 実装時にマイグレーションファイルへコメントで明記すること。
-> **この表は 6-3 から数えたもの**で、Prisma の使用バージョンでの可否は Ph.2 で確かめる。**本表に載せていないもの**：複合外部キー2件（6-3 `teams`・`event_occasions`）を Prisma のスキーマ言語で表現できるかは**本章では未確認**（Ph.2 の技術検証で確かめる。表現できなければ本表に加える）／アーカイブ検索の全文検索用インデックス（6-5・Ph.2 で検証）。
+> **手書き部分が失われうる条件**：いまは `Presentation` の `@@unique([eventOccasionId, displayOrder])` の宣言により、手書き部分は `prisma migrate dev` の差分に出ない（2026-09-30・Prisma 7.10.0 で実測・水戸レビュー PR #45）。**この宣言を外すと `DROP INDEX` が生成されて適用に失敗し、初回マイグレーションを作り直すと手書き部分は生成されない。** 手書き部分があることは初回マイグレーションのファイルにもコメントで明記してある。
+> **この表は 6-3 から数えたもの**で、Prisma の使用バージョンでの可否は Ph.2 で確かめる。**本表に載せていないもの**：アーカイブ検索の全文検索用インデックス（6-5・Ph.2 で検証）。
+> **複合FK2件（6-3 `teams`・`event_occasions`）は Prisma のスキーマ言語で表現できることを確認した**（2026-09-29・`prisma/schema.prisma`）。多対1側（`teams.leader_member_id`／`event_occasions.current_presentation_id`）に `fields`／`references` を2列指定する形で宣言できる。参照される側（`team_members(id, team_id)`／`presentations(id, event_occasion_id)`）はすでに本章の定義どおり `UNIQUE`。**逆側の関係（`TeamMember.ledTeams`／`Presentation.currentFor`）をリスト（1対多）で宣言すれば、6-3 に無い追加のユニークは不要**（水戸レビュー PR #45 で確認。逆側を1対1で宣言すると、Prisma は宣言する側にも追加の `@@unique` を要求するが、DB上の多重度は複合FKだけで保証されるため、リストで宣言するほうが6-3の定義に忠実）。
+
+### 参照動作（ON DELETE／ON UPDATE）
+
+6-3 は外部キーの参照先だけを定め、削除・更新のときの動作は書いていない。**原則は Prisma の既定のまま**とする：任意の単一列の関係は `ON DELETE SET NULL`、それ以外は `ON DELETE RESTRICT`、`ON UPDATE` はすべて `CASCADE`。
+
+**例外は次の 3 本**（`prisma/schema.prisma` の `@relation` で宣言）。いずれも、既定のままだと別の制約違反として止まり、原因が読み取りにくいエラーになるため、外部キー違反として先に止める。
+
+| 外部キー | 既定 | 採用 | 理由 |
+| --- | --- | --- | --- |
+| `works.consent_set_by` → `users.id` | `ON DELETE SET NULL` | **`ON DELETE RESTRICT`** | 公開許可を設定した利用者を削除すると `consent_set_by` だけが NULL になり、`publication_consent` との相関 CHECK（6-7 上表）に違反する |
+| `teams(leader_member_id, id)` → `team_members(id, team_id)` | `ON UPDATE CASCADE` | **`ON UPDATE NO ACTION`** | リーダーのメンバー行を他チームへ移すと、カスケードが `teams.id` を書き換えようとして `teams` の主キーの一意違反になる |
+| `event_occasions(current_presentation_id, id)` → `presentations(id, event_occasion_id)` | `ON UPDATE CASCADE` | **`ON UPDATE NO ACTION`** | 上と同じ理由（「いま発表中」の発表を他の発表会へ移すと、`event_occasions.id` の書き換えになる） |
+
+> **T-2 の決着時に変わる箇所**：`comments.parent_comment_id` は既定の `ON DELETE SET NULL` で、親コメントを削除すると返信の `parent_comment_id` が NULL になり、返信がトップレベルへ移る。コメントの削除は T-2 で未決で、6-3 `comments` の注のとおり決着までは「投稿は消えない」前提で組むので、いまは起きない。T-2 で削除を認める場合は、この参照動作もあわせて決める。

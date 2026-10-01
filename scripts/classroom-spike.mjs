@@ -13,12 +13,9 @@
 // Google Cloud Console の「承認済みのリダイレクト URI」に事前登録が要る。
 //
 // 出力される名前・メールなどの個人情報は、ファイルやログに保存しない
-// （画面で確認するだけに留める。詳細は PR #44 のレビュー依頼コメント／docs/findings.md F-10）。
+// （画面で確認するだけに留める。記録は docs/findings.md F-10 に、件数と「メールアドレスが返ったか」だけを書く）。
 //
-// 注意（確認2・水戸レビュー PR #44）：teacherId=me は単独ではロール解決の判定に使えない。
-// 生徒のアカウントも userProfiles.get().permissions に CREATE_COURSE を持ち、
-// 自分でコースを作るとそのコースの教師になるため、teacherId=me に当たりうる
-// （courses.create の説明：ownerId 側が教師として追加される）。
+// teacherId=me の件数は、単独ではロール解決の判定に使えない（docs/findings.md F-10 ①）。
 
 import { createServer } from "node:http";
 import { google } from "googleapis";
@@ -74,44 +71,52 @@ async function tryCall(label, fn) {
   try {
     return await fn();
   } catch (error) {
-    console.error(`${label} が失敗しました: ${error.message}`);
+    console.error(`${label} が失敗しました: ${error.status ?? "-"} ${error.message}`);
     return null;
   }
 }
 
-async function listAll(label, list, extractItems, extractToken) {
+// 途中のページで失敗したら null を返す（途中までの件数を「取得できた件数」と読み違えないため）
+async function listAll(label, list, extractItems) {
   const items = [];
   let pageToken;
   do {
     const res = await tryCall(label, () => list(pageToken));
-    if (!res) break;
+    if (!res) return null;
     items.push(...(extractItems(res.data) ?? []));
-    pageToken = extractToken(res.data);
+    pageToken = res.data.nextPageToken;
   } while (pageToken);
   return items;
 }
 
+const FAILED = "取得失敗";
+
 console.log("\n===== ①ロール解決 =====");
 
-const asTeacher = await tryCall("courses.list(teacherId=me)", () =>
-  classroom.courses.list({ teacherId: "me" }),
+const asTeacher = await listAll(
+  "courses.list(teacherId=me)",
+  (pageToken) => classroom.courses.list({ teacherId: "me", pageToken }),
+  (data) => data.courses,
 );
-console.log(`teacherId=me で見えるコース数: ${asTeacher?.data.courses?.length ?? 0}`);
+console.log(`teacherId=me で見えるコース数: ${asTeacher?.length ?? FAILED}`);
 
-const asStudent = await tryCall("courses.list(studentId=me)", () =>
-  classroom.courses.list({ studentId: "me" }),
+const asStudent = await listAll(
+  "courses.list(studentId=me)",
+  (pageToken) => classroom.courses.list({ studentId: "me", pageToken }),
+  (data) => data.courses,
 );
-console.log(`studentId=me で見えるコース数: ${asStudent?.data.courses?.length ?? 0}`);
+console.log(`studentId=me で見えるコース数: ${asStudent?.length ?? FAILED}`);
 
-console.log(
-  "\n【注意】teacherId=me の件数だけでは教師/生徒を判定できない（確認2）。" +
-    "生徒も自分でコースを作れば teacherId=me に当たる。verifiedTeacher フラグの確認は未実施（教師アカウントでの再検証待ち）。",
-);
+console.log("\n【注意】teacherId=me の件数だけでは教師/生徒を判定できない（docs/findings.md F-10 ①）。");
 
 console.log("\n===== 自分のプロフィール =====");
 const me = await tryCall("userProfiles.get(me)", () => classroom.userProfiles.get({ userId: "me" }));
-console.log(`permissions: ${JSON.stringify(me?.data.permissions?.map((p) => p.permission) ?? [])}`);
-console.log(`verifiedTeacher: ${me?.data.verifiedTeacher ?? "(フィールド無し)"}`);
+if (me) {
+  console.log(`permissions: ${JSON.stringify(me.data.permissions?.map((p) => p.permission) ?? [])}`);
+  console.log(`verifiedTeacher: ${me.data.verifiedTeacher ?? "(フィールド無し)"}`);
+} else {
+  console.log(`permissions / verifiedTeacher: ${FAILED}`);
+}
 
 const courseId = process.argv[2];
 const userId = process.argv[3];
@@ -119,7 +124,7 @@ const userId = process.argv[3];
 if (userId && courseId) {
   console.log(`\n===== userProfiles.get(userId=${userId}) =====`);
   const target = await tryCall(`userProfiles.get(${userId})`, () => classroom.userProfiles.get({ userId }));
-  console.log(`permissions: ${JSON.stringify(target?.data.permissions?.map((p) => p.permission) ?? [])}`);
+  console.log(`permissions: ${target ? JSON.stringify(target.data.permissions?.map((p) => p.permission) ?? []) : FAILED}`);
 }
 
 if (courseId) {
@@ -129,19 +134,25 @@ if (courseId) {
     "courses.students.list",
     (pageToken) => classroom.courses.students.list({ courseId, pageToken }),
     (data) => data.students,
-    (data) => data.nextPageToken,
   );
-  const studentsWithEmail = students.filter((s) => s.profile?.emailAddress).length;
-  console.log(`生徒数: ${students.length}（うちメールアドレスあり: ${studentsWithEmail}）`);
+  if (students) {
+    const studentsWithEmail = students.filter((s) => s.profile?.emailAddress).length;
+    console.log(`生徒数: ${students.length}（うちメールアドレスあり: ${studentsWithEmail}）`);
+  } else {
+    console.log(`生徒数: ${FAILED}`);
+  }
 
   const teachers = await listAll(
     "courses.teachers.list",
     (pageToken) => classroom.courses.teachers.list({ courseId, pageToken }),
     (data) => data.teachers,
-    (data) => data.nextPageToken,
   );
-  const teachersWithEmail = teachers.filter((t) => t.profile?.emailAddress).length;
-  console.log(`教師数: ${teachers.length}（うちメールアドレスあり: ${teachersWithEmail}）`);
+  if (teachers) {
+    const teachersWithEmail = teachers.filter((t) => t.profile?.emailAddress).length;
+    console.log(`教師数: ${teachers.length}（うちメールアドレスあり: ${teachersWithEmail}）`);
+  } else {
+    console.log(`教師数: ${FAILED}`);
+  }
 } else {
   console.log("\n(courseId 未指定のため②名簿の検証はスキップ)");
 }

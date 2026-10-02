@@ -53,6 +53,6 @@ docker compose down -v     # 停止 + DB データも削除
 | 知りたいこと | 見るファイル |
 | --- | --- |
 | いつ・誰が・何を・どの順でやるか | [`pm/README.md`](pm/README.md) |
-| WBS を組むための事実（タスク台帳・依存・稼働時間） | [`pm/wbs-source.md`](pm/wbs-source.md) — **使い捨て** |
+| WBS・タスク台帳・依存・稼働時間 | [`pm/wbs.md`](pm/wbs.md) |
 
 リポジトリでの作業ルール（正典マップ・禁則・役割分担）は [`CLAUDE.md`](CLAUDE.md) にある。

@@ -525,7 +525,7 @@ erDiagram
 
 ### 参照動作（ON DELETE／ON UPDATE）
 
-6-3 は外部キーの参照先だけを定め、削除・更新のときの動作は書いていない。**原則は Prisma の既定のまま**とする：NULL を許す単一列の外部キーは `ON DELETE SET NULL`、それ以外（NOT NULL の外部キーと、複合外部キー 2 本）は `ON DELETE RESTRICT`、`ON UPDATE` はすべて `CASCADE`。
+6-3 は外部キーの参照先だけを定め、削除・更新のときの動作は書いていない。**原則は Prisma の既定のまま**とする：NULL を許す単一列の外部キーは `ON DELETE SET NULL`、それ以外（NOT NULL の外部キーと、複合外部キー 2 本）は `ON DELETE RESTRICT`、`ON UPDATE` は、次の例外を除いてすべて `CASCADE`。
 
 **例外は次の 3 本**（`prisma/schema.prisma` の `@relation` で宣言）。いずれも、既定のままだと別の制約違反として止まり、原因が読み取りにくいエラーになるため、外部キー違反として先に止める。
 

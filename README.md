@@ -6,7 +6,7 @@
 
 ## 開発環境のセットアップ
 
-**Docker で管理するのは PostgreSQL のみ。Next.js アプリはホストで直接起動する**（2026-09-04 決定・`docs/decisions.md`）。DB の中身（スキーマ）は未確定のため、まだ空のデータベースを用意するだけの構成。
+**Docker で管理するのは PostgreSQL のみ。Next.js アプリはホストで直接起動する**（2026-09-04 決定・`docs/decisions.md`）。テーブルは Prisma のマイグレーション（`docs/design/06-data.md` 6-3 から導出）で作る。手順は `docs/design/08-architecture.md` 8-6 を参照。
 
 ```bash
 cp .env.example .env

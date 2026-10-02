@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-28（蒲山・Prismaの配線導入〔PR #41〕を反映。8-1の「未導入」を「配線のみ導入」に訂正し、バージョン番号を`package.json`参照に差し替え）
+> **最終更新**：2026-09-30（蒲山・06 と Prisma・auth の導入後の実態に合わせて、8-1 の DB 行・DB アクセス行、8-3 の現状の差分、8-6 の環境変数とマイグレーションの適用、8-7 の決まり次第書く項目を更新）
 
 ## この章が答える問い
 
@@ -31,8 +31,8 @@
 | フレームワーク | Next.js 16（App Router） | 同上 | 要件の中心は CRUD とメタデータ表示（実体レス・§1-1）で、Server Component 優先の App Router により API 層を薄く保てる | `package.json`（`../../CLAUDE.md` §5 は Next.js 採用のみを定め、具体バージョンは「Ph.2 で固定」としか言っていない） |
 | UI ライブラリ | React 19 ＋ React Compiler 有効 | 同上 | 手動メモ化（`useMemo`/`useCallback`）を書かずに再描画コストを抑制できる。`next.config.ts` の `reactCompiler: true` で有効化済み | `package.json`・`next.config.ts`・**`../../CLAUDE.md` §5**（**企画書 §2-3 には記載が無く、2026-09-06 に `../decisions.md` を出典として §5 へ正典化した — H-18 決着**） |
 | スタイル | Tailwind CSS 4 | 同上 | ユーティリティクラスで完結し、画面数が多い割にデザインシステムを別途持つ規模ではない | `package.json`・**`../../CLAUDE.md` §5**（**企画書 §2-3 には記載が無く、2026-09-06 に `../decisions.md` を出典として §5 へ正典化した — H-18 決着**） |
-| DB | PostgreSQL 16（Docker イメージ `postgres:16-alpine`） | 同上 | `../../CLAUDE.md` §5 の確定採用。関係モデルで足りるデータ形状（06 データ設計は未着手のため詳細は未定） | `../../CLAUDE.md` §5・`docker-compose.yml` |
-| DB アクセス | **Prisma**（2026-09-05 に採用決定・**配線のみ導入**。空スキーマ・マイグレーション未作成） | バージョン番号は `package.json` が正 | `../../CLAUDE.md` §5・企画書 §2-3 の正典どおり。モデルとマイグレーションは 06 データ設計（#23）の後。疎通確認の `pg` 直接使用は暫定で、業務データのアクセス層には持ち込まない。下記「ORM の採用方針」参照 | `../decisions.md`（2026-09-05）・`src/app/api/health/db/route.ts`（現状の実装） |
+| DB | PostgreSQL 16（Docker イメージ `postgres:16-alpine`） | 同上 | `../../CLAUDE.md` §5 の確定採用。関係モデルで足りるデータ形状（テーブル定義は `06-data.md` 6-3） | `../../CLAUDE.md` §5・`docker-compose.yml` |
+| DB アクセス | **Prisma**（2026-09-05 に採用決定。**モデルと初回マイグレーションを導入**〔06 データ設計 #23 の 6-3 から導出〕。業務データのアクセス層（8-3 の Data Access）は未実装） | バージョン番号は `package.json` が正 | `../../CLAUDE.md` §5・企画書 §2-3 の正典どおり。driver adapter（`@prisma/adapter-pg`）は `../decisions.md`（2026-09-29）で決着。疎通確認の `pg` 直接使用は暫定で、業務データのアクセス層には持ち込まない。下記「ORM の採用方針」参照 | `../decisions.md`（2026-09-05・2026-09-29）・`prisma/schema.prisma`・`src/lib/prisma.ts`・`src/app/api/health/db/route.ts`（疎通確認は現状のまま `pg` 直接） |
 | PDF 生成 | 純粋 JS の PDF ライブラリ（ヘッドレスブラウザ非依存） | 銘柄は実装着手時に確定 | Chromium 同梱を避ける（K3 検証・`../decisions.md` 2026-09-04） | `../decisions.md`・`05-output.md` 5-4 |
 | 認証 | Auth.js ＋ Google Workspace OAuth（サインインの疎通は一次検証済み・ロール解決は未実装） | 本番投入可否は未検証（`07-interface.md` 7-2） | 学校 Google アカウントとの統合が前提。**OAuth が通るかが最大の技術リスク**（一次検証は通った・`../findings.md` F-04） | `../requirements.md` §5・`07-interface.md` 7-2 |
 | パッケージマネージャ | pnpm | — | `../../CLAUDE.md` 既定 | `../../CLAUDE.md` |
@@ -49,7 +49,7 @@
 - **現状の性質**：`main` の `src/` は DB 疎通確認用の 1 エンドポイントのみで、業務データへのアクセス層はまだ存在しない（`src/lib/mock/*` 等のモックデータは鈴木さんの `feature/mock`（未マージ）側にある）。**切り替えコストが最小の時点で決めた**
 - **スケジュール**：現行スケジュールの **W13（9/11〜9/17）が「DB接続・Prisma セットアップ・マイグレーション」を前提に組まれている**。本決定は期限 9/11 に対して先行している
 - **明示しておく留保**：**W9 に予定されていた Prisma の技術検証は未実施**で、本決定は**未検証のまま正典に従う**判断である。検証で不成立が判明した場合は `../decisions.md` へ【変更】として追記する
-- **この決定が効く先**：本表の「DB アクセス」行（反映済み）・`06-data.md` のスキーマ定義の書式（未着手）。`../../CLAUDE.md` §5 の ORM 行は**元から Prisma なので変更不要**
+- **この決定が効く先**：本表の「DB アクセス」行（反映済み）・`06-data.md` 6-7（Prisma への落とし込み・反映済み）。`../../CLAUDE.md` §5 の ORM 行は**元から Prisma なので変更不要**
 
 ---
 
@@ -111,7 +111,7 @@ flowchart TB
 - **権限判定の一次防衛線はデータアクセス層に置く**（2026-09-06・H-16 決着・`../decisions.md`／`../requirements.md` §4 セキュリティ）。**読み取りか書き込みかを問わず、データアクセス層を通る際に必ずロールと文脈（その発表が自チームか否か）を判定する。** **Server Action / Route Handler の入口に重複した権限判定は置かない**（2026-09-06 の設計判断・`09-nfr.md` 9-4）。「置いてよい」という許可の形にすると、**実装者ごとに判断が割れる余地が 2 枚目の側に残る** — H-16 が一次防衛線について消したものと同じ余地である。画面側の表示制御は二次的な UX であって防御ではない
   > **旧・先行方針（「書き込みと機微な読み取り」だけ Server Action 経由で判定）は採らない。** 8-3 の構成では**読み取りが Server Action を通らない**ため、公開前の資料（`../requirements.md` §3-3）・公開許可のない作品（同 §3-7）という**認可の主戦場である一覧画面が防衛線の外に出る**。かといって「機微な読み取り」を広く取ると 8-4 の Server Component 優先が崩れる。**データアクセス層へ移すとこの二択自体が消えるため、「機微な読み取り」という区別は設計から削除した。**
   > **文脈（自チームか否か）の判定の実装は 06 データ設計に依存する**（所属関係の照会が要る）。層の決定は 06 と独立だが、判定の具体は 06 の後
-- **現状の実態との差分**：`main` の `src/` は DB 疎通確認（`api/health/db/route.ts`）と雛形の4ファイル（`layout.tsx`／`page.tsx`／`globals.css`／`favicon.ico`）のみで、Data Access 層・Server Action 層は存在しない。**`src/lib/mock/*`・`SessionContext`・`AuthGuard`・`RoleGate` は、鈴木さんの `feature/mock`（未マージ）に実装されているモックであり、`main` にはまだ無い。** 統合後の実態としては、すべての画面が `src/lib/mock/*` のインメモリ配列を直接参照し、認可も `SessionContext`（`localStorage` の persona 切り替え）による**クライアント側の見た目の出し分けのみ**という、**H-16 が指摘していた状態そのもの**になる見込み（**2026-09-06 に決着したので、統合時にデータアクセス層での判定へ寄せる**）。06 データ設計の骨格が引けた時点（K2）で、Data Access 層と Server Action の導入に着手する
+- **現状の実態との差分**：`main` の `src/` は DB 疎通確認（`api/health/db/route.ts`）・認証（`auth.ts`／`api/auth/[...nextauth]/route.ts`。サインインの一次検証まで）・Prisma クライアント（`lib/prisma.ts`）と雛形の4ファイル（`layout.tsx`／`page.tsx`／`globals.css`／`favicon.ico`）のみで、Data Access 層・Server Action 層は存在しない。**`src/lib/mock/*`・`SessionContext`・`AuthGuard`・`RoleGate` は、鈴木さんの `feature/mock`（未マージ）に実装されているモックであり、`main` にはまだ無い。** 統合後の実態としては、すべての画面が `src/lib/mock/*` のインメモリ配列を直接参照し、認可も `SessionContext`（`localStorage` の persona 切り替え）による**クライアント側の見た目の出し分けのみ**という、**H-16 が指摘していた状態そのもの**になる見込み（**2026-09-06 に決着したので、統合時にデータアクセス層での判定へ寄せる**）。06 データ設計の骨格が引けた時点（K2）で、Data Access 層と Server Action の導入に着手する
 - **Client Component の範囲は限定する**：セッション状態、認証ガード、ロールに応じた表示切り替え、フォームの入力状態、モーダル・確認ダイアログの開閉。**一覧・詳細のデータ取得を Client Component 側で行わない**（Server Component 優先の原則・8-4）。`feature/mock`（未マージ）はこの範囲を `SessionContext`／`AuthGuard`／`RoleGate` として実装しており、統合後の実装もこの3コンポーネントの役割分担を踏襲する想定
 
 ---
@@ -158,7 +158,7 @@ flowchart TB
 
 ### 環境変数
 
-- `.env.example` をコピーして `.env` を作成（`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `DATABASE_URL`）
+- `.env.example` をコピーして `.env` を作成（`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `DATABASE_URL` / `AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `SCHOOL_WORKSPACE_DOMAIN`）
 - **`DATABASE_URL` のホスト名は `localhost`。** アプリはホストから起動し、`db` サービスが公開する 5432 番へ繋ぐ。**`.env.local` による上書きは不要**（手順が 1 つになったため）
 
 ### ローカル起動手順
@@ -167,11 +167,14 @@ flowchart TB
 cp .env.example .env
 docker compose up -d db
 pnpm install
+pnpm exec prisma migrate deploy
 pnpm dev
 ```
 
 - 疎通確認：`http://localhost:3000/api/health/db` が `{"status":"ok"}` を返せば DB 接続成功
 - 停止は `docker compose down`。データは `db_data` に残る。データごと消すなら `docker compose down -v`
+- `pnpm install` の `postinstall` で `prisma generate` が走る（初回 clone・lockfile 更新時）。**`schema.prisma` の変更だけを pull したとき（`node_modules` は変わらない）は `postinstall` が走らないため、`pnpm exec prisma generate` を手で実行すること**。**pull でマイグレーション（`prisma/migrations/`）が増えたときは、`pnpm exec prisma migrate deploy` で手元の DB に適用すること**
+- `pnpm exec prisma migrate deploy` は既存のマイグレーション（`prisma/migrations/`）をそのまま適用する。**新しいマイグレーションを作る（`migrate dev`）ときは、DEFERRABLE な一意制約（`presentations`）を `DROP INDEX` しようとして失敗しないか確認すること**（`docs/design/06-data.md` 6-7・`prisma/schema.prisma` の `Presentation` モデルのコメント参照）
 
 ### 既存環境からの移行（2026-09-04 の変更に伴い 1 回だけ必要）
 
@@ -191,7 +194,7 @@ pnpm dev
 
 **保留。** 本番環境（インターネット経由／イントラネット）が未確定（`../requirements.md` §5・企画書 §2-2）。判断期限を学校側と合意する必要があり、水戸がステークホルダー対応として調整中（対面ヒヤリングでの回収項目）。
 
-- 決まり次第、次を書く：ホスティング先・コンテナ実行環境・DB のマネージド or 自前運用・HTTPS 終端・ビルド〜デプロイの手順
+- 決まり次第、次を書く：ホスティング先・コンテナ実行環境・DB のマネージド or 自前運用・HTTPS 終端・ビルド〜デプロイの手順・`postinstall`（`prisma generate`）の扱い（devDependencies を入れない install〔`pnpm install --prod`〕では `prisma` が無く失敗し、スキーマより先に依存だけを install する形では `schema.prisma` が見つからず失敗する。いまはどちらの形も使っていない）
 - 依存する未決：**H-23・H-28**（`../open-questions.md`）＝イントラネット案の成立性（Google への到達・redirect URI・教室間の到達性）。**先行方針：インターネット経由を既定として書く。** 加えて、本番環境の選定そのもの（設計原則上、時刻・条件による自動遷移を持たないため、デプロイ構成自体に自動化のスコープ差は生じない想定）
 
 ---

@@ -62,7 +62,7 @@ flowchart LR
     end
 
     subgraph "本番環境(未確定・8-7)"
-        App["Next.js アプリ<br/>(単一コンテナ・App Router)"]
+        App["Next.js アプリ<br/>(単一プロセス・App Router)"]
         DB[("PostgreSQL")]
     end
 
@@ -197,20 +197,21 @@ pnpm dev
 
 ### 8-7-1. 前提と先行方針（`00-conventions.md` §3-3 の 3 点）
 
-- **前提とした先行方針**：**インターネット経由を既定として書く。** イントラネットは、`../open-questions.md` H-23 (a)(d) と H-28 がすべて成立した場合のみ採る（H-23・H-28 の先行方針）。8-1（ポーリング採用等）は変えない
+- **前提とした先行方針**：`../open-questions.md` §7 の表の「H-23・H-28 イントラネット案の成立性」の行（インターネット経由を既定として書く）。本番環境の選定そのものは `../requirements.md` §5 のとおり未確定。8-5 のポーリングは変えない
 - **決着したときに変わる箇所**：
   - 本番環境の選定（インターネット経由／イントラネット）が決まる → 8-7-2 の実行形態、8-7-4 の HTTPS 終端と redirect URI の置き場所、8-7-5
   - ホスティング先・請求先が決まる（G-1・G-6）→ 8-7-2 の候補の絞り込み、8-7-6
+  - 本番 DB の置き場所が決まる → 8-7-3 のマイグレーションの適用場所
   - G-6 が「学外には置けない」で決着する → 既定そのものを見直す（`../open-questions.md` G-6）
-- **未決 ID**：**H-23・H-28**（イントラネット案の成立性）・**G-1**（運用・費用の主体）・**G-6**（学外へのデータ配置）
+- **未決 ID**：**H-23・H-28**（イントラネット案の成立性）・**G-1**（運用・費用の主体）・**G-6**（学外へのデータ配置）・**G-2**（可用性。8-7-3 のリリース手順で停止時間を許すか）
 
 ### 8-7-2. 実行形態
 
-- **構成要素は 8-2 のまま**（ブラウザ・Next.js アプリ・PostgreSQL。Google は外部）。キュー・キャッシュ・バッチは置かない。当日進行の伝播はポーリング（8-5）で、接続を張り続けないため、**HTTP リクエストを受けられる環境ならホスティング形態を選ばない**
-- **アプリは `next start` で動く 1 プロセス。** `package.json` の `start` は `next start`。`next.config.ts` に `output` の指定は無い（standalone 出力は使っていない）
+- **構成要素は 8-2 のまま**（ブラウザ・Next.js アプリ・PostgreSQL。Google は外部）。キュー・キャッシュ・バッチは置かない。当日進行の伝播はポーリング（8-5）で、接続を張り続けないため、**HTTP リクエストを受けられる環境なら、方式の面ではホスティング形態を選ばない**（ただし、120 名のポーリングがプランの呼び出し回数・転送量の上限に収まるかは `../findings.md` F-09 で未確認）
+- **自前で起動する形（コンテナ・VM・学内サーバー）では、アプリは `next start` で動く 1 プロセス。** `package.json` の `start` は `next start`。`next.config.ts` に `output` の指定は無い（standalone 出力は使っていない）
 - **DB はマネージド PostgreSQL か、アプリと同じ環境の自前運用かのどちらか。** 接続は `DATABASE_URL` の 1 本だけで、アプリ側は `@prisma/adapter-pg`（`src/lib/prisma.ts`）で繋ぐ。接続の張り方（サーバーレス実行かコンテナ実行か）による差が出るかは、`../findings.md` F-09 で未確認のまま
 - **ホスティング先の銘柄はここでは決めない。** 候補間に技術的な差は見当たらなかった（F-09・机上調査・2026-09-24）。決まらない理由は技術ではなく、費用の支払い主体と学外へのデータ配置（G-1・G-6）が正典に無いこと
-- **コンテナ化の要否は、選んだホスティング先に依存する。** 8-2 の図は「単一コンテナ」と描いているが、**リポジトリに `Dockerfile` は無い**（8-6・F-02）。本番にコンテナを使う場合、`Dockerfile` はこの時点で新規に作るものになる。コンテナを使わない形（ビルド〜起動をホスティング側が行う形）なら不要
+- **コンテナ化の要否は、選んだホスティング先に依存する。** **リポジトリに `Dockerfile` は無い**（8-6・F-02）。本番にコンテナを使う場合、`Dockerfile` はこの時点で新規に作るものになる。コンテナを使わない形（ビルド〜起動をホスティング側が行う形）なら不要
 
 ### 8-7-3. ビルドとデプロイの手順
 
@@ -219,21 +220,21 @@ pnpm dev
 | 制約 | 根拠 | 帰結 |
 | --- | --- | --- |
 | install の時点で `scripts/only-pnpm.mjs` が見える必要がある | `package.json` の `preinstall` が `node scripts/only-pnpm.mjs` を実行し、npm・yarn・bun での install を止める | **ビルド環境のパッケージマネージャは pnpm に固定する**（ホスティング側の既定が npm なら切り替える）。依存だけを先に install するコンテナの層分けでは、`scripts/` も先にコピーする |
-| ビルドに devDependencies が要る | `prisma`・`dotenv`・`typescript`・`tailwindcss`・`babel-plugin-react-compiler` はすべて devDependencies | **ビルド段階の install は `--prod` にしない**（`pnpm install --frozen-lockfile`）。`--prod` では `postinstall` の `prisma generate` が `prisma` 不在で失敗する（8-7 の旧記述のとおり） |
+| ビルドに devDependencies が要る | `prisma`・`dotenv`・`typescript`・`tailwindcss`・`babel-plugin-react-compiler` はすべて devDependencies | **ビルド段階の install は `--prod` にしない**（`pnpm install --frozen-lockfile`）。`--prod` では `postinstall` の `prisma generate` が `prisma` 不在で失敗する |
 | Prisma クライアントは生成物でリポジトリに無い | `src/generated/prisma` は `.gitignore` 対象。`postinstall` が `prisma generate` を実行 | **`next build` の前に `prisma generate` が済んでいること**が要る。install の `postinstall` に任せるなら、`schema.prisma` と `prisma7.config.ts` が install の時点で見える状態にする（スキーマより先に依存だけを install する形は失敗する） |
-| マイグレーションの適用に Prisma CLI が要る | `pnpm exec prisma migrate deploy`（8-6）。CLI は `prisma7.config.ts` を読み、`dotenv` を import する | **適用を行う環境には `prisma` と `dotenv` が必要。** 実行時の環境（`next start` だけを動かす環境）に入れないなら、適用はビルド側・リリース段階の別ジョブで行う |
+| マイグレーションの適用に Prisma CLI が要る | `pnpm exec prisma migrate deploy`（8-6）。CLI は `prisma7.config.ts` を読み、`dotenv` を import する | **適用を行う環境には `prisma` と `dotenv` が必要。** 実行時の環境（`next start` だけを動かす環境）に入れないなら、適用はビルド側・リリース段階の別ジョブで行う。**適用を行う環境は、本番 DB へ到達でき、本番の `DATABASE_URL` を持つこと**（`prisma7.config.ts` が `DATABASE_URL` から読む） |
 | ビルド時に `SCHOOL_WORKSPACE_DOMAIN` が要る | `src/auth.ts` が読み込み時に未設定なら例外を投げる（8-6）。**2026-10-04 に `next build --webpack` で確かめた**：未設定だと `/api/auth/[...nextauth]` のページデータ収集で失敗し、設定すると通る（本番の `pnpm build` は `--turbopack` で、こちらでは未実行） | **ビルド環境にも `SCHOOL_WORKSPACE_DOMAIN` を渡す。** 値を空のままだとビルドが落ちる |
 
-**手順の順序**（1 リリースあたり）：
+**手順の順序**（1 リリースあたり。自前で起動する形の場合。ビルドと起動をホスティング側が行う形では、手順 3 の置き場所はホスティング先が決まってから書く）：
 
 1. 依存を入れる（`pnpm install --frozen-lockfile`。`postinstall` で `prisma generate`）
 2. ビルドする（`pnpm build`）
-3. マイグレーションを適用する（`pnpm exec prisma migrate deploy`）。**新しいアプリを起動する前に済ませる**（新旧のスキーマが混ざる時間を作らない）
+3. マイグレーションを適用する（`pnpm exec prisma migrate deploy`）。**1 プロセス構成なので、旧アプリを止めてから適用し、新アプリを起動する**（停止時間を許す形。許すかどうかは G-2 が正典に無く未決）。止めずに入れ替えるなら、マイグレーションを旧アプリと両立する形（列・表の追加のみ）に限る
 4. アプリを起動する（`pnpm start`）
 
-**本番で渡す環境変数**（`.env.example` から、ローカル開発専用のものを除く）：`DATABASE_URL`・`AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`SCHOOL_WORKSPACE_DOMAIN`。`POSTGRES_USER`／`POSTGRES_PASSWORD`／`POSTGRES_DB` は `docker-compose.yml` 用で、本番のアプリは使わない。**値の置き場所と渡し方は、ホスティング先と請求先（G-1）が決まるまで決まらない。** 秘密の値（`AUTH_SECRET`・`AUTH_GOOGLE_SECRET`・`DATABASE_URL` のパスワード）はリポジトリに置かない。
+**本番で渡す環境変数**（`.env.example` から、ローカル開発専用のものを除く）：`DATABASE_URL`・`AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`SCHOOL_WORKSPACE_DOMAIN`。加えて、`AUTH_URL`（公開 URL）か `AUTH_TRUST_HOST=true` のどちらかが要る見込み（`.env.example` には無い。`@auth/core` 0.41.3 の `lib/utils/env.js` は `trustHost` の既定を、`AUTH_URL`・`AUTH_TRUST_HOST`・Vercel・Cloudflare Pages のいずれかが無く `NODE_ENV` が `production` だと false にし、`lib/utils/assert.js` が `UntrustedHost` を返す。ソースを読んだだけで実機では確かめていない）。`POSTGRES_USER`／`POSTGRES_PASSWORD`／`POSTGRES_DB` は `docker-compose.yml` 用で、本番のアプリは使わない。**値の置き場所と渡し方は、ホスティング先と請求先（G-1）が決まるまで決まらない。** 秘密の値（`AUTH_SECRET`・`AUTH_GOOGLE_SECRET`・`DATABASE_URL` のパスワード）はリポジトリに置かない。
 
-**未確認（実装時に確かめる）**：本番の URL をプロキシや PaaS の背後で受けるとき、Auth.js が自分の URL（コールバック先）をどう決めるか。`src/auth.ts` と `.env.example` には `AUTH_URL`・`trustHost` の指定が無い。ホスティング先が決まったら、サインインの往復（redirect URI の一致）を実際に通して確かめる。
+**未確認（実装時に確かめる）**：上の `AUTH_URL` と `AUTH_TRUST_HOST` のどちらを使うか、プロキシや PaaS の背後で redirect URI が一致するか。`src/auth.ts` と `.env.example` には `AUTH_URL`・`trustHost` の指定が無い。ホスティング先が決まったら、サインインの往復（redirect URI の一致）を実際に通して確かめる。
 
 ### 8-7-4. HTTPS と認証の接続
 
@@ -250,7 +251,7 @@ pnpm dev
 ### 8-7-6. 決着待ちの項目
 
 - **ホスティング先・請求先**：G-1（費用の支払い主体・アカウントの名義）と G-6（学外へのデータ配置）の決着まで決まらない
-- **PDF 生成の測り直し**：`05-output.md` 5-4 が「8-7 決着時に、本番イメージに Chromium を載せたコストと、ホスト直起動で Chromium 実行環境を各開発者に用意するコストを測り直す」と書いている。**現在の PDF 方式は純粋 JS 生成（ヘッドレスブラウザ非依存）で、8-7 の実行形態に Chromium を要求しない**
+- **PDF 生成の測り直し**：`05-output.md` 5-4 は、8-7 の決着時に、本番イメージに Chromium を載せるコストと、ホスト直起動で Chromium 実行環境を各開発者に用意するコストを測り直す、としている（要約。05 は確度「暫定」）。**現在の PDF 方式は純粋 JS 生成（ヘッドレスブラウザ非依存）で、8-7 の実行形態に Chromium を要求しない**（`../decisions.md` 2026-09-04）
 
 ---
 

@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-10-03（蒲山）
+> **最終更新**：2026-10-04（蒲山）
 
 ## この章が答える問い
 
@@ -218,10 +218,11 @@ pnpm dev
 
 | 制約 | 根拠 | 帰結 |
 | --- | --- | --- |
+| install の時点で `scripts/only-pnpm.mjs` が見える必要がある | `package.json` の `preinstall` が `node scripts/only-pnpm.mjs` を実行し、npm・yarn・bun での install を止める | **ビルド環境のパッケージマネージャは pnpm に固定する**（ホスティング側の既定が npm なら切り替える）。依存だけを先に install するコンテナの層分けでは、`scripts/` も先にコピーする |
 | ビルドに devDependencies が要る | `prisma`・`dotenv`・`typescript`・`tailwindcss`・`babel-plugin-react-compiler` はすべて devDependencies | **ビルド段階の install は `--prod` にしない**（`pnpm install --frozen-lockfile`）。`--prod` では `postinstall` の `prisma generate` が `prisma` 不在で失敗する（8-7 の旧記述のとおり） |
 | Prisma クライアントは生成物でリポジトリに無い | `src/generated/prisma` は `.gitignore` 対象。`postinstall` が `prisma generate` を実行 | **`next build` の前に `prisma generate` が済んでいること**が要る。install の `postinstall` に任せるなら、`schema.prisma` と `prisma7.config.ts` が install の時点で見える状態にする（スキーマより先に依存だけを install する形は失敗する） |
 | マイグレーションの適用に Prisma CLI が要る | `pnpm exec prisma migrate deploy`（8-6）。CLI は `prisma7.config.ts` を読み、`dotenv` を import する | **適用を行う環境には `prisma` と `dotenv` が必要。** 実行時の環境（`next start` だけを動かす環境）に入れないなら、適用はビルド側・リリース段階の別ジョブで行う |
-| ビルド時に `SCHOOL_WORKSPACE_DOMAIN` が要る | `src/auth.ts` が読み込み時に未設定なら例外を投げる（8-6） | **ビルド環境にも `SCHOOL_WORKSPACE_DOMAIN` を渡す。** 値を空のままだとビルドが落ちる |
+| ビルド時に `SCHOOL_WORKSPACE_DOMAIN` が要る | `src/auth.ts` が読み込み時に未設定なら例外を投げる（8-6）。**2026-10-04 に `next build --webpack` で確かめた**：未設定だと `/api/auth/[...nextauth]` のページデータ収集で失敗し、設定すると通る（本番の `pnpm build` は `--turbopack` で、こちらでは未実行） | **ビルド環境にも `SCHOOL_WORKSPACE_DOMAIN` を渡す。** 値を空のままだとビルドが落ちる |
 
 **手順の順序**（1 リリースあたり）：
 

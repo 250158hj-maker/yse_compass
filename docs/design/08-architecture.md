@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-09-30（蒲山・06 と Prisma・auth の導入後の実態に合わせて、8-1 の DB 行・DB アクセス行、8-3 の現状の差分、8-6 の環境変数とマイグレーションの適用、8-7 の決まり次第書く項目を更新）
+> **最終更新**：2026-10-05（蒲山）
 
 ## この章が答える問い
 
@@ -46,7 +46,7 @@
 **これは正典どおりに戻す決定であって、正典の変更ではない。** `CLAUDE.md` §5 の Prisma は独自の技術選定ではなく、**企画書 §2-3「ソフトウェア構成」に明記された凍結済み Ph.0 成果物**（先生に説明済み）が出どころで、逸脱するなら対外的な説明責任が発生する。
 
 - **乖離の経緯**：`main` の実装が `pg` 直接で始まっていた乖離は 2026-09-03 の三者整合性監査で M-1 として見つかっていたが `open-questions.md` への起票が漏れており、本章の執筆時に実物を再確認して H-17 として正式に昇格させた（`../findings.md` F-01）。**起票から決着まで 1 日。**
-- **現状の性質**：`main` の `src/` は DB 疎通確認用の 1 エンドポイントのみで、業務データへのアクセス層はまだ存在しない（`src/lib/mock/*` 等のモックデータは鈴木さんの `feature/mock`（未マージ）側にある）。**切り替えコストが最小の時点で決めた**
+- **決定時点（2026-09-05）の性質**：当時の `main` の `src/` は DB 疎通確認用の 1 エンドポイントのみで、業務データへのアクセス層は無かった（`src/lib/mock/*` 等のモックデータは鈴木さんの `feature/mock` 側にあった。いまの `src/` は 8-3 の「現状の実態との差分」）。**切り替えコストが最小の時点で決めた**
 - **スケジュール**：現行スケジュールの **W13（9/11〜9/17）が「DB接続・Prisma セットアップ・マイグレーション」を前提に組まれている**。本決定は期限 9/11 に対して先行している
 - **明示しておく留保**：**W9 に予定されていた Prisma の技術検証は未実施**で、本決定は**未検証のまま正典に従う**判断である。検証で不成立が判明した場合は `../decisions.md` へ【変更】として追記する
 - **この決定が効く先**：本表の「DB アクセス」行（反映済み）・`06-data.md` 6-7（Prisma への落とし込み・反映済み）。`../../CLAUDE.md` §5 の ORM 行は**元から Prisma なので変更不要**
@@ -62,7 +62,7 @@ flowchart LR
     end
 
     subgraph "本番環境(未確定・8-7)"
-        App["Next.js アプリ<br/>(単一コンテナ・App Router)"]
+        App["Next.js アプリ<br/>(単一プロセス・App Router)"]
         DB[("PostgreSQL")]
     end
 
@@ -111,7 +111,7 @@ flowchart TB
 - **権限判定の一次防衛線はデータアクセス層に置く**（2026-09-06・H-16 決着・`../decisions.md`／`../requirements.md` §4 セキュリティ）。**読み取りか書き込みかを問わず、データアクセス層を通る際に必ずロールと文脈（その発表が自チームか否か）を判定する。** **Server Action / Route Handler の入口に重複した権限判定は置かない**（2026-09-06 の設計判断・`09-nfr.md` 9-4）。「置いてよい」という許可の形にすると、**実装者ごとに判断が割れる余地が 2 枚目の側に残る** — H-16 が一次防衛線について消したものと同じ余地である。画面側の表示制御は二次的な UX であって防御ではない
   > **旧・先行方針（「書き込みと機微な読み取り」だけ Server Action 経由で判定）は採らない。** 8-3 の構成では**読み取りが Server Action を通らない**ため、公開前の資料（`../requirements.md` §3-3）・公開許可のない作品（同 §3-7）という**認可の主戦場である一覧画面が防衛線の外に出る**。かといって「機微な読み取り」を広く取ると 8-4 の Server Component 優先が崩れる。**データアクセス層へ移すとこの二択自体が消えるため、「機微な読み取り」という区別は設計から削除した。**
   > **文脈（自チームか否か）の判定の実装は 06 データ設計に依存する**（所属関係の照会が要る）。層の決定は 06 と独立だが、判定の具体は 06 の後
-- **現状の実態との差分**：`main` の `src/` は DB 疎通確認（`api/health/db/route.ts`）・認証（`auth.ts`／`api/auth/[...nextauth]/route.ts`。サインインの一次検証まで）・Prisma クライアント（`lib/prisma.ts`）と雛形の4ファイル（`layout.tsx`／`page.tsx`／`globals.css`／`favicon.ico`）のみで、Data Access 層・Server Action 層は存在しない。**`src/lib/mock/*`・`SessionContext`・`AuthGuard`・`RoleGate` は、鈴木さんの `feature/mock`（未マージ）に実装されているモックであり、`main` にはまだ無い。** 統合後の実態としては、すべての画面が `src/lib/mock/*` のインメモリ配列を直接参照し、認可も `SessionContext`（`localStorage` の persona 切り替え）による**クライアント側の見た目の出し分けのみ**という、**H-16 が指摘していた状態そのもの**になる見込み（**2026-09-06 に決着したので、統合時にデータアクセス層での判定へ寄せる**）。06 データ設計の骨格が引けた時点（K2）で、Data Access 層と Server Action の導入に着手する
+- **現状の実態との差分**：`main` の `src/` は DB 疎通確認（`app/api/health/db/route.ts`）・認証（`auth.ts`／`app/api/auth/[...nextauth]/route.ts`。サインインの一次検証まで）・Prisma クライアント（`lib/prisma.ts`）と `app/` の雛形の4ファイル（`layout.tsx`／`page.tsx`／`globals.css`／`favicon.ico`）のみで、Data Access 層・Server Action 層は存在しない。**`src/lib/mock/*`・`SessionContext`・`AuthGuard`・`RoleGate` は、鈴木さんの `feature/mock`（未マージ）に実装されているモックであり、`main` にはまだ無い。** 統合後の実態としては、すべての画面が `src/lib/mock/*` のインメモリ配列を直接参照し、認可も `SessionContext`（`localStorage` の persona 切り替え）による**クライアント側の見た目の出し分けのみ**という、**H-16 が指摘していた状態そのもの**になる見込み（**2026-09-06 に決着したので、統合時にデータアクセス層での判定へ寄せる**）。06 データ設計の骨格が引けた時点（K2）で、Data Access 層と Server Action の導入に着手する
 - **Client Component の範囲は限定する**：セッション状態、認証ガード、ロールに応じた表示切り替え、フォームの入力状態、モーダル・確認ダイアログの開閉。**一覧・詳細のデータ取得を Client Component 側で行わない**（Server Component 優先の原則・8-4）。`feature/mock`（未マージ）はこの範囲を `SessionContext`／`AuthGuard`／`RoleGate` として実装しており、統合後の実装もこの3コンポーネントの役割分担を踏襲する想定
 
 ---
@@ -160,6 +160,7 @@ flowchart TB
 
 - `.env.example` をコピーして `.env` を作成（`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `DATABASE_URL` / `AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `SCHOOL_WORKSPACE_DOMAIN`）
 - **`DATABASE_URL` のホスト名は `localhost`。** アプリはホストから起動し、`db` サービスが公開する 5432 番へ繋ぐ。**`.env.local` による上書きは不要**（手順が 1 つになったため）
+- **`AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `SCHOOL_WORKSPACE_DOMAIN` は `.env.example` では空。** 下の疎通確認（`/api/health/db`）までは空のままで動く。`SCHOOL_WORKSPACE_DOMAIN` が空だと `src/auth.ts` が読み込み時に例外を投げるため、`pnpm build` の前にはこれを、サインインを試す前には 4 つとも値を入れる（作り方は `.env.example` のコメント）
 
 ### ローカル起動手順
 
@@ -192,16 +193,71 @@ pnpm dev
 
 ## 8-7. デプロイ構成
 
-**保留。** 本番環境（インターネット経由／イントラネット）が未確定（`../requirements.md` §5・企画書 §2-2）。判断期限を学校側と合意する必要があり、水戸がステークホルダー対応として調整中（対面ヒヤリングでの回収項目）。
+> **この節は下書き（2026-10-03）。** 8-7-1〜8-7-4 は書ける範囲を書いた。8-7-5 は未執筆で、`../findings.md` F-04・F-07・F-11 を引いて書く。8-7-1 の先行方針は、イントラネット案の扱いの決定が `../decisions.md` に入ったら書き直す。
 
-- 決まり次第、次を書く：ホスティング先・コンテナ実行環境・DB のマネージド or 自前運用・HTTPS 終端・ビルド〜デプロイの手順・`postinstall`（`prisma generate`）の扱い（devDependencies を入れない install〔`pnpm install --prod`〕では `prisma` が無く失敗し、スキーマより先に依存だけを install する形では `schema.prisma` が見つからず失敗する。いまはどちらの形も使っていない）
-- 依存する未決：**H-23・H-28**（`../open-questions.md`）＝イントラネット案の成立性（Google への到達・redirect URI・教室間の到達性）。**先行方針：インターネット経由を既定として書く。** 加えて、本番環境の選定そのもの（設計原則上、時刻・条件による自動遷移を持たないため、デプロイ構成自体に自動化のスコープ差は生じない想定）
+### 8-7-1. 前提と先行方針（`00-conventions.md` §3-3 の 3 点）
+
+- **前提とした先行方針**：`../open-questions.md` §7 の表の「H-23・H-28 イントラネット案の成立性」の行（インターネット経由を既定として書く）。本番環境の選定そのものは `../requirements.md` §5 のとおり未確定。8-5 のポーリングは変えない
+- **決着したときに変わる箇所**：
+  - 本番環境の選定（インターネット経由／イントラネット）が決まる → 8-7-2 の実行形態、8-7-4 の HTTPS 終端と redirect URI の置き場所、8-7-5
+  - ホスティング先・請求先が決まる（G-1・G-6）→ 8-7-2 の候補の絞り込み、8-7-6
+  - 本番 DB の置き場所が決まる → 8-7-3 のマイグレーションの適用場所
+  - G-6 が「学外には置けない」で決着する → 既定そのものを見直す（`../open-questions.md` G-6）
+- **未決 ID**：**H-23・H-28**（イントラネット案の成立性）・**G-1**（運用・費用の主体）・**G-6**（学外へのデータ配置）・**G-2**（可用性。8-7-3 のリリース手順で停止時間を許すか）
+
+### 8-7-2. 実行形態
+
+- **構成要素は 8-2 のまま**（ブラウザ・Next.js アプリ・PostgreSQL。Google は外部）。キュー・キャッシュ・バッチは置かない。当日進行の伝播はポーリング（8-5）で、接続を張り続けないため、**HTTP リクエストを受けられる環境なら、方式の面ではホスティング形態を選ばない**（ただし、120 名のポーリングがプランの呼び出し回数・転送量の上限に収まるかは `../findings.md` F-09 で未確認）
+- **自前で起動する形（コンテナ・VM・学内サーバー）では、アプリは `next start` で動く 1 プロセス。** `package.json` の `start` は `next start`。`next.config.ts` に `output` の指定は無い（standalone 出力は使っていない）
+- **DB はマネージド PostgreSQL か、アプリと同じ環境の自前運用かのどちらか。** 接続は `DATABASE_URL` の 1 本だけで、アプリ側は `@prisma/adapter-pg`（`src/lib/prisma.ts`）で繋ぐ。接続の張り方（サーバーレス実行かコンテナ実行か）による差が出るかは、`../findings.md` F-09 で未確認のまま
+- **ホスティング先の銘柄はここでは決めない。** 候補間に技術的な差は見当たらなかった（F-09・机上調査・2026-09-24）。決まらない理由は技術ではなく、費用の支払い主体と学外へのデータ配置（G-1・G-6）が正典に無いこと
+- **コンテナ化の要否は、選んだホスティング先に依存する。** **リポジトリに `Dockerfile` は無い**（8-6・F-02）。本番にコンテナを使う場合、`Dockerfile` はこの時点で新規に作るものになる。コンテナを使わない形（ビルド〜起動をホスティング側が行う形）なら不要
+
+### 8-7-3. ビルドとデプロイの手順
+
+**実装から読み取れる制約**（`package.json`・`prisma7.config.ts`・`src/auth.ts`）。
+
+| 制約 | 根拠 | 帰結 |
+| --- | --- | --- |
+| install の時点で `scripts/only-pnpm.mjs` が見える必要がある | `package.json` の `preinstall` が `node scripts/only-pnpm.mjs` を実行し、npm・yarn・bun での install を止める | **ビルド環境のパッケージマネージャは pnpm に固定する**（ホスティング側の既定が npm なら切り替える）。依存だけを先に install するコンテナの層分けでは、`scripts/` も先にコピーする |
+| ビルドに devDependencies が要る | `prisma`・`dotenv`・`typescript`・`tailwindcss`・`babel-plugin-react-compiler` はすべて devDependencies | **ビルド段階の install は `--prod` にしない**（`pnpm install --frozen-lockfile`）。`--prod` では `postinstall` の `prisma generate` が `prisma` 不在で失敗する |
+| Prisma クライアントは生成物でリポジトリに無い | `src/generated/prisma` は `.gitignore` 対象。`postinstall` が `prisma generate` を実行 | **`next build` の前に `prisma generate` が済んでいること**が要る。install の `postinstall` に任せるなら、`schema.prisma` と `prisma7.config.ts` が install の時点で見える状態にする（スキーマより先に依存だけを install する形は失敗する） |
+| マイグレーションの適用に Prisma CLI が要る | `pnpm exec prisma migrate deploy`（8-6）。CLI は `prisma7.config.ts` を読み、`dotenv` を import する | **適用を行う環境には `prisma` と `dotenv` が必要。** 実行時の環境（`next start` だけを動かす環境）に入れないなら、適用はビルド側・リリース段階の別ジョブで行う。**適用を行う環境は、本番 DB へ到達でき、本番の `DATABASE_URL` を持つこと**（`prisma7.config.ts` が `DATABASE_URL` から読む） |
+| ビルド時に `SCHOOL_WORKSPACE_DOMAIN` が要る | `src/auth.ts` が読み込み時に未設定なら例外を投げる（8-6）。**2026-10-04 に `next build --webpack` で確かめた**：未設定だと `/api/auth/[...nextauth]` のページデータ収集で失敗し、設定すると通る（本番の `pnpm build` は `--turbopack` で、こちらでは未実行） | **ビルド環境にも `SCHOOL_WORKSPACE_DOMAIN` を渡す。** 値を空のままだとビルドが落ちる |
+
+**手順の順序**（1 リリースあたり。自前で起動する形の場合。ビルドと起動をホスティング側が行う形では、手順 3 の置き場所はホスティング先が決まってから書く）：
+
+1. 依存を入れる（`pnpm install --frozen-lockfile`。`postinstall` で `prisma generate`）
+2. ビルドする（`pnpm build`）
+3. マイグレーションを適用する（`pnpm exec prisma migrate deploy`）。**1 プロセス構成なので、旧アプリを止めてから適用し、新アプリを起動する**（停止時間を許す形。許すかどうかは G-2 が正典に無く未決）。止めずに入れ替えるなら、マイグレーションを旧アプリと両立する形（列・表の追加のみ）に限る
+4. アプリを起動する（`pnpm start`）
+
+**本番で渡す環境変数**（`.env.example` から、ローカル開発専用のものを除く）：`DATABASE_URL`・`AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`SCHOOL_WORKSPACE_DOMAIN`。加えて、`AUTH_URL`（公開 URL）か `AUTH_TRUST_HOST=true` のどちらかが要る見込み（`.env.example` には無い。`@auth/core` 0.41.3 の `lib/utils/env.js` は `trustHost` の既定を、`AUTH_URL`・`AUTH_TRUST_HOST`・Vercel・Cloudflare Pages のいずれかが無く `NODE_ENV` が `production` だと false にし、`lib/utils/assert.js` が `UntrustedHost` を返す。ソースを読んだだけで実機では確かめていない）。`POSTGRES_USER`／`POSTGRES_PASSWORD`／`POSTGRES_DB` は `docker-compose.yml` 用で、本番のアプリは使わない。**値の置き場所と渡し方は、ホスティング先と請求先（G-1）が決まるまで決まらない。** 秘密の値（`AUTH_SECRET`・`AUTH_GOOGLE_SECRET`・`DATABASE_URL` のパスワード）はリポジトリに置かない。
+
+**未確認（実装時に確かめる）**：上の `AUTH_URL` と `AUTH_TRUST_HOST` のどちらを使うか、プロキシや PaaS の背後で redirect URI が一致するか。`src/auth.ts` と `.env.example` には `AUTH_URL`・`trustHost` の指定が無い。ホスティング先が決まったら、サインインの往復（redirect URI の一致）を実際に通して確かめる。
+
+### 8-7-4. HTTPS と認証の接続
+
+- **redirect URI は、公開ドメイン名・HTTPS で登録する前提で書く。** Google は Web アプリ用の redirect URI に HTTPS を求め、`http://localhost` だけが例外とされる（`../findings.md` F-04・F-11）。F-11 の入力欄の検証では、生のプライベート IP と `.local` の内部専用ホスト名は拒否され、学校ドメイン配下の公開ドメイン名は通った。**置き場所がどこでも、本番の redirect URI は生の IP や `.local` では登録できない。**
+- **確かめたのは入力欄の検証までで、保存時と実際のサインイン時は未確認。** 本番のサインインが通ることは、ホスティング先が決まったあとに実機で確かめる（8-7-3 の「未確認」と同じ確認）
+- **HTTPS の終端はアプリの外で行う前提で書く。** `next start` のままで、リポジトリ（`next.config.ts`・`package.json`）に TLS・証明書の設定は無い。終端を誰が担うか（ホスティング側かプロキシか）は、置き場所（8-7-2）が決まるまで決まらない
+- **証明書の取り方と、学校ドメインの下の名前を誰がどこで向けるかは、学校側の確認が要る。** 残りの論点は F-11 の決着欄にある（水戸のヒヤリング領域。窓口は H-28 (c) と共通）
+
+### 8-7-5. イントラネット案の位置づけ — 未執筆
+
+- 書く内容：(a)・(b)・(d) の実施結果と、未了の (c)（置き場所と担当者）・学校側の DNS と証明書の確認を分けた表。採る場合に変わる箇所
+- 引く先：`../findings.md` F-04（(a)）・F-07（(b)）・F-11（(d)）
+
+### 8-7-6. 決着待ちの項目
+
+- **ホスティング先・請求先**：G-1（費用の支払い主体・アカウントの名義）と G-6（学外へのデータ配置）の決着まで決まらない
+- **PDF 生成の測り直し**：`05-output.md` 5-4 は、8-7 の決着時に、本番イメージに Chromium を載せるコストと、ホスト直起動で Chromium 実行環境を各開発者に用意するコストを測り直す、としている（要約。05 は確度「暫定」）。**現在の PDF 方式は純粋 JS 生成（ヘッドレスブラウザ非依存）で、8-7 の実行形態に Chromium を要求しない**（`../decisions.md` 2026-09-04）
 
 ---
 
 ## 現在の状態
 
-**書き切った。8-7（デプロイ構成）のみ、本番環境の未確定により保留。**
+**書き切った。8-7（デプロイ構成）のみ、8-7-1〜8-7-4 を下書き済み。8-7-5 は未執筆、ホスティング先と請求先は G-1・G-6 待ち。**
 
 執筆・レビューにあたり `../open-questions.md` を2件更新した。
 

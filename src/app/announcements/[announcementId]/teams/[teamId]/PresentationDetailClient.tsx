@@ -116,7 +116,7 @@ export function PresentationDetailClient({
                 {submission.materials.map((m) => (
                   <div
                     key={m.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4"
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-900/5"
                   >
                     <span className="font-medium text-slate-900">{m.name}</span>
                     {m.driveUrl ? (
@@ -177,7 +177,7 @@ export function PresentationDetailClient({
               コメント({submission.comments.length})
             </SectionHeading>
 
-            <div className="mb-4 rounded-lg border border-slate-200 bg-white p-4">
+            <div className="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-900/5">
               <div className="mb-2 flex gap-1">
                 {labelOptions.map((label) => (
                   <button
@@ -213,16 +213,26 @@ export function PresentationDetailClient({
             ) : (
               <div className="flex flex-col gap-3">
                 {visibleComments.map((comment) => (
-                  <Card key={comment.id}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-900">{comment.authorName}</span>
-                        <CommentLabelBadge label={comment.label} />
+                  <Card key={comment.id} className="shadow-sm shadow-slate-900/5">
+                    <div className="flex items-start gap-3">
+                      <span
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700"
+                        aria-hidden
+                      >
+                        {comment.authorName.charAt(0)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-slate-900">{comment.authorName}</span>
+                            <CommentLabelBadge label={comment.label} />
+                          </div>
+                          <span className="text-xs text-slate-400">{formatDateTime(comment.postedAt)}</span>
+                        </div>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-700">{comment.body}</p>
                       </div>
-                      <span className="text-xs text-slate-400">{formatDateTime(comment.postedAt)}</span>
                     </div>
-                    <p className="mt-2 text-sm text-slate-700">{comment.body}</p>
-                    <div className="mt-2 flex items-center gap-3">
+                    <div className="mt-3 flex items-center gap-3 pl-11">
                       <LikeButton initialCount={comment.likeCount} size="sm" />
                       {canReply && (
                         <button
@@ -236,11 +246,12 @@ export function PresentationDetailClient({
                     </div>
 
                     {comment.replies.length > 0 && (
-                      <div className="mt-3 flex flex-col gap-2 border-l-2 border-slate-100 pl-4">
+                      <div className="ml-11 mt-3 flex flex-col gap-2 border-l-2 border-slate-100 pl-4">
                         {comment.replies.map((reply) => (
                           <div key={reply.id}>
                             <div className="flex items-center gap-2 text-sm">
                               <span className="font-medium text-slate-900">{reply.authorName}</span>
+                              {reply.authorRole === "teacher" && <Badge tone="brand">先生</Badge>}
                               <span className="text-xs text-slate-400">{formatDateTime(reply.postedAt)}</span>
                             </div>
                             <p className="text-sm text-slate-700">{reply.body}</p>
@@ -250,7 +261,7 @@ export function PresentationDetailClient({
                     )}
 
                     {canReply && openReplyId === comment.id && (
-                      <div className="mt-3 flex gap-2">
+                      <div className="ml-11 mt-3 flex gap-2">
                         <input
                           className={fieldClassName}
                           placeholder="返信を入力"

@@ -195,7 +195,7 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
                 {a.materialSlots.map((slot) => {
                   const submission = getSubmission(a.id, ownTeam.id);
                   const material = submission?.materials.find((m) => m.name === slot.name);
-                  const late = material ? isLateSubmission(a.submissionDeadline, material.updatedAt) : false;
+                  const late = material ? isLateSubmission(a.submissionDeadline, material.firstSubmittedAt) : false;
                   return (
                     <div key={slot.id} className="flex items-center justify-between text-sm">
                       <span className="text-slate-700">{slot.name}</span>

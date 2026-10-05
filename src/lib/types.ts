@@ -92,6 +92,8 @@ export type Material = {
   id: string;
   name: string;
   status: SubmissionStatus;
+  // 遅延判定には初回提出日時を使い、差し替えで動く最終更新日時とは分ける(H-6・decisions.md 2026-09-29)。
+  firstSubmittedAt: string | null;
   updatedAt: string | null;
   driveUrl: string | null;
 };

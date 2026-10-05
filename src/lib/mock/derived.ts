@@ -2,7 +2,8 @@ import { announcements, timetables } from "@/lib/mock/announcements";
 import { submissions } from "@/lib/mock/submissions";
 import { teams } from "@/lib/mock/teams";
 import { years } from "@/lib/mock/years";
-import type { Announcement, Submission, Team } from "@/lib/types";
+import { formatDateTime } from "@/lib/format";
+import type { Announcement, Material, Submission, Team } from "@/lib/types";
 
 export function getSubmission(announcementId: string, teamId: string): Submission | null {
   return submissions.find((s) => s.announcementId === announcementId && s.teamId === teamId) ?? null;
@@ -12,10 +13,28 @@ export function getSubmissionsForAnnouncement(announcementId: string): Submissio
   return submissions.filter((s) => s.announcementId === announcementId);
 }
 
-// 遅延は第3の状態ではなく、提出日時と締切の比較による導出表示(要件定義書 §3-2)。
-export function isLateSubmission(deadline: string, updatedAt: string | null): boolean {
-  if (!updatedAt) return false;
-  return new Date(updatedAt).getTime() > new Date(deadline).getTime();
+// 遅延は第3の状態ではなく、初回提出日時と締切の比較による導出表示(要件定義書 §3-2・H-6)。
+// 最終更新日時で比べると、期限内に出した資料を締切後に差し替えただけで遅延に化ける。
+export function isLateSubmission(deadline: string, firstSubmittedAt: string | null): boolean {
+  if (!firstSubmittedAt) return false;
+  return new Date(firstSubmittedAt).getTime() > new Date(deadline).getTime();
+}
+
+// 締切後に差し替えがあるか(06-data.md 6-6 の導出式と同じ。初回提出のときは 2 つの日時が同じ値)。
+export function isReplacedAfterDeadline(deadline: string, material: Material): boolean {
+  if (!material.firstSubmittedAt || !material.updatedAt) return false;
+  return (
+    new Date(material.updatedAt).getTime() > new Date(deadline).getTime() &&
+    material.updatedAt !== material.firstSubmittedAt
+  );
+}
+
+// 初回提出日時を出し、締切後に差し替えがあれば最終更新日時も添える(requirements.md §3-2・§3-5)。
+export function formatSubmittedAt(deadline: string, material: Material): string | null {
+  if (!material.firstSubmittedAt) return null;
+  const first = formatDateTime(material.firstSubmittedAt);
+  if (!isReplacedAfterDeadline(deadline, material) || !material.updatedAt) return first;
+  return `${first}(最終更新 ${formatDateTime(material.updatedAt)})`;
 }
 
 export function isAnnouncementFullySubmitted(announcement: Announcement): boolean {

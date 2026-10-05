@@ -81,13 +81,15 @@ export function TeamDetailClient({ team }: { team: Team }) {
             <SectionHeading>メンバー</SectionHeading>
             <ul className="flex flex-col gap-1 text-sm text-slate-700">
               {team.members.map((member) => (
-                <li key={member}>
-                  {member}
-                  {member === team.leaderName && (
-                    <span className="ml-1 text-xs text-brand-600">(リーダー)</span>
-                  )}
+                <li key={member} className="flex items-start justify-between gap-2">
+                  <span className="min-w-0">
+                    {member}
+                    {member === team.leaderName && (
+                      <span className="ml-1 text-xs text-brand-600">(リーダー)</span>
+                    )}
+                  </span>
                   <RoleGate allow={["teacher"]}>
-                    <span className="ml-2">
+                    <span className="shrink-0">
                       <Badge tone={isRedeemed(member) ? "emerald" : "slate"}>
                         {isRedeemed(member) ? "引き換え済み" : "未引き換え"}
                       </Badge>

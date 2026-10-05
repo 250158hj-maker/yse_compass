@@ -56,7 +56,9 @@ export function SubmissionsMatrixClient({ announcement: a }: { announcement: Ann
 
         {rows.length === 0 ? (
           <div className="mt-4">
-            <EmptyState message="未提出のチームはありません。" />
+            <EmptyState
+              message={teams.length === 0 ? "チームがまだ登録されていません。" : "未提出のチームはありません。"}
+            />
           </div>
         ) : (
           <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-900/5">

@@ -29,20 +29,20 @@ export function Header() {
 
   return (
     <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-3">
         <Link href={currentUser ? "/" : "/login"} className="text-lg font-bold text-brand-700">
           YSE Compass
         </Link>
 
         {currentUser && (
-          <nav className="flex flex-1 items-center gap-4 text-sm text-slate-600">
+          <nav className="order-last flex w-full flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 sm:order-none sm:w-auto sm:flex-1">
             {navLinks.map((link) => (
               <Link key={link.href} href={link.href} className="hover:text-brand-700">
                 {link.label}
               </Link>
             ))}
             {isTeacher(currentUser) && (
-              <span className="flex items-center gap-4 border-l border-slate-200 pl-4">
+              <span className="flex flex-wrap items-center gap-x-4 gap-y-1 sm:border-l sm:border-slate-200 sm:pl-4">
                 {adminLinks.map((link) => (
                   <Link key={link.href} href={link.href} className="hover:text-brand-700">
                     {link.label}

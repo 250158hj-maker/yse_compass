@@ -99,7 +99,10 @@ export const announcements: Announcement[] = [
     submissionDeadline: "2025-07-17T23:59:00+09:00",
     status: "終了",
     isPublished: true,
-    materialSlots: [{ id: "slot-2025-kikaku", name: "プレゼン資料", required: true, templateId: null }],
+    materialSlots: [
+      { id: "slot-2025-kikaku", name: "プレゼン資料", required: true, templateId: null },
+      { id: "slot-2025-kikaku-gaiyou", name: "概要集", required: false, templateId: null },
+    ],
   },
   {
     id: "ann-2025-sekkei",
@@ -110,7 +113,10 @@ export const announcements: Announcement[] = [
     submissionDeadline: "2025-10-15T23:59:00+09:00",
     status: "終了",
     isPublished: true,
-    materialSlots: [{ id: "slot-2025-sekkei", name: "プレゼン資料", required: true, templateId: null }],
+    materialSlots: [
+      { id: "slot-2025-sekkei", name: "プレゼン資料", required: true, templateId: null },
+      { id: "slot-2025-sekkei-gaiyou", name: "概要集", required: false, templateId: null },
+    ],
   },
   {
     id: "ann-2025-shisaku",
@@ -121,7 +127,10 @@ export const announcements: Announcement[] = [
     submissionDeadline: "2025-12-17T23:59:00+09:00",
     status: "終了",
     isPublished: true,
-    materialSlots: [{ id: "slot-2025-shisaku", name: "プレゼン資料", required: true, templateId: null }],
+    materialSlots: [
+      { id: "slot-2025-shisaku", name: "プレゼン資料", required: true, templateId: null },
+      { id: "slot-2025-shisaku-gaiyou", name: "概要集", required: false, templateId: null },
+    ],
   },
   {
     id: "ann-2025-saishu",
@@ -132,7 +141,10 @@ export const announcements: Announcement[] = [
     submissionDeadline: "2026-02-09T23:59:00+09:00",
     status: "終了",
     isPublished: true,
-    materialSlots: [{ id: "slot-2025-saishu", name: "プレゼン資料", required: true, templateId: null }],
+    materialSlots: [
+      { id: "slot-2025-saishu", name: "プレゼン資料", required: true, templateId: null },
+      { id: "slot-2025-saishu-gaiyou", name: "概要集", required: false, templateId: null },
+    ],
   },
 ];
 

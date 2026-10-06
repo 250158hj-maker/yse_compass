@@ -15,7 +15,8 @@ import { fieldClassName } from "@/components/ui/FormField";
 import { useSession } from "@/context/SessionContext";
 import { isOwnTeam, isTeacher } from "@/lib/session-helpers";
 import { formatDateTime } from "@/lib/format";
-import { formatSubmittedAt } from "@/lib/mock";
+import { formatSubmittedAt, materialHref } from "@/lib/mock";
+import { MaterialLink } from "@/components/ui/MaterialLink";
 import type { Announcement, Comment, CommentLabel, Reply, Submission, Team } from "@/lib/types";
 
 const labelOptions: CommentLabel[] = ["感想", "批評", "その他"];
@@ -129,15 +130,10 @@ export function PresentationDetailClient({
                         </span>
                       )}
                     </div>
-                    {m.driveUrl ? (
-                      <a
-                        href={m.driveUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-brand-600 hover:underline"
-                      >
+                    {materialHref(a.id, team.id, m) ? (
+                      <MaterialLink href={materialHref(a.id, team.id, m)!} className="text-sm text-brand-600 hover:underline">
                         資料を開く →
-                      </a>
+                      </MaterialLink>
                     ) : (
                       <Badge tone="slate">未提出</Badge>
                     )}
@@ -148,7 +144,7 @@ export function PresentationDetailClient({
           </section>
 
           {submission.summary && (
-            <section className="mt-8">
+            <section id="summary" className="mt-8 scroll-mt-4">
               <SectionHeading>概要</SectionHeading>
               <Card>
                 <p className="text-sm leading-relaxed text-slate-700">{submission.summary.onePageBody}</p>

@@ -6,7 +6,8 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Badge, CommentLabelBadge, PhaseBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateTime } from "@/lib/format";
-import { getAnnouncementsByYear, getSubmission, getTeamById, getYearById } from "@/lib/mock";
+import { getAnnouncementsByYear, getSubmission, getTeamById, getYearById, materialHref } from "@/lib/mock";
+import { MaterialLink } from "@/components/ui/MaterialLink";
 
 export default async function ArchiveWorkDetailPage({
   params,
@@ -63,23 +64,21 @@ export default async function ArchiveWorkDetailPage({
                 <p className="text-xs text-slate-400">資料の提出はありませんでした。</p>
               ) : (
                 <div className="flex flex-col gap-1.5">
-                  {submission.materials.map((m) => (
-                    <div key={m.id} className="flex items-center justify-between text-sm">
-                      <span className="text-slate-700">{m.name}</span>
-                      {m.driveUrl ? (
-                        <a
-                          href={m.driveUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-brand-600 hover:underline"
-                        >
-                          資料を開く →
-                        </a>
-                      ) : (
-                        <Badge tone="slate">未提出</Badge>
-                      )}
-                    </div>
-                  ))}
+                  {submission.materials.map((m) => {
+                    const href = materialHref(a.id, teamId, m);
+                    return (
+                      <div key={m.id} className="flex items-center justify-between text-sm">
+                        <span className="text-slate-700">{m.name}</span>
+                        {href ? (
+                          <MaterialLink href={href} className="text-brand-600 hover:underline">
+                            資料を開く →
+                          </MaterialLink>
+                        ) : (
+                          <Badge tone="slate">未提出</Badge>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

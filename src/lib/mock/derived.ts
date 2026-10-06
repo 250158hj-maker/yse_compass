@@ -94,3 +94,12 @@ export function searchArchive(query: string): ArchiveSearchResult[] {
     yearLabel: years.find((y) => y.id === team.yearId)?.label ?? "",
   }));
 }
+
+// 資料の「開く」先。概要集はこのアプリの中で管理する(概要の入力から作られる)ので、Google ドライブではなく、
+// そのチームの発表詳細の概要へ行く。ほかの資料は、登録されたドライブのリンクへ行く。
+export function materialHref(announcementId: string, teamId: string, material: Material): string | null {
+  if (material.name === "概要集") {
+    return material.status === "提出済み" ? `/announcements/${announcementId}/teams/${teamId}#summary` : null;
+  }
+  return material.driveUrl;
+}

@@ -405,11 +405,16 @@ export default function HomePage() {
             いま発表中：{getTeamById(presenting.timetable!.currentPresentingTeamId!)?.name}
             (「{presenting.announcement.title}」)
           </p>
+          {/* 聴く生徒は、進行表ではなく、いま発表しているチームの発表詳細へ直接行く。 */}
           <Link
-            href={`/announcements/${presenting.announcement.id}/timetable`}
+            href={
+              !teacher && !ownTeam
+                ? `/announcements/${presenting.announcement.id}/teams/${presenting.timetable!.currentPresentingTeamId}`
+                : `/announcements/${presenting.announcement.id}/timetable`
+            }
             className="text-xs font-semibold text-rose-700 underline underline-offset-2"
           >
-            タイムテーブルを見る
+            {!teacher && !ownTeam ? "発表を見る" : "タイムテーブルを見る"}
           </Link>
         </div>
       )}

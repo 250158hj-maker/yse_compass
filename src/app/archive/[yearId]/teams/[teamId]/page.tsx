@@ -24,7 +24,6 @@ export default async function ArchiveWorkDetailPage({
 
   const announcements = getAnnouncementsByYear(yearId);
   const rounds = announcements.map((a) => ({ announcement: a, submission: getSubmission(a.id, teamId) }));
-  const finalSummary = rounds.find((r) => r.announcement.phase === "最終")?.submission?.summary ?? null;
   const roundsWithComments = rounds.filter((r) => (r.submission?.comments.length ?? 0) > 0);
 
   return (
@@ -49,23 +48,7 @@ export default async function ArchiveWorkDetailPage({
         }
       />
 
-      {finalSummary && (
-        <section className="mt-6">
-          <SectionHeading>概要</SectionHeading>
-          <Card>
-            <p className="text-sm leading-relaxed text-slate-700">{finalSummary.onePageBody}</p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {finalSummary.techUsed.map((tech) => (
-                <Badge key={tech} tone="brand">
-                  {tech}
-                </Badge>
-              ))}
-            </div>
-          </Card>
-        </section>
-      )}
-
-      <section className="mt-8">
+      <section className="mt-6">
         <SectionHeading>発表資料(4回分)</SectionHeading>
         <div className="flex flex-col gap-3">
           {rounds.map(({ announcement: a, submission }) => (

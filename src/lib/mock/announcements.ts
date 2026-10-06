@@ -3,28 +3,28 @@ import type { Announcement, Template, Timetable } from "@/lib/types";
 export const templates: Template[] = [
   {
     id: "template-kikaku-slide",
-    name: "企画書テンプレート",
+    name: "プレゼン資料テンプレート(企画)",
     relatedPhase: "企画",
     format: "Google スライド",
     url: "https://docs.google.com/presentation/d/template-kikaku/edit",
   },
   {
     id: "template-sekkei-doc",
-    name: "設計書テンプレート",
+    name: "プレゼン資料テンプレート(設計)",
     relatedPhase: "設計",
     format: "Google ドキュメント",
     url: "https://docs.google.com/document/d/template-sekkei/edit",
   },
   {
     id: "template-shisaku-slide",
-    name: "試作品発表スライドテンプレート",
+    name: "プレゼン資料テンプレート(試作)",
     relatedPhase: "試作",
     format: "Google スライド",
     url: "https://docs.google.com/presentation/d/template-shisaku/edit",
   },
   {
     id: "template-saishu-slide",
-    name: "最終発表スライドテンプレート",
+    name: "プレゼン資料テンプレート(最終)",
     relatedPhase: "最終",
     format: "Google スライド",
     url: "https://docs.google.com/presentation/d/template-saishu/edit",
@@ -42,8 +42,8 @@ export const announcements: Announcement[] = [
     status: "終了",
     isPublished: true,
     materialSlots: [
-      { id: "slot-kikaku-slide", name: "企画書", required: true, templateId: "template-kikaku-slide" },
-      { id: "slot-kikaku-sub", name: "補足資料", required: false, templateId: null },
+      { id: "slot-kikaku-slide", name: "プレゼン資料", required: true, templateId: "template-kikaku-slide" },
+      { id: "slot-kikaku-sub", name: "概要集", required: false, templateId: null },
     ],
   },
   {
@@ -56,8 +56,8 @@ export const announcements: Announcement[] = [
     status: "受付中",
     isPublished: false,
     materialSlots: [
-      { id: "slot-sekkei-doc", name: "設計書", required: true, templateId: "template-sekkei-doc" },
-      { id: "slot-sekkei-er", name: "ER図", required: true, templateId: null },
+      { id: "slot-sekkei-doc", name: "プレゼン資料", required: true, templateId: "template-sekkei-doc" },
+      { id: "slot-sekkei-er", name: "概要集", required: false, templateId: null },
     ],
   },
   {
@@ -70,8 +70,8 @@ export const announcements: Announcement[] = [
     status: "開催予定",
     isPublished: false,
     materialSlots: [
-      { id: "slot-shisaku-slide", name: "発表スライド", required: true, templateId: "template-shisaku-slide" },
-      { id: "slot-shisaku-demo", name: "デモ動画", required: false, templateId: null },
+      { id: "slot-shisaku-slide", name: "プレゼン資料", required: true, templateId: "template-shisaku-slide" },
+      { id: "slot-shisaku-demo", name: "概要集", required: false, templateId: null },
     ],
   },
   {
@@ -84,8 +84,8 @@ export const announcements: Announcement[] = [
     status: "開催予定",
     isPublished: false,
     materialSlots: [
-      { id: "slot-saishu-slide", name: "発表スライド", required: true, templateId: "template-saishu-slide" },
-      { id: "slot-saishu-report", name: "成果報告書", required: true, templateId: null },
+      { id: "slot-saishu-slide", name: "プレゼン資料", required: true, templateId: "template-saishu-slide" },
+      { id: "slot-saishu-report", name: "概要集", required: false, templateId: null },
     ],
   },
 
@@ -99,7 +99,7 @@ export const announcements: Announcement[] = [
     submissionDeadline: "2025-07-17T23:59:00+09:00",
     status: "終了",
     isPublished: true,
-    materialSlots: [{ id: "slot-2025-kikaku", name: "企画書", required: true, templateId: null }],
+    materialSlots: [{ id: "slot-2025-kikaku", name: "プレゼン資料", required: true, templateId: null }],
   },
   {
     id: "ann-2025-sekkei",
@@ -110,7 +110,7 @@ export const announcements: Announcement[] = [
     submissionDeadline: "2025-10-15T23:59:00+09:00",
     status: "終了",
     isPublished: true,
-    materialSlots: [{ id: "slot-2025-sekkei", name: "設計書", required: true, templateId: null }],
+    materialSlots: [{ id: "slot-2025-sekkei", name: "プレゼン資料", required: true, templateId: null }],
   },
   {
     id: "ann-2025-shisaku",
@@ -121,7 +121,7 @@ export const announcements: Announcement[] = [
     submissionDeadline: "2025-12-17T23:59:00+09:00",
     status: "終了",
     isPublished: true,
-    materialSlots: [{ id: "slot-2025-shisaku", name: "発表スライド", required: true, templateId: null }],
+    materialSlots: [{ id: "slot-2025-shisaku", name: "プレゼン資料", required: true, templateId: null }],
   },
   {
     id: "ann-2025-saishu",
@@ -132,7 +132,7 @@ export const announcements: Announcement[] = [
     submissionDeadline: "2026-02-09T23:59:00+09:00",
     status: "終了",
     isPublished: true,
-    materialSlots: [{ id: "slot-2025-saishu", name: "発表スライド", required: true, templateId: null }],
+    materialSlots: [{ id: "slot-2025-saishu", name: "プレゼン資料", required: true, templateId: null }],
   },
 ];
 

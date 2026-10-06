@@ -8,10 +8,11 @@ import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { FormField, fieldClassName } from "@/components/ui/FormField";
+import { TagInput } from "@/components/ui/TagInput";
 import { useSession } from "@/context/SessionContext";
 import { isOwnTeam } from "@/lib/session-helpers";
 import { formatDateTime } from "@/lib/format";
-import { getSubmission } from "@/lib/mock";
+import { getSubmission, submissions } from "@/lib/mock";
 import type { Announcement, SummaryEntry, Team } from "@/lib/types";
 
 export function SummaryFormClient({ announcement: a, team }: { announcement: Announcement; team: Team }) {
@@ -20,12 +21,17 @@ export function SummaryFormClient({ announcement: a, team }: { announcement: Ann
   const [summary, setSummary] = useState<SummaryEntry | null>(submission?.summary ?? null);
 
   const [background, setBackground] = useState(summary?.background ?? "");
-  const [techUsedText, setTechUsedText] = useState(summary?.techUsed.join("、") ?? "");
+  const [techUsed, setTechUsed] = useState<string[]>(summary?.techUsed ?? []);
   const [opening, setOpening] = useState(summary?.opening ?? "");
   const [closing, setClosing] = useState(summary?.closing ?? "");
   const [onePageBody, setOnePageBody] = useState(summary?.onePageBody ?? "");
 
   const allowed = isOwnTeam(currentUser, team.id);
+
+  // 候補は固定の語彙ではなく、すでに入力された概要の使用技術を、多い順に集めたもの(統制語彙は持たない)。
+  const counts = new Map<string, number>();
+  for (const sub of submissions) for (const t of sub.summary?.techUsed ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+  const suggestions = [...counts.entries()].sort((x, y) => y[1] - x[1]).map(([t]) => t);
 
   const breadcrumbs = (
     <Breadcrumbs
@@ -56,10 +62,7 @@ export function SummaryFormClient({ announcement: a, team }: { announcement: Ann
     e.preventDefault();
     setSummary({
       background,
-      techUsed: techUsedText
-        .split(/[、,]/)
-        .map((t) => t.trim())
-        .filter(Boolean),
+      techUsed,
       opening,
       closing,
       onePageBody,
@@ -107,14 +110,8 @@ export function SummaryFormClient({ announcement: a, team }: { announcement: Ann
           />
         </FormField>
 
-        <FormField label="使用技術" htmlFor="techUsed" hint="読点(、)またはカンマ区切りで入力してください。アーカイブ検索の対象になります。">
-          <input
-            id="techUsed"
-            className={fieldClassName}
-            placeholder="Next.js、TypeScript、PostgreSQL"
-            value={techUsedText}
-            onChange={(e) => setTechUsedText(e.target.value)}
-          />
+        <FormField label="使用技術" htmlFor="techUsed" hint="Enter・読点(、)・カンマで 1 つずつ追加できます。アーカイブ検索の対象になります。">
+          <TagInput id="techUsed" value={techUsed} onChange={setTechUsed} suggestions={suggestions} />
         </FormField>
 
         <FormField label="起(オープニング)" htmlFor="opening" required hint="発表の起点となる一文。">

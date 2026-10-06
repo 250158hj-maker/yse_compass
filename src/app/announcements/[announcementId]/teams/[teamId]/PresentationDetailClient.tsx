@@ -102,6 +102,8 @@ export function PresentationDetailClient({
         actions={<LikeButton initialCount={submission.likeCount} />}
       />
 
+      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-700">{team.summary}</p>
+
       {!canView ? (
         <div className="mt-6">
           <InlineNotice tone="info">資料は先生の公開操作後に閲覧できます。</InlineNotice>

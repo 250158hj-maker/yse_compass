@@ -10,7 +10,9 @@ import { Badge, PhaseBadge, PublishPermissionBadge } from "@/components/ui/Badge
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
 import { RoleGate } from "@/components/session/RoleGate";
+import { fieldClassName } from "@/components/ui/FormField";
 import { useSession } from "@/context/SessionContext";
+import { isOwnTeam, isTeacher } from "@/lib/session-helpers";
 import { getAnnouncementsByYear, getSubmission, getYearById } from "@/lib/mock";
 import type { Team } from "@/lib/types";
 
@@ -21,6 +23,11 @@ export function TeamDetailClient({ team }: { team: Team }) {
   const allEnded = announcements.length > 0 && announcements.every((a) => a.status === "終了");
   const isLeader = currentUser?.name === team.leaderName;
   const [publishPermission, setPublishPermission] = useState(team.publishPermission);
+  // 作品の説明は、自チームのメンバー(発表する生徒)と先生だけが編集できる。保存はこの画面の中だけ(モック)。
+  const canEditSummary = isTeacher(currentUser) || isOwnTeam(currentUser, team.id);
+  const [summary, setSummary] = useState(team.summary);
+  const [draft, setDraft] = useState(team.summary);
+  const [editingSummary, setEditingSummary] = useState(false);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -42,7 +49,57 @@ export function TeamDetailClient({ team }: { team: Team }) {
         }
       />
 
-      <div className="mt-6 grid gap-6 md:grid-cols-3">
+      <section className="mt-6">
+        <SectionHeading
+          action={
+            canEditSummary &&
+            !editingSummary && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft(summary);
+                  setEditingSummary(true);
+                }}
+                className="text-sm text-brand-600 hover:underline"
+              >
+                編集する
+              </button>
+            )
+          }
+        >
+          作品の説明
+        </SectionHeading>
+        {editingSummary ? (
+          <div className="flex max-w-2xl flex-col gap-2">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={4}
+              aria-label="作品の説明"
+              className={fieldClassName}
+            />
+            <div className="flex gap-2">
+              <Button
+                variant="primary"
+                disabled={draft.trim() === ""}
+                onClick={() => {
+                  setSummary(draft.trim());
+                  setEditingSummary(false);
+                }}
+              >
+                保存する
+              </Button>
+              <Button variant="secondary" onClick={() => setEditingSummary(false)}>
+                キャンセル
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="max-w-2xl text-sm leading-relaxed text-slate-700">{summary}</p>
+        )}
+      </section>
+
+      <div className="mt-8 grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2">
           <SectionHeading>発表会ごとの提出状況</SectionHeading>
           <div className="flex flex-col gap-3">

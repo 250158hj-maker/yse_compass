@@ -111,6 +111,14 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
                           テンプレートを開く →
                         </a>
                       )}
+                      {ownTeam && slot.name === "概要集" && (
+                        <Link
+                          href={`/announcements/${a.id}/teams/${ownTeam.id}/summary`}
+                          className="text-sm text-brand-600 hover:underline"
+                        >
+                          概要を入力する →
+                        </Link>
+                      )}
                     </div>
                   );
                 })}
@@ -129,22 +137,12 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
                   const material = submission?.materials.find((m) => m.name === slot.name);
                   const late = material ? isLateSubmission(a.submissionDeadline, material.firstSubmittedAt) : false;
                   return (
-                    <div key={slot.id} className="flex flex-col gap-1 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-700">{slot.name}</span>
-                        <span className="flex items-center gap-1">
-                          <StatusBadge status={material?.status ?? "未提出"} />
-                          {late && <LateBadge />}
-                        </span>
-                      </div>
-                      {slot.name === "概要集" && (
-                        <Link
-                          href={`/announcements/${a.id}/teams/${ownTeam.id}/summary`}
-                          className="self-start text-xs font-semibold text-brand-600 hover:underline"
-                        >
-                          概要を入力する →
-                        </Link>
-                      )}
+                    <div key={slot.id} className="flex items-center justify-between text-sm">
+                      <span className="text-slate-700">{slot.name}</span>
+                      <span className="flex items-center gap-1">
+                        <StatusBadge status={material?.status ?? "未提出"} />
+                        {late && <LateBadge />}
+                      </span>
                     </div>
                   );
                 })}

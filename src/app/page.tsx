@@ -21,6 +21,8 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Card, CardLink } from "@/components/ui/Card";
 import { Badge, LateBadge, PhaseBadge, StatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InlineNotice } from "@/components/ui/InlineNotice";
+import { TimetableRows } from "@/components/timetable/TimetableRows";
 import { formatDateTime, formatShortDate } from "@/lib/format";
 import type { Announcement, Team } from "@/lib/types";
 
@@ -34,6 +36,47 @@ function isFullySubmitted(announcement: Announcement, teamId: string): boolean {
 
 function findNextUrgent(announcements: Announcement[], isDone: (a: Announcement) => boolean): Announcement | null {
   return announcements.find((a) => !isDone(a)) ?? null;
+}
+
+// ホームに出す発表会は、発表中のもの → 開催前でタイムテーブルがあるもの → タイムテーブルがある最後のもの、の順に選ぶ。
+function pickFeatured(announcements: Announcement[]): Announcement | null {
+  const withTimetable = announcements.filter((a) => getTimetableFor(a.id));
+  return (
+    withTimetable.find((a) => getTimetableFor(a.id)?.currentPresentingTeamId) ??
+    withTimetable.find((a) => a.status !== "終了") ??
+    withTimetable[withTimetable.length - 1] ??
+    null
+  );
+}
+
+// 進行と発表一覧を、タイムテーブルの 1 つの一覧にまとめる(チーム枠が発表詳細へのリンクを兼ねる)。
+function ProgressSection({ announcement: a, teacher }: { announcement: Announcement; teacher: boolean }) {
+  return (
+    <section className="mt-8">
+      <SectionHeading
+        action={
+          <Link href={`/announcements/${a.id}/timetable`} className="text-sm text-brand-600 hover:underline">
+            タイムテーブルを見る →
+          </Link>
+        }
+      >
+        発表の進行({a.title})
+      </SectionHeading>
+      {!a.isPublished && !teacher && (
+        <div className="mb-3">
+          <InlineNotice tone="info">資料は先生の公開操作後に閲覧できます。</InlineNotice>
+        </div>
+      )}
+      {!a.isPublished && teacher && (
+        <div className="mb-3">
+          <InlineNotice tone="warning">
+            非公開のため、生徒にはまだ資料が表示されていません(先生によるプレビューです)。
+          </InlineNotice>
+        </div>
+      )}
+      <TimetableRows timetable={getTimetableFor(a.id)} announcementId={a.id} />
+    </section>
+  );
 }
 
 // 通知を送らない(2026-07-24 決定)ので、締切と未提出の可視化はこの一覧が最後の砦。必須枠の未提出だけを強調する(H-15)。
@@ -274,6 +317,7 @@ export default function HomePage() {
   const teams = getTeamsByYear(year.id);
   const ownTeam = teams.find((t) => isOwnTeam(currentUser, t.id)) ?? null;
   const archivedYears = getArchivedYears();
+  const featured = pickFeatured(announcements);
   const publishedCount = announcements.filter((a) => a.isPublished).length;
 
   const presenting = announcements
@@ -301,6 +345,8 @@ export default function HomePage() {
           </Link>
         </div>
       )}
+
+      {featured && <ProgressSection announcement={featured} teacher={teacher} />}
 
       {!teacher && ownTeam && <OwnTeamSlots announcements={announcements} team={ownTeam} />}
 

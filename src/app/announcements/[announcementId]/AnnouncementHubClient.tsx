@@ -7,11 +7,9 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Badge, PhaseBadge, StatusBadge, LateBadge } from "@/components/ui/Badge";
-import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RoleGate } from "@/components/session/RoleGate";
-import { TimetableRows } from "@/components/timetable/TimetableRows";
 import { useSession } from "@/context/SessionContext";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -19,7 +17,6 @@ import {
   getYearById,
   getTemplateById,
   getTeamsByYear,
-  getTimetableFor,
   getSubmission,
   isLateSubmission,
 } from "@/lib/mock";
@@ -29,15 +26,13 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
   const { currentUser } = useSession();
   const year = getYearById(a.yearId);
   const teams = getTeamsByYear(a.yearId);
-  const timetable = getTimetableFor(a.id);
   const teacher = isTeacher(currentUser);
   const ownTeam = teams.find((t) => isOwnTeam(currentUser, t.id)) ?? null;
 
   const [isPublished, setIsPublished] = useState(a.isPublished);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // 公開/非公開が制御するのは資料(発表一覧)であって、進行(タイムテーブル)ではない(要件定義書の決定事項)。
-  // そのため、閲覧する生徒でもこのページ自体は開ける。資料枠は提出に関わる情報なので閲覧する生徒には出さない。
+  // 資料枠は提出に関わる情報なので、閲覧する生徒には出さない。進行・発表一覧はホームに集約した。
   const isPureViewer = !teacher && !ownTeam;
 
   return (
@@ -122,69 +117,6 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
               </div>
             </div>
           )}
-
-          <div>
-            {isPureViewer ? (
-              <>
-                <SectionHeading>進行</SectionHeading>
-                <TimetableRows timetable={timetable} announcementId={a.id} />
-              </>
-            ) : (
-              <>
-                <SectionHeading
-                  action={
-                    <Link
-                      href={`/announcements/${a.id}/timetable`}
-                      className="text-sm text-brand-600 hover:underline"
-                    >
-                      タイムテーブルを見る →
-                    </Link>
-                  }
-                >
-                  進行
-                </SectionHeading>
-                <p className="text-sm text-slate-500">発表順・時刻・当日の進行状況を確認できます。</p>
-              </>
-            )}
-          </div>
-
-          <div>
-            <SectionHeading>発表一覧</SectionHeading>
-            {!isPublished && !teacher && (
-              <InlineNotice tone="info">資料は先生の公開操作後に閲覧できます。</InlineNotice>
-            )}
-            {!isPublished && teacher && (
-              <>
-                <InlineNotice tone="warning">
-                  非公開のため、生徒にはまだ表示されていません(先生によるプレビューです)。
-                </InlineNotice>
-                <div className="mt-3 flex flex-col gap-2">
-                  {teams.map((team) => (
-                    <Link
-                      key={team.id}
-                      href={`/announcements/${a.id}/teams/${team.id}`}
-                      className="rounded-lg border border-slate-200 bg-white p-4 hover:border-brand-300"
-                    >
-                      {team.name}({team.projectTitle})
-                    </Link>
-                  ))}
-                </div>
-              </>
-            )}
-            {isPublished && (
-              <div className="flex flex-col gap-2">
-                {teams.map((team) => (
-                  <Link
-                    key={team.id}
-                    href={`/announcements/${a.id}/teams/${team.id}`}
-                    className="rounded-lg border border-slate-200 bg-white p-4 hover:border-brand-300"
-                  >
-                    {team.name}({team.projectTitle})
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
         {ownTeam && (

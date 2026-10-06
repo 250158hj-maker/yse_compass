@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/Button";
 import { RoleGate } from "@/components/session/RoleGate";
 import { fieldClassName } from "@/components/ui/FormField";
 import { useSession } from "@/context/SessionContext";
+import { getAnnouncementsByYear, getSubmission, getYearById, users } from "@/lib/mock";
 import { isOwnTeam, isTeacher } from "@/lib/session-helpers";
-import { getAnnouncementsByYear, getSubmission, getYearById } from "@/lib/mock";
 import type { Team } from "@/lib/types";
 
 export function TeamDetailClient({ team }: { team: Team }) {
@@ -22,6 +22,9 @@ export function TeamDetailClient({ team }: { team: Team }) {
   const announcements = getAnnouncementsByYear(team.yearId);
   const allEnded = announcements.length > 0 && announcements.every((a) => a.status === "終了");
   const isLeader = currentUser?.name === team.leaderName;
+  const canSetPublishPermission = isLeader || isTeacher(currentUser);
+  // メンバーは氏名の文字列しか持たないため、同名の生徒アカウントがあれば「利用者に結びついている(引き換え済み)」とみなす。
+  const isRedeemed = (member: string) => users.some((u) => u.role === "student" && u.name === member);
   const [publishPermission, setPublishPermission] = useState(team.publishPermission);
   // 作品の説明は、自チームのメンバー(発表する生徒)と先生だけが編集できる。保存はこの画面の中だけ(モック)。
   const canEditSummary = isTeacher(currentUser) || isOwnTeam(currentUser, team.id);
@@ -134,11 +137,20 @@ export function TeamDetailClient({ team }: { team: Team }) {
             <SectionHeading>メンバー</SectionHeading>
             <ul className="flex flex-col gap-1 text-sm text-slate-700">
               {team.members.map((member) => (
-                <li key={member}>
-                  {member}
-                  {member === team.leaderName && (
-                    <span className="ml-1 text-xs text-brand-600">(リーダー)</span>
-                  )}
+                <li key={member} className="flex items-start justify-between gap-2">
+                  <span className="min-w-0">
+                    {member}
+                    {member === team.leaderName && (
+                      <span className="ml-1 text-xs text-brand-600">(リーダー)</span>
+                    )}
+                  </span>
+                  <RoleGate allow={["teacher"]}>
+                    <span className="shrink-0">
+                      <Badge tone={isRedeemed(member) ? "emerald" : "slate"}>
+                        {isRedeemed(member) ? "引き換え済み" : "未引き換え"}
+                      </Badge>
+                    </span>
+                  </RoleGate>
                 </li>
               ))}
             </ul>
@@ -149,38 +161,40 @@ export function TeamDetailClient({ team }: { team: Team }) {
             </RoleGate>
           </Card>
 
-          <Card>
-            <SectionHeading>公開許可(アーカイブ)</SectionHeading>
-            <div className="mb-3">
-              <PublishPermissionBadge status={publishPermission} />
-            </div>
-            {!allEnded && (
-              <InlineNotice tone="info">全発表会終了後に設定できるようになります。</InlineNotice>
-            )}
-            {allEnded && (isLeader || currentUser?.role === "teacher") && (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs text-slate-500">
-                  アーカイブでの作品公開に同意しますか?(同意者: チーム代表者)
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="primary"
-                    onClick={() => setPublishPermission("許可")}
-                    disabled={publishPermission === "許可"}
-                  >
-                    許可する
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setPublishPermission("拒否")}
-                    disabled={publishPermission === "拒否"}
-                  >
-                    拒否する
-                  </Button>
-                </div>
+          {canSetPublishPermission && (
+            <Card>
+              <SectionHeading>公開許可(アーカイブ)</SectionHeading>
+              <div className="mb-3">
+                <PublishPermissionBadge status={publishPermission} />
               </div>
-            )}
-          </Card>
+              {!allEnded && (
+                <InlineNotice tone="info">全発表会終了後に設定できるようになります。</InlineNotice>
+              )}
+              {allEnded && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs text-slate-500">
+                    アーカイブでの作品公開に同意しますか?(同意者: チーム代表者)
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="primary"
+                      onClick={() => setPublishPermission("許可")}
+                      disabled={publishPermission === "許可"}
+                    >
+                      許可する
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setPublishPermission("拒否")}
+                      disabled={publishPermission === "拒否"}
+                    >
+                      拒否する
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
         </div>
       </div>
     </div>

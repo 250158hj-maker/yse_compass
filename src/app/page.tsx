@@ -24,7 +24,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { TimetableRows } from "@/components/timetable/TimetableRows";
 import { formatDateTime, formatShortDate } from "@/lib/format";
-import type { Announcement, Team } from "@/lib/types";
+import type { Announcement, Team, Timetable } from "@/lib/types";
 
 function isFullySubmitted(announcement: Announcement, teamId: string): boolean {
   const submission = getSubmission(announcement.id, teamId);
@@ -98,9 +98,25 @@ function pickFeatured(announcements: Announcement[]): Announcement | null {
   );
 }
 
-// 進行と発表一覧を、タイムテーブルの 1 つの一覧にまとめる(チーム枠が発表詳細へのリンクを兼ねる)。
+// ホームの「発表の進行」には、発表中の前 1 組・後 2 組だけを出す(全体はタイムテーブル画面)。
+// 発表中の人がいなければ先頭から 3 組。間にある休憩は一緒に出す。
+function nearbySlots(timetable: Timetable): Timetable {
+  const slots = [...timetable.slots].sort((x, y) => x.order - y.order);
+  const teamIdx = slots.flatMap((slot, i) => (slot.isBreak ? [] : [i]));
+  const current = teamIdx.findIndex((i) => {
+    const slot = slots[i];
+    return !slot.isBreak && slot.teamId === timetable.currentPresentingTeamId;
+  });
+  const [from, to] = current === -1 ? [0, 2] : [Math.max(current - 1, 0), current + 2];
+  const picked = teamIdx.slice(from, to + 1);
+  if (picked.length === 0) return { ...timetable, slots: [] };
+  return { ...timetable, slots: slots.slice(picked[0], picked[picked.length - 1] + 1) };
+}
+
+// 進行と発表一覧を、1 つの一覧にまとめる(チーム枠が発表詳細へのリンクを兼ねる)。
 function ProgressSection({ announcement: a, teacher }: { announcement: Announcement; teacher: boolean }) {
   const [open, setOpen] = useState(false);
+  const timetable = getTimetableFor(a.id);
   return (
     <section className="mt-8">
       <ToggleHeading
@@ -129,7 +145,11 @@ function ProgressSection({ announcement: a, teacher }: { announcement: Announcem
               </InlineNotice>
             </div>
           )}
-          <TimetableRows timetable={getTimetableFor(a.id)} announcementId={a.id} />
+          {timetable && a.status === "終了" ? (
+            <InlineNotice tone="info">この発表会の発表は終了しました。全体はタイムテーブルで見られます。</InlineNotice>
+          ) : (
+            <TimetableRows timetable={timetable && nearbySlots(timetable)} announcementId={a.id} />
+          )}
         </div>
       )}
     </section>

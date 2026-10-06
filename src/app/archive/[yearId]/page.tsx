@@ -38,7 +38,7 @@ export default async function ArchiveYearPage({
                 <p className="text-sm text-slate-500">
                   {team.name}({team.className})
                 </p>
-                <p className="mt-2 text-xs text-slate-400">{team.summary}</p>
+                <p className="mt-2 line-clamp-2 text-xs text-slate-400">{team.summary}</p>
               </CardLink>
             ))}
           </div>

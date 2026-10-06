@@ -48,7 +48,7 @@ export default async function ArchiveWorkDetailPage({
         }
       />
 
-      <p className="mt-4 text-sm leading-relaxed text-slate-700">{team.summary}</p>
+      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-700">{team.summary}</p>
 
       <section className="mt-6">
         <SectionHeading>発表資料(4回分)</SectionHeading>

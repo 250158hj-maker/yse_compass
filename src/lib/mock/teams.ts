@@ -9,7 +9,7 @@ export const teams: Team[] = [
     className: "IG21",
     members: ["水戸匠", "鈴木和明", "蒲山由梨花"],
     leaderName: "水戸匠",
-    summary: "卒業制作の発表会運営を支える学内向けプラットフォーム。",
+    summary: "卒業制作の発表会を、資料の提出だけで運営できる学内向けのプラットフォームです。生徒が資料を出すと、提出状況の確認や発表順の整理、過去の作品のアーカイブまでそろいます。先生の運営の手間を減らし、作品を次の学年へ残します。",
     publishPermission: "未設定",
   },
   {
@@ -20,7 +20,7 @@ export const teams: Team[] = [
     className: "IG22",
     members: ["山田太郎", "佐藤花子"],
     leaderName: "山田太郎",
-    summary: "部活動・委員会向けの備品貸出をオンラインで完結させるシステム。",
+    summary: "部活動や委員会が使う備品の貸出を、申し込みから返却までオンラインで完結できるシステムです。紙の貸出簿をなくし、在庫の状況をだれでも確認できます。貸出の重複や返し忘れも防ぎます。",
     publishPermission: "未設定",
   },
   {
@@ -31,7 +31,7 @@ export const teams: Team[] = [
     className: "IG21",
     members: ["田中一郎", "高橋美咲", "伊藤健"],
     leaderName: "田中一郎",
-    summary: "日々の学習時間と教科の偏りを可視化するWebアプリ。",
+    summary: "毎日の学習時間を記録し、教科ごとの偏りをグラフで見せる Web アプリです。どの教科に時間をかけているかが一目で分かり、勉強の計画を立てやすくなります。",
     publishPermission: "未設定",
   },
   {
@@ -42,7 +42,7 @@ export const teams: Team[] = [
     className: "IG21",
     members: ["小林大和", "中村美月"],
     leaderName: "小林大和",
-    summary: "新入生と部活動を興味関心でマッチングするアプリ。",
+    summary: "新入生の興味関心と部活動の特徴をタグで突き合わせ、相性の良い部活動を提案するアプリです。入部前に雰囲気や活動内容を知ることができ、入部後のミスマッチを減らします。",
     publishPermission: "許可",
   },
   {
@@ -53,7 +53,7 @@ export const teams: Team[] = [
     className: "IG22",
     members: ["斉藤陽", "石井蓮"],
     leaderName: "斉藤陽",
-    summary: "文化祭の模擬店シフトと売上を管理するツール。",
+    summary: "文化祭の模擬店のシフト表と売上を、1 か所で管理するツールです。担当の交代や売上の集計を手作業でしなくてよくなり、当日の運営がスムーズになります。",
     publishPermission: "拒否",
   },
   {
@@ -64,7 +64,7 @@ export const teams: Team[] = [
     className: "IG21",
     members: ["松本翔", "清水芽衣"],
     leaderName: "松本翔",
-    summary: "校内図書室の蔵書をキーワードで横断検索するアプリ。",
+    summary: "校内の図書室にある本を、キーワードで横断して検索できるアプリです。書名が分からなくても、内容の言葉から探せます。蔵書の貸出状況も、あわせて確認できます。",
     publishPermission: "未設定",
   },
 ];

@@ -20,7 +20,7 @@ export function isLateSubmission(deadline: string, firstSubmittedAt: string | nu
   return new Date(firstSubmittedAt).getTime() > new Date(deadline).getTime();
 }
 
-// 締切後に差し替えがあるか(06-data.md 6-6 の導出式と同じ。初回提出のときは 2 つの日時が同じ値)。
+// 締切後に差し替えがあるか(最終更新が締切より後で、初回提出日時と違うとき。2 値方式は decisions.md 2026-09-29。初回提出のときは 2 つの日時が同じ値)。
 export function isReplacedAfterDeadline(deadline: string, material: Material): boolean {
   if (!material.firstSubmittedAt || !material.updatedAt) return false;
   return (

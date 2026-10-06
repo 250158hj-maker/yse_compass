@@ -18,6 +18,7 @@ import {
   getYearById,
   getTemplateById,
   getTeamsByYear,
+  formatSubmittedAt,
   getSubmission,
   isLateSubmission,
 } from "@/lib/mock";
@@ -158,13 +159,17 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
                   const submission = getSubmission(a.id, ownTeam.id);
                   const material = submission?.materials.find((m) => m.name === slot.name);
                   const late = material ? isLateSubmission(a.submissionDeadline, material.firstSubmittedAt) : false;
+                  const submittedAtText = material ? formatSubmittedAt(a.submissionDeadline, material) : null;
                   return (
-                    <div key={slot.id} className="flex items-center justify-between text-sm">
-                      <span className="text-slate-700">{slot.name}</span>
-                      <span className="flex items-center gap-1">
-                        <StatusBadge status={material?.status ?? "未提出"} />
-                        {late && <LateBadge />}
-                      </span>
+                    <div key={slot.id} className="flex flex-col gap-0.5 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-700">{slot.name}</span>
+                        <span className="flex items-center gap-1">
+                          <StatusBadge status={material?.status ?? "未提出"} />
+                          {late && <LateBadge />}
+                        </span>
+                      </div>
+                      {submittedAtText && <span className="text-xs text-slate-400">初回提出 {submittedAtText}</span>}
                     </div>
                   );
                 })}

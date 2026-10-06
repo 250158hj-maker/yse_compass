@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useSession } from "@/context/SessionContext";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import {
@@ -51,30 +51,54 @@ function pickFeatured(announcements: Announcement[]): Announcement | null {
 
 // 進行と発表一覧を、タイムテーブルの 1 つの一覧にまとめる(チーム枠が発表詳細へのリンクを兼ねる)。
 function ProgressSection({ announcement: a, teacher }: { announcement: Announcement; teacher: boolean }) {
+  const [open, setOpen] = useState(false);
   return (
     <section className="mt-8">
-      <SectionHeading
-        action={
-          <Link href={`/announcements/${a.id}/timetable`} className="text-sm text-brand-600 hover:underline">
-            タイムテーブルを見る →
-          </Link>
-        }
-      >
-        発表の進行({a.title})
-      </SectionHeading>
-      {!a.isPublished && !teacher && (
-        <div className="mb-3">
-          <InlineNotice tone="info">資料は先生の公開操作後に閲覧できます。</InlineNotice>
+      <div className="mb-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls="home-progress"
+          className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-700"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className={`transition-transform ${open ? "rotate-90" : ""}`}
+          >
+            <path d="M5 3l4 4-4 4" />
+          </svg>
+          発表の進行({a.title})
+        </button>
+        <Link href={`/announcements/${a.id}/timetable`} className="text-sm text-brand-600 hover:underline">
+          タイムテーブルを見る →
+        </Link>
+      </div>
+      {open && (
+        <div id="home-progress">
+          {!a.isPublished && !teacher && (
+            <div className="mb-3">
+              <InlineNotice tone="info">資料は先生の公開操作後に閲覧できます。</InlineNotice>
+            </div>
+          )}
+          {!a.isPublished && teacher && (
+            <div className="mb-3">
+              <InlineNotice tone="warning">
+                非公開のため、生徒にはまだ資料が表示されていません(先生によるプレビューです)。
+              </InlineNotice>
+            </div>
+          )}
+          <TimetableRows timetable={getTimetableFor(a.id)} announcementId={a.id} />
         </div>
       )}
-      {!a.isPublished && teacher && (
-        <div className="mb-3">
-          <InlineNotice tone="warning">
-            非公開のため、生徒にはまだ資料が表示されていません(先生によるプレビューです)。
-          </InlineNotice>
-        </div>
-      )}
-      <TimetableRows timetable={getTimetableFor(a.id)} announcementId={a.id} />
     </section>
   );
 }

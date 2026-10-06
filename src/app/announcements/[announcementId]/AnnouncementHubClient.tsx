@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Badge, PhaseBadge, StatusBadge, LateBadge } from "@/components/ui/Badge";
+import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RoleGate } from "@/components/session/RoleGate";
@@ -32,7 +33,7 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
   const [isPublished, setIsPublished] = useState(a.isPublished);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // 資料枠は提出に関わる情報なので、閲覧する生徒には出さない。進行・発表一覧はホームに集約した。
+  // 資料枠は提出に関わる情報なので、閲覧する生徒には出さず、代わりに発表一覧(チーム一覧)を出す。進行はホームに集約した。
   const isPureViewer = !teacher && !ownTeam;
 
   return (
@@ -123,6 +124,27 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {isPureViewer && (
+            <div>
+              <SectionHeading>発表一覧</SectionHeading>
+              {!isPublished ? (
+                <InlineNotice tone="info">資料は先生の公開操作後に閲覧できます。</InlineNotice>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {teams.map((team) => (
+                    <Link
+                      key={team.id}
+                      href={`/announcements/${a.id}/teams/${team.id}`}
+                      className="rounded-lg border border-slate-200 bg-white p-4 hover:border-brand-300"
+                    >
+                      {team.name}({team.projectTitle})
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

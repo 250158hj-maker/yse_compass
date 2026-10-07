@@ -13,7 +13,7 @@ import { useSession } from "@/context/SessionContext";
 import { isOwnTeam } from "@/lib/session-helpers";
 import { isValidUrl } from "@/lib/url";
 import { formatDateTime } from "@/lib/format";
-import { getSubmission, getTemplateById, getYearById, isLateSubmission } from "@/lib/mock";
+import { formatSubmittedAt, getSubmission, getTemplateById, getYearById, isLateSubmission } from "@/lib/mock";
 import type { Announcement, Material, Team } from "@/lib/types";
 
 export function SubmitFormClient({ announcement: a, team }: { announcement: Announcement; team: Team }) {
@@ -24,6 +24,9 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
     Object.fromEntries((submission?.materials ?? []).map((m) => [m.id, m.driveUrl ?? ""]))
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // レンダー中に Date.now() を呼べない(React Compiler の純粋性)ため、開いた時点の時刻を保持する。
+  const [openedAt] = useState(() => Date.now());
+  const pastDeadline = openedAt > new Date(a.submissionDeadline).getTime();
 
   const allowed = isOwnTeam(currentUser, team.id);
   // 年度アーカイブ後は編集できない(読み取り専用。04-screen.md §4-4・requirements.md §3-4)。
@@ -68,9 +71,13 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
       delete next[materialId];
       return next;
     });
+    const now = new Date().toISOString();
+    // 初回提出日時は最初の提出でだけ入れ、差し替えでは動かさない(H-6)。
     setMaterials((prev) =>
       prev.map((m) =>
-        m.id === materialId ? { ...m, status: "提出済み", driveUrl: url, updatedAt: new Date().toISOString() } : m
+        m.id === materialId
+          ? { ...m, status: "提出済み", driveUrl: url, firstSubmittedAt: m.firstSubmittedAt ?? now, updatedAt: now }
+          : m
       )
     );
   }
@@ -84,15 +91,14 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
         {readOnly ? (
           <InlineNotice tone="warning">年度がアーカイブ済みのため、提出・差し替えはできません(閲覧のみ)。</InlineNotice>
         ) : (
-          <InlineNotice tone="info">
-            締切を過ぎても提出・差し替えできます。ただし遅延として提出状況一覧に表示されます。
-          </InlineNotice>
+          <InlineNotice tone="info">締切を過ぎても提出・差し替えできます。</InlineNotice>
         )}
       </div>
 
       <div className="mt-6 flex flex-col gap-4">
         {materials.map((material) => {
-          const late = isLateSubmission(a.submissionDeadline, material.updatedAt);
+          const late = isLateSubmission(a.submissionDeadline, material.firstSubmittedAt);
+          const submittedAtText = formatSubmittedAt(a.submissionDeadline, material);
           const slot = a.materialSlots.find((s) => s.name === material.name);
           const template = slot?.templateId ? getTemplateById(slot.templateId) : null;
           return (
@@ -135,8 +141,11 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
                   onChange={(e) => setDrafts((prev) => ({ ...prev, [material.id]: e.target.value }))}
                 />
               </FormField>
-              {material.updatedAt && (
-                <p className="mb-3 text-xs text-slate-400">最終更新 {formatDateTime(material.updatedAt)}</p>
+              {submittedAtText && <p className="mb-3 text-xs text-slate-400">初回提出 {submittedAtText}</p>}
+              {!readOnly && pastDeadline && !material.firstSubmittedAt && (
+                <div className="mb-3">
+                  <InlineNotice tone="warning">締切を過ぎているため、提出すると遅延として記録されます。</InlineNotice>
+                </div>
               )}
               {!readOnly && (
                 <Button variant="primary" onClick={() => submitMaterial(material.id)}>

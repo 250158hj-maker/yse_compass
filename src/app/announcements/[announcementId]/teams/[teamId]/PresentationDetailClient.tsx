@@ -15,6 +15,7 @@ import { fieldClassName } from "@/components/ui/FormField";
 import { useSession } from "@/context/SessionContext";
 import { isOwnTeam, isTeacher } from "@/lib/session-helpers";
 import { formatDateTime } from "@/lib/format";
+import { formatSubmittedAt } from "@/lib/mock";
 import type { Announcement, Comment, CommentLabel, Reply, Submission, Team } from "@/lib/types";
 
 const labelOptions: CommentLabel[] = ["感想", "批評", "その他"];
@@ -118,7 +119,14 @@ export function PresentationDetailClient({
                     key={m.id}
                     className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-900/5"
                   >
-                    <span className="font-medium text-slate-900">{m.name}</span>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-slate-900">{m.name}</span>
+                      {formatSubmittedAt(a.submissionDeadline, m) && (
+                        <span className="text-xs text-slate-400">
+                          初回提出 {formatSubmittedAt(a.submissionDeadline, m)}
+                        </span>
+                      )}
+                    </div>
                     {m.driveUrl ? (
                       <a
                         href={m.driveUrl}

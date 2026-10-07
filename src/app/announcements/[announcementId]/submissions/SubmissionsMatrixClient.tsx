@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { RoleGate, TeacherOnlyNotice } from "@/components/session/RoleGate";
 import { Button } from "@/components/ui/Button";
 import { formatDateTime } from "@/lib/format";
-import { getTeamsByYear, getSubmission, isLateSubmission } from "@/lib/mock";
+import { formatSubmittedAt, getTeamsByYear, getSubmission, isLateSubmission } from "@/lib/mock";
 import type { Announcement } from "@/lib/types";
 
 export function SubmissionsMatrixClient({ announcement: a }: { announcement: Announcement }) {
@@ -88,7 +88,7 @@ export function SubmissionsMatrixClient({ announcement: a }: { announcement: Ann
                       {a.materialSlots.map((slot) => {
                         const material = submission?.materials.find((m) => m.name === slot.name);
                         const late = material
-                          ? isLateSubmission(a.submissionDeadline, material.updatedAt)
+                          ? isLateSubmission(a.submissionDeadline, material.firstSubmittedAt)
                           : false;
                         const missingRequired = slot.required && (material?.status ?? "未提出") !== "提出済み";
                         return (
@@ -108,8 +108,10 @@ export function SubmissionsMatrixClient({ announcement: a }: { announcement: Ann
                                   資料を開く
                                 </a>
                             )}
-                            {material?.updatedAt && (
-                              <span className="text-xs text-slate-400">{formatDateTime(material.updatedAt)}</span>
+                            {material && formatSubmittedAt(a.submissionDeadline, material) && (
+                              <span className="text-xs text-slate-400">
+                                {formatSubmittedAt(a.submissionDeadline, material)}
+                              </span>
                             )}
                           </div>
                         </td>

@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-10-05（蒲山）
+> **最終更新**：2026-10-08（蒲山）
 
 ## この章が答える問い
 
@@ -161,6 +161,29 @@ flowchart TB
 - `.env.example` をコピーして `.env` を作成（`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `DATABASE_URL` / `AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `SCHOOL_WORKSPACE_DOMAIN`）
 - **`DATABASE_URL` のホスト名は `localhost`。** アプリはホストから起動し、`db` サービスが公開する 5432 番へ繋ぐ。**`.env.local` による上書きは不要**（手順が 1 つになったため）
 - **`AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `SCHOOL_WORKSPACE_DOMAIN` は `.env.example` では空。** 下の疎通確認（`/api/health/db`）までは空のままで動く。`SCHOOL_WORKSPACE_DOMAIN` が空だと `src/auth.ts` が読み込み時に例外を投げるため、`pnpm build` の前にはこれを、サインインを試す前には 4 つとも値を入れる（作り方は `.env.example` のコメント）
+
+### Docker の用意
+
+**Docker Desktop でも、WSL（Ubuntu）内に直接入れた Docker Engine でも、上の `docker-compose.yml` は同じに動く。** 設計が求めるのは `docker compose` が使えることだけで、どちらを使うかは縛らない（決定ではなく、動作確認の結果）。**混ぜないこと** — 両方が有効だと `docker` の向き先が分かりにくくなる。
+
+Docker Desktop なしで入れる手順（Ubuntu。2026-10-08 に Ubuntu 26.04 で確認。24.04 も同じ手順 — コードネームは `os-release` から自動で入る）：
+
+```bash
+sudo apt-get update && sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker $USER && sudo systemctl enable --now docker
+```
+
+- 前提は `/etc/wsl.conf` の `systemd=true`（古い WSL では無効なことがある。PowerShell で `wsl --update`）。`docker` グループの追加は **`wsl --shutdown` で WSL を開き直すまで反映されない**
+- 確認：`which -a docker` の先頭が `/usr/bin/docker`、`docker context ls` で `default` に `*` が付いていること（`/mnt/c/Program Files/Docker/...` は Docker Desktop の入口で、先頭でなければ無視してよい）
+- **Docker Desktop が入っている場合は、WSL integration を OFF にする。** OFF にした直後に `/run/docker.sock` が消えて `docker` が繋がらなくなることがある。Engine は壊れていないので `sudo systemctl restart docker.socket docker.service` で戻る（`db` は `restart: unless-stopped` で自動復帰する）
+- Docker Desktop 側のイメージ・ボリューム（DB のデータ）は WSL 内の Engine へ引き継がれない。開発用 DB は `prisma migrate deploy` で作り直せるが、中身が要る場合は移行前に確認する
+- ターミナルを閉じても Docker は止まらない（systemd が管理するため）。止まるのは `wsl --shutdown` や Windows の再起動で WSL ごと終了したとき。`enabled` のままなら、次の WSL 起動で Docker も `db` も戻る。Docker 自体を止めるなら `sudo systemctl stop docker.service docker.socket`（**`docker.socket` も止める** — 残すと `docker` コマンドで自動復活する）
 
 ### ローカル起動手順
 

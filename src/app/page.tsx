@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useSession } from "@/context/SessionContext";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import {
+  formatSubmittedAt,
   getAnnouncementsByYear,
   getArchivedYears,
   getCurrentYear,
@@ -12,13 +13,15 @@ import {
   getTeamById,
   getTeamsByYear,
   getTimetableFor,
+  isLateSubmission,
   users,
 } from "@/lib/mock";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { CardLink } from "@/components/ui/Card";
+import { Card, CardLink } from "@/components/ui/Card";
+import { Badge, LateBadge, PhaseBadge, StatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatShortDate } from "@/lib/format";
+import { formatDateTime, formatShortDate } from "@/lib/format";
 import type { Announcement, Team } from "@/lib/types";
 
 function isFullySubmitted(announcement: Announcement, teamId: string): boolean {
@@ -31,6 +34,84 @@ function isFullySubmitted(announcement: Announcement, teamId: string): boolean {
 
 function findNextUrgent(announcements: Announcement[], isDone: (a: Announcement) => boolean): Announcement | null {
   return announcements.find((a) => !isDone(a)) ?? null;
+}
+
+// 通知を送らない(2026-07-24 決定)ので、締切と未提出の可視化はこの一覧が最後の砦。必須枠の未提出だけを強調する(H-15)。
+function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; team: Team }) {
+  const rows = announcements.map((a) => {
+    const submission = getSubmission(a.id, team.id);
+    const slots = a.materialSlots.map((slot) => {
+      const material = submission?.materials.find((m) => m.name === slot.name);
+      const submitted = material?.status === "提出済み";
+      return {
+        slot,
+        material,
+        submitted,
+        missingRequired: slot.required && !submitted,
+        late: material ? isLateSubmission(a.submissionDeadline, material.firstSubmittedAt) : false,
+      };
+    });
+    return { announcement: a, slots };
+  });
+  const missingCount = rows.reduce((sum, row) => sum + row.slots.filter((s) => s.missingRequired).length, 0);
+
+  return (
+    <section className="mt-8">
+      <SectionHeading>自チームの提出すべき資料枠({team.name})</SectionHeading>
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+        <span>必須枠の未提出</span>
+        <Badge tone={missingCount > 0 ? "rose" : "emerald"}>{missingCount}件</Badge>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {rows.map(({ announcement: a, slots }) => (
+          <Card key={a.id} className="shadow-sm shadow-slate-900/5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <PhaseBadge phase={a.phase} />
+                <Link href={`/announcements/${a.id}`} className="font-semibold text-slate-900 hover:text-brand-700">
+                  {a.title}
+                </Link>
+              </div>
+              <span className="text-xs text-slate-500">締切 {formatDateTime(a.submissionDeadline)}</span>
+            </div>
+            <ul className="flex flex-col gap-1.5">
+              {slots.map(({ slot, material, missingRequired, late }) => {
+                const submittedAtText = material ? formatSubmittedAt(a.submissionDeadline, material) : null;
+                return (
+                  <li
+                    key={slot.id}
+                    className={`flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${
+                      missingRequired ? "bg-rose-50 ring-1 ring-rose-200" : "bg-slate-50"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={missingRequired ? "font-semibold text-rose-700" : "text-slate-700"}>
+                        {slot.name}
+                      </span>
+                      <Badge tone={slot.required ? "rose" : "slate"}>{slot.required ? "必須" : "任意"}</Badge>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {submittedAtText && <span className="text-xs text-slate-400">{submittedAtText}</span>}
+                      <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                        <StatusBadge status={material?.status ?? "未提出"} />
+                        {late && <LateBadge />}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <Link
+              href={`/announcements/${a.id}/teams/${team.id}/submit`}
+              className="mt-3 inline-block text-xs font-semibold text-brand-600 hover:underline"
+            >
+              資料を提出する →
+            </Link>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function RingTile({
@@ -222,6 +303,8 @@ export default function HomePage() {
           </Link>
         </div>
       )}
+
+      {!teacher && ownTeam && <OwnTeamSlots announcements={announcements} team={ownTeam} />}
 
       <section className="mt-8">
         <SectionHeading>YSE Compassでできること</SectionHeading>

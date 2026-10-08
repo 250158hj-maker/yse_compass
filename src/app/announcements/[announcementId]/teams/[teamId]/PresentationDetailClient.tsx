@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -36,6 +36,8 @@ export function PresentationDetailClient({
   const [newLabel, setNewLabel] = useState<CommentLabel>("感想");
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
+  // レンダー中扱いになる Date.now() を避け、返信の id は連番で振る(React Compiler の純粋性)。
+  const replySeq = useRef(0);
 
   const teacher = isTeacher(currentUser);
   const ownTeam = isOwnTeam(currentUser, team.id);
@@ -65,7 +67,7 @@ export function PresentationDetailClient({
     const body = replyDrafts[commentId]?.trim();
     if (!body) return;
     const reply: Reply = {
-      id: `rep-local-${Date.now()}`,
+      id: `rep-local-${(replySeq.current += 1)}`,
       authorName: currentUser.name,
       authorRole: currentUser.role,
       body,

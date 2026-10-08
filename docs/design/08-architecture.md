@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-10-05（蒲山）
+> **最終更新**：2026-10-08（蒲山）
 
 ## この章が答える問い
 
@@ -162,6 +162,30 @@ flowchart TB
 - **`DATABASE_URL` のホスト名は `localhost`。** アプリはホストから起動し、`db` サービスが公開する 5432 番へ繋ぐ。**`.env.local` による上書きは不要**（手順が 1 つになったため）
 - **`AUTH_SECRET` / `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` / `SCHOOL_WORKSPACE_DOMAIN` は `.env.example` では空。** 下の疎通確認（`/api/health/db`）までは空のままで動く。`SCHOOL_WORKSPACE_DOMAIN` が空だと `src/auth.ts` が読み込み時に例外を投げるため、`pnpm build` の前にはこれを、サインインを試す前には 4 つとも値を入れる（作り方は `.env.example` のコメント）
 
+### Docker の用意
+
+**Docker Desktop でも、WSL（Ubuntu）内に直接入れた Docker Engine でも、上の `docker-compose.yml` は同じに動く。** 設計が求めるのは `docker compose` が使えることだけで、どちらを使うかは縛らない（決定ではなく、動作確認の結果）。**混ぜないこと** — 両方が有効だと `docker` の向き先が分かりにくくなる。
+
+**Docker Desktop が入っている場合は、先に Desktop の Settings > Resources > WSL Integration でこのディストリビューションを OFF にしてから入れる**（両方が有効だと競合しうる。https://docs.docker.com/desktop/features/wsl/ ）。Engine を入れたあとに OFF にした場合は、直後に `/run/docker.sock` が消えて `docker` が繋がらなくなることがある。Engine は壊れていないので `sudo systemctl restart docker.socket docker.service` で戻る（`db` は `restart: unless-stopped` で自動復帰する）。**先に OFF にすれば当たりにくい、というのは推測で、実機では試していない**
+
+Docker Desktop なしで入れる手順（Ubuntu。2026-10-08 に Ubuntu 26.04 で確認。24.04 も同じ手順 — コードネームは `os-release` から自動で入る）：
+
+```bash
+sudo apt-get update && sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker $USER && sudo systemctl enable --now docker
+```
+
+- 前提は systemd が動いていること（`ps -p 1 -o comm=` が `systemd`）。動いていなければ `/etc/wsl.conf` の `[boot]` 節に `systemd=true` を書き、PowerShell で `wsl --shutdown` してから開き直す（WSL 本体が古いときは先に `wsl --update`）。`docker` グループの追加も、**`wsl --shutdown` で WSL を開き直すまで反映されない**
+- 確認：`readlink -f "$(command -v docker)"` が `/usr/bin/docker`（`/mnt/wsl/docker-desktop/...` なら Desktop の CLI）、`docker info --format '{{.OperatingSystem}}'` が `Ubuntu ...`（`Docker Desktop` なら Desktop の Engine）であること。`which -a docker` に出る `/bin/docker`（`/usr/bin` と同じもの）と `/mnt/c/Program Files/Docker/...`（Windows 側の Desktop の入口）は無視してよい。**Engine 側の出力（`/usr/bin/docker`・`Ubuntu 26.04 LTS`・`systemd`）は 2026-10-08 に実機で確かめた。Desktop 側の表示（`/mnt/wsl/docker-desktop/...`・`Docker Desktop`）は、公式の文書でも実機でも確かめていない**
+- Docker Desktop 側のイメージ・ボリューム（DB のデータ）は WSL 内の Engine へ引き継がれない。開発用 DB は `prisma migrate deploy` で作り直せるが、中身が要る場合は移行前に確認する
+- ターミナルを閉じても Docker は止まらない（systemd が管理するため）。止まるのは `wsl --shutdown` や Windows の再起動で WSL ごと終了したとき。`enabled` のままなら、次の WSL 起動で Docker も `db` も戻る。Docker 自体を止めるなら `sudo systemctl stop docker.service docker.socket`（**`docker.socket` も止める** — 残すと `docker` コマンドで自動復活する）
+
 ### ローカル起動手順
 
 ```bash
@@ -193,17 +217,17 @@ pnpm dev
 
 ## 8-7. デプロイ構成
 
-> **この節は下書き（2026-10-03）。** 8-7-1〜8-7-4 は書ける範囲を書いた。8-7-5 は未執筆で、`../findings.md` F-04・F-07・F-11 を引いて書く。8-7-1 の先行方針は、イントラネット案の扱いの決定が `../decisions.md` に入ったら書き直す。
+> **この節は下書き（2026-10-03）。** 8-7-1〜8-7-4 は書ける範囲を書いた。8-7-5 は未執筆で、`../findings.md` F-04・F-07・F-11 を引いて書く。8-7-1 の先行方針は、`../decisions.md` 2026-10-02 の本番環境の行（段階を踏む）に合わせた。8-7-2 以降は、それより前の先行方針（インターネット経由を既定）のもとで書いた。
 
 ### 8-7-1. 前提と先行方針（`00-conventions.md` §3-3 の 3 点）
 
-- **前提とした先行方針**：`../open-questions.md` §7 の表の「H-23・H-28 イントラネット案の成立性」の行（インターネット経由を既定として書く）。本番環境の選定そのものは `../requirements.md` §5 のとおり未確定。8-5 のポーリングは変えない
+- **前提とした先行方針**：`../open-questions.md` §7 の表の「H-23・H-28 段階①（学内で動かす）の成立条件」の行（段階①〔学内のネットワーク〕を既定として書く）。本番環境は段階を踏む（①まず学内 → ②完成度を見てインターネット経由・`../decisions.md` 2026-10-02）。①の置き場所・名前・証明書は `../requirements.md` §5 のとおり未決。8-5 のポーリングは変えない
 - **決着したときに変わる箇所**：
-  - 本番環境の選定（インターネット経由／イントラネット）が決まる → 8-7-2 の実行形態、8-7-4 の HTTPS 終端と redirect URI の置き場所、8-7-5
+  - ①の置き場所が決まる（H-28 (c)）→ 8-7-2 の実行形態、8-7-4 の HTTPS 終端と redirect URI の置き場所、8-7-5
   - ホスティング先・請求先が決まる（G-1・G-6）→ 8-7-2 の候補の絞り込み、8-7-6
   - 本番 DB の置き場所が決まる → 8-7-3 のマイグレーションの適用場所
-  - G-6 が「学外には置けない」で決着する → 既定そのものを見直す（`../open-questions.md` G-6）
-- **未決 ID**：**H-23・H-28**（イントラネット案の成立性）・**G-1**（運用・費用の主体）・**G-6**（学外へのデータ配置）・**G-2**（可用性。8-7-3 のリリース手順で停止時間を許すか）
+  - G-6 が「学外には置けない」で決着する → ②の移り先を見直す（学校の AWS が G-6 に当たるかは、②へ移る前に確かめる・`../open-questions.md` G-6）。①ではデータが学内に留まるので、①の既定には効かない
+- **未決 ID**：**H-23・H-28**（段階①の成立条件）・**G-1**（運用・費用の主体）・**G-6**（学外へのデータ配置）・**G-2**（可用性。8-7-3 のリリース手順で停止時間を許すか）
 
 ### 8-7-2. 実行形態
 

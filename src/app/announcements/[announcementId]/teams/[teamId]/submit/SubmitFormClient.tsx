@@ -96,7 +96,8 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
       </div>
 
       <div className="mt-6 flex flex-col gap-4">
-        {materials.map((material) => {
+        {/* 概要集はアプリ内で管理する(概要の入力から作る)ので、ドライブのリンクは求めない。 */}
+        {materials.filter((m) => m.name !== "概要集").map((material) => {
           const late = isLateSubmission(a.submissionDeadline, material.firstSubmittedAt);
           const submittedAtText = formatSubmittedAt(a.submissionDeadline, material);
           const slot = a.materialSlots.find((s) => s.name === material.name);
@@ -156,6 +157,17 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
           );
         })}
       </div>
+
+      {!readOnly && a.materialSlots.some((slot) => slot.name === "概要集") && (
+        <div className="mt-4">
+          <InlineNotice tone="info">
+            概要集はこのアプリの中で作ります。リンクの提出は不要です。{" "}
+            <Link href={`/announcements/${a.id}/teams/${team.id}/summary`} className="font-semibold underline">
+              概要を入力する →
+            </Link>
+          </InlineNotice>
+        </div>
+      )}
 
       <Link href={`/announcements/${a.id}/teams/${team.id}`} className="mt-6 inline-block text-sm text-brand-600 hover:underline">
         発表詳細へ戻る →

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useSession } from "@/context/SessionContext";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import {
@@ -21,8 +21,10 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Card, CardLink } from "@/components/ui/Card";
 import { Badge, LateBadge, PhaseBadge, StatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InlineNotice } from "@/components/ui/InlineNotice";
+import { TimetableRows } from "@/components/timetable/TimetableRows";
 import { formatDateTime, formatShortDate } from "@/lib/format";
-import type { Announcement, Team } from "@/lib/types";
+import type { Announcement, Team, Timetable } from "@/lib/types";
 
 function isFullySubmitted(announcement: Announcement, teamId: string): boolean {
   const submission = getSubmission(announcement.id, teamId);
@@ -36,8 +38,127 @@ function findNextUrgent(announcements: Announcement[], isDone: (a: Announcement)
   return announcements.find((a) => !isDone(a)) ?? null;
 }
 
+// ホームの開閉できる見出し。閉じていても見出し横の補足(件数など)とリンクは見える。
+function ToggleHeading({
+  open,
+  onToggle,
+  controls,
+  children,
+  aside,
+  action,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  controls: string;
+  children: ReactNode;
+  aside?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={controls}
+          className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-700"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className={`transition-transform ${open ? "rotate-90" : ""}`}
+          >
+            <path d="M5 3l4 4-4 4" />
+          </svg>
+          {children}
+        </button>
+        {aside}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+// ホームに出す発表会は、発表中のもの → 開催前でタイムテーブルがあるもの → タイムテーブルがある最後のもの、の順に選ぶ。
+function pickFeatured(announcements: Announcement[]): Announcement | null {
+  const withTimetable = announcements.filter((a) => getTimetableFor(a.id));
+  return (
+    withTimetable.find((a) => getTimetableFor(a.id)?.currentPresentingTeamId) ??
+    withTimetable.find((a) => a.status !== "終了") ??
+    withTimetable[withTimetable.length - 1] ??
+    null
+  );
+}
+
+// ホームの「発表の進行」には、発表中の前 1 組・後 2 組だけを出す(全体はタイムテーブル画面)。
+// 発表中の人がいなければ先頭から 3 組。間にある休憩は一緒に出す。
+function nearbySlots(timetable: Timetable): Timetable {
+  const slots = [...timetable.slots].sort((x, y) => x.order - y.order);
+  const teamIdx = slots.flatMap((slot, i) => (slot.isBreak ? [] : [i]));
+  const current = teamIdx.findIndex((i) => {
+    const slot = slots[i];
+    return !slot.isBreak && slot.teamId === timetable.currentPresentingTeamId;
+  });
+  const [from, to] = current === -1 ? [0, 2] : [Math.max(current - 1, 0), current + 2];
+  const picked = teamIdx.slice(from, to + 1);
+  if (picked.length === 0) return { ...timetable, slots: [] };
+  return { ...timetable, slots: slots.slice(picked[0], picked[picked.length - 1] + 1) };
+}
+
+// 進行と発表一覧を、1 つの一覧にまとめる(チーム枠が発表詳細へのリンクを兼ねる)。
+function ProgressSection({ announcement: a, teacher }: { announcement: Announcement; teacher: boolean }) {
+  const [open, setOpen] = useState(false);
+  const timetable = getTimetableFor(a.id);
+  return (
+    <section className="mt-8">
+      <ToggleHeading
+        open={open}
+        onToggle={() => setOpen((v) => !v)}
+        controls="home-progress"
+        action={
+          <Link href={`/announcements/${a.id}/timetable`} className="text-sm text-brand-600 hover:underline">
+            タイムテーブルを見る →
+          </Link>
+        }
+      >
+        発表の進行({a.title})
+      </ToggleHeading>
+      {open && (
+        <div id="home-progress">
+          {!a.isPublished && !teacher && (
+            <div className="mb-3">
+              <InlineNotice tone="info">資料は先生の公開操作後に閲覧できます。</InlineNotice>
+            </div>
+          )}
+          {!a.isPublished && teacher && (
+            <div className="mb-3">
+              <InlineNotice tone="warning">
+                非公開のため、生徒にはまだ資料が表示されていません(先生によるプレビューです)。
+              </InlineNotice>
+            </div>
+          )}
+          {timetable && a.status === "終了" ? (
+            <InlineNotice tone="info">この発表会の発表は終了しました。全体はタイムテーブルで見られます。</InlineNotice>
+          ) : (
+            <TimetableRows timetable={timetable && nearbySlots(timetable)} announcementId={a.id} />
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 // 通知を送らない(2026-07-24 決定)ので、締切と未提出の可視化はこの一覧が最後の砦。必須枠の未提出だけを強調する(H-15)。
 function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; team: Team }) {
+  const [open, setOpen] = useState(false);
   const rows = announcements.map((a) => {
     const submission = getSubmission(a.id, team.id);
     const slots = a.materialSlots.map((slot) => {
@@ -57,59 +178,69 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
 
   return (
     <section className="mt-8">
-      <SectionHeading>自チームの提出すべき資料枠({team.name})</SectionHeading>
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-        <span>必須枠の未提出</span>
-        <Badge tone={missingCount > 0 ? "rose" : "emerald"}>{missingCount}件</Badge>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        {rows.map(({ announcement: a, slots }) => (
-          <Card key={a.id} className="shadow-sm shadow-slate-900/5">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <PhaseBadge phase={a.phase} />
-                <Link href={`/announcements/${a.id}`} className="font-semibold text-slate-900 hover:text-brand-700">
-                  {a.title}
-                </Link>
+      <ToggleHeading
+        open={open}
+        onToggle={() => setOpen((v) => !v)}
+        controls="home-own-slots"
+        aside={
+          <span className="flex items-center gap-2 text-sm text-slate-500">
+            必須枠の未提出
+            <Badge tone={missingCount > 0 ? "rose" : "emerald"}>{missingCount}件</Badge>
+          </span>
+        }
+      >
+        自チームの提出すべき資料枠({team.name})
+      </ToggleHeading>
+      {open && (
+        <div id="home-own-slots" className="grid gap-3 md:grid-cols-2">
+          {rows.map(({ announcement: a, slots }) => (
+            <Card key={a.id} className="shadow-sm shadow-slate-900/5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <PhaseBadge phase={a.phase} />
+                  <Link href={`/announcements/${a.id}`} className="font-semibold text-slate-900 hover:text-brand-700">
+                    {a.title}
+                  </Link>
+                </div>
+                <span className="text-xs text-slate-500">締切 {formatDateTime(a.submissionDeadline)}</span>
               </div>
-              <span className="text-xs text-slate-500">締切 {formatDateTime(a.submissionDeadline)}</span>
-            </div>
-            <ul className="flex flex-col gap-1.5">
-              {slots.map(({ slot, material, missingRequired, late }) => {
-                const submittedAtText = material ? formatSubmittedAt(a.submissionDeadline, material) : null;
-                return (
-                  <li
-                    key={slot.id}
-                    className={`flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${
-                      missingRequired ? "bg-rose-50 ring-1 ring-rose-200" : "bg-slate-50"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className={missingRequired ? "font-semibold text-rose-700" : "text-slate-700"}>
-                        {slot.name}
+              <ul className="flex flex-col gap-1.5">
+                {slots.map(({ slot, material, missingRequired, late }) => {
+                  const submittedAtText = material ? formatSubmittedAt(a.submissionDeadline, material) : null;
+                  return (
+                    <li
+                      key={slot.id}
+                      className={`flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${
+                        missingRequired ? "bg-rose-50 ring-1 ring-rose-200" : "bg-slate-50"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={missingRequired ? "font-semibold text-rose-700" : "text-slate-700"}>
+                          {slot.name}
+                        </span>
+                        <Badge tone={slot.required ? "rose" : "slate"}>{slot.required ? "必須" : "任意"}</Badge>
                       </span>
-                      <Badge tone={slot.required ? "rose" : "slate"}>{slot.required ? "必須" : "任意"}</Badge>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      {submittedAtText && <span className="text-xs text-slate-400">{submittedAtText}</span>}
-                      <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-                        <StatusBadge status={material?.status ?? "未提出"} />
-                        {late && <LateBadge />}
+                      <span className="flex items-center gap-2">
+                        {submittedAtText && <span className="text-xs text-slate-400">{submittedAtText}</span>}
+                        <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                          <StatusBadge status={material?.status ?? "未提出"} />
+                          {late && <LateBadge />}
+                        </span>
                       </span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-            <Link
-              href={`/announcements/${a.id}/teams/${team.id}/submit`}
-              className="mt-3 inline-block text-xs font-semibold text-brand-600 hover:underline"
-            >
-              資料を提出する →
-            </Link>
-          </Card>
-        ))}
-      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Link
+                href={`/announcements/${a.id}/teams/${team.id}/submit`}
+                className="mt-3 inline-block text-xs font-semibold text-brand-600 hover:underline"
+              >
+                資料を提出する →
+              </Link>
+            </Card>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -276,6 +407,7 @@ export default function HomePage() {
   const teams = getTeamsByYear(year.id);
   const ownTeam = teams.find((t) => isOwnTeam(currentUser, t.id)) ?? null;
   const archivedYears = getArchivedYears();
+  const featured = pickFeatured(announcements);
   const publishedCount = announcements.filter((a) => a.isPublished).length;
 
   const presenting = announcements
@@ -295,14 +427,21 @@ export default function HomePage() {
             いま発表中：{getTeamById(presenting.timetable!.currentPresentingTeamId!)?.name}
             (「{presenting.announcement.title}」)
           </p>
+          {/* 生徒は、進行表ではなく、いま発表しているチームの発表詳細へ直接行く。先生は進行表(発表中の切り替え)へ行く。 */}
           <Link
-            href={`/announcements/${presenting.announcement.id}/timetable`}
+            href={
+              teacher
+                ? `/announcements/${presenting.announcement.id}/timetable`
+                : `/announcements/${presenting.announcement.id}/teams/${presenting.timetable!.currentPresentingTeamId}`
+            }
             className="text-xs font-semibold text-rose-700 underline underline-offset-2"
           >
-            タイムテーブルを見る
+            {teacher ? "タイムテーブルを見る" : "発表を見る"}
           </Link>
         </div>
       )}
+
+      {featured && <ProgressSection announcement={featured} teacher={teacher} />}
 
       {!teacher && ownTeam && <OwnTeamSlots announcements={announcements} team={ownTeam} />}
 

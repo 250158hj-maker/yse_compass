@@ -9,7 +9,7 @@ export const submissions: Submission[] = [
     materials: [
       {
         id: "mat-k-cheers-slide",
-        name: "企画書",
+        name: "プレゼン資料",
         status: "提出済み",
         firstSubmittedAt: "2026-07-15T21:40:00+09:00",
         updatedAt: "2026-07-17T09:30:00+09:00",
@@ -17,11 +17,11 @@ export const submissions: Submission[] = [
       },
       {
         id: "mat-k-cheers-sub",
-        name: "補足資料",
+        name: "概要集",
         status: "提出済み",
         firstSubmittedAt: "2026-07-17T08:10:00+09:00",
         updatedAt: "2026-07-17T08:10:00+09:00",
-        driveUrl: "https://docs.google.com/document/d/cheers-kikaku-sub/edit",
+        driveUrl: null,
       },
     ],
     summary: {
@@ -69,13 +69,13 @@ export const submissions: Submission[] = [
     materials: [
       {
         id: "mat-k-nova-slide",
-        name: "企画書",
+        name: "プレゼン資料",
         status: "提出済み",
         firstSubmittedAt: "2026-07-14T18:00:00+09:00",
         updatedAt: "2026-07-14T18:00:00+09:00",
         driveUrl: "https://docs.google.com/presentation/d/nova-kikaku/edit",
       },
-      { id: "mat-k-nova-sub", name: "補足資料", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-k-nova-sub", name: "概要集", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
     ],
     summary: {
       background: "部活動・委員会の備品貸出が紙の貸出簿で管理され、在庫状況が分からない。",
@@ -104,13 +104,13 @@ export const submissions: Submission[] = [
     materials: [
       {
         id: "mat-k-lumen-slide",
-        name: "企画書",
+        name: "プレゼン資料",
         status: "提出済み",
         firstSubmittedAt: "2026-07-17T07:50:00+09:00",
         updatedAt: "2026-07-17T07:50:00+09:00",
         driveUrl: "https://docs.google.com/presentation/d/lumen-kikaku/edit",
       },
-      { id: "mat-k-lumen-sub", name: "補足資料", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-k-lumen-sub", name: "概要集", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
     ],
     summary: null,
     comments: [],
@@ -124,13 +124,13 @@ export const submissions: Submission[] = [
     materials: [
       {
         id: "mat-s-cheers-doc",
-        name: "設計書",
+        name: "プレゼン資料",
         status: "提出済み",
         firstSubmittedAt: "2026-08-18T22:00:00+09:00",
         updatedAt: "2026-08-18T22:00:00+09:00",
         driveUrl: "https://docs.google.com/document/d/cheers-sekkei/edit",
       },
-      { id: "mat-s-cheers-er", name: "ER図", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-s-cheers-er", name: "概要集", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
     ],
     summary: null,
     comments: [],
@@ -140,8 +140,8 @@ export const submissions: Submission[] = [
     teamId: "team-nova",
     likeCount: 0,
     materials: [
-      { id: "mat-s-nova-doc", name: "設計書", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
-      { id: "mat-s-nova-er", name: "ER図", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-s-nova-doc", name: "プレゼン資料", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-s-nova-er", name: "概要集", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
     ],
     summary: null,
     comments: [],
@@ -151,8 +151,8 @@ export const submissions: Submission[] = [
     teamId: "team-lumen",
     likeCount: 0,
     materials: [
-      { id: "mat-s-lumen-doc", name: "設計書", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
-      { id: "mat-s-lumen-er", name: "ER図", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-s-lumen-doc", name: "プレゼン資料", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-s-lumen-er", name: "概要集", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
     ],
     summary: null,
     comments: [],
@@ -166,14 +166,29 @@ export const submissions: Submission[] = [
     materials: [
       {
         id: "mat-25k-aurora",
-        name: "企画書",
+        name: "プレゼン資料",
         status: "提出済み",
         firstSubmittedAt: "2025-07-16T20:00:00+09:00",
         updatedAt: "2025-07-16T20:00:00+09:00",
         driveUrl: "https://docs.google.com/presentation/d/aurora-kikaku/edit",
       },
+      {
+        id: "mat-25k-aurora-gaiyou",
+        name: "概要集",
+        status: "提出済み",
+        firstSubmittedAt: "2025-07-16T21:00:00+09:00",
+        updatedAt: "2025-07-16T21:00:00+09:00",
+        driveUrl: null,
+      },
     ],
-    summary: null,
+    summary: {
+      background: "新入生が興味のある部活動を見つけられず、入部後のミスマッチも多い。",
+      techUsed: ["Next.js", "Supabase"],
+      opening: "「入ってみたら想像と違った」——新入生の部活選びには情報が足りていない。",
+      closing: "興味関心タグでのマッチングを軸に、入部前の情報不足を解消する企画を提案する。",
+      onePageBody: "新入生の興味関心と部活動の特徴をタグで結び付け、相性の良い部活動を提案するアプリを企画します。まず現状の課題と、解決の方向性を示します。",
+      submittedAt: "2025-07-16T21:00:00+09:00",
+    },
     comments: [],
   },
   {
@@ -183,14 +198,29 @@ export const submissions: Submission[] = [
     materials: [
       {
         id: "mat-25s-aurora",
-        name: "設計書",
+        name: "プレゼン資料",
         status: "提出済み",
         firstSubmittedAt: "2025-10-14T20:00:00+09:00",
         updatedAt: "2025-10-14T20:00:00+09:00",
         driveUrl: "https://docs.google.com/document/d/aurora-sekkei/edit",
       },
+      {
+        id: "mat-25s-aurora-gaiyou",
+        name: "概要集",
+        status: "提出済み",
+        firstSubmittedAt: "2025-10-14T21:00:00+09:00",
+        updatedAt: "2025-10-14T21:00:00+09:00",
+        driveUrl: null,
+      },
     ],
-    summary: null,
+    summary: {
+      background: "企画で示したタグマッチングを、実際に作れる形へ具体化する段階。",
+      techUsed: ["Next.js", "Supabase"],
+      opening: "タグの付け方と照合のルールを決めなければ、提案の質は上がらない。",
+      closing: "データ構造と画面の設計を固め、試作へ進める状態にした。",
+      onePageBody: "興味関心タグと部活動タグの照合ルール、利用者・部活動・提案結果のデータ構造、主要な画面の流れを設計しました。",
+      submittedAt: "2025-10-14T21:00:00+09:00",
+    },
     comments: [],
   },
   {
@@ -200,14 +230,29 @@ export const submissions: Submission[] = [
     materials: [
       {
         id: "mat-25t-aurora",
-        name: "発表スライド",
+        name: "プレゼン資料",
         status: "提出済み",
         firstSubmittedAt: "2025-12-15T20:00:00+09:00",
         updatedAt: "2025-12-15T20:00:00+09:00",
         driveUrl: "https://docs.google.com/presentation/d/aurora-shisaku/edit",
       },
+      {
+        id: "mat-25t-aurora-gaiyou",
+        name: "概要集",
+        status: "提出済み",
+        firstSubmittedAt: "2025-12-15T21:00:00+09:00",
+        updatedAt: "2025-12-15T21:00:00+09:00",
+        driveUrl: null,
+      },
     ],
-    summary: null,
+    summary: {
+      background: "設計をもとに、提案の流れが実際に動くことを確かめる段階。",
+      techUsed: ["Next.js", "Supabase"],
+      opening: "設計どおりに動くのか、まず小さく作って確かめる。",
+      closing: "主要な流れが動き、最終発表に向けた改善点が見えた。",
+      onePageBody: "タグを選ぶと相性の良い部活動が並ぶ、提案の基本の流れを動く形にしました。試用で見つかった課題を、最終版で直します。",
+      submittedAt: "2025-12-15T21:00:00+09:00",
+    },
     comments: [],
   },
   {
@@ -217,11 +262,19 @@ export const submissions: Submission[] = [
     materials: [
       {
         id: "mat-25f-aurora",
-        name: "発表スライド",
+        name: "プレゼン資料",
         status: "提出済み",
         firstSubmittedAt: "2026-02-08T20:00:00+09:00",
         updatedAt: "2026-02-08T20:00:00+09:00",
         driveUrl: "https://docs.google.com/presentation/d/aurora-saishu/edit",
+      },
+      {
+        id: "mat-25f-aurora-gaiyou",
+        name: "概要集",
+        status: "提出済み",
+        firstSubmittedAt: "2026-02-08T21:00:00+09:00",
+        updatedAt: "2026-02-08T21:00:00+09:00",
+        driveUrl: null,
       },
     ],
     summary: {

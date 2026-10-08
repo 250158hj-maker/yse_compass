@@ -113,7 +113,7 @@ export function EditAnnouncementClient({ announcement: a }: { announcement: Anno
                 <div className="flex items-center gap-2">
                   <input
                     className={fieldClassName}
-                    placeholder="資料枠の名称(例: 企画書)"
+                    placeholder="資料枠の名称(例: プレゼン資料)"
                     value={slot.name}
                     onChange={(e) => updateSlot(slot.id, { name: e.target.value })}
                   />

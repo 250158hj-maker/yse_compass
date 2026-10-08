@@ -10,9 +10,10 @@ import { Badge, PhaseBadge, PublishPermissionBadge } from "@/components/ui/Badge
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
 import { RoleGate } from "@/components/session/RoleGate";
+import { fieldClassName } from "@/components/ui/FormField";
 import { useSession } from "@/context/SessionContext";
 import { getAnnouncementsByYear, getSubmission, getYearById, users } from "@/lib/mock";
-import { isTeacher } from "@/lib/session-helpers";
+import { isOwnTeam, isTeacher } from "@/lib/session-helpers";
 import type { Team } from "@/lib/types";
 
 export function TeamDetailClient({ team }: { team: Team }) {
@@ -25,6 +26,11 @@ export function TeamDetailClient({ team }: { team: Team }) {
   // メンバーは氏名の文字列しか持たないため、同名の生徒アカウントがあれば「利用者に結びついている(引き換え済み)」とみなす。
   const isRedeemed = (member: string) => users.some((u) => u.role === "student" && u.name === member);
   const [publishPermission, setPublishPermission] = useState(team.publishPermission);
+  // 作品の説明は、自チームのメンバー(発表する生徒)と先生だけが編集できる。保存はこの画面の中だけ(モック)。
+  const canEditSummary = isTeacher(currentUser) || isOwnTeam(currentUser, team.id);
+  const [summary, setSummary] = useState(team.summary);
+  const [draft, setDraft] = useState(team.summary);
+  const [editingSummary, setEditingSummary] = useState(false);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -47,32 +53,83 @@ export function TeamDetailClient({ team }: { team: Team }) {
       />
 
       <div className="mt-6 grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2">
-          <SectionHeading>発表会ごとの提出状況</SectionHeading>
-          <div className="flex flex-col gap-3">
-            {announcements.map((a) => {
-              const submission = getSubmission(a.id, team.id);
-              const required = a.materialSlots.filter((s) => s.required);
-              const submittedRequired =
-                submission?.materials.filter(
-                  (m) => required.some((s) => s.name === m.name) && m.status === "提出済み"
-                ).length ?? 0;
-              return (
-                <Link
-                  key={a.id}
-                  href={`/announcements/${a.id}/teams/${team.id}`}
-                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 hover:border-brand-300"
-                >
-                  <div className="flex items-center gap-2">
-                    <PhaseBadge phase={a.phase} />
-                    <span className="font-medium text-slate-900">{a.title}</span>
-                  </div>
-                  <span className="text-sm text-slate-500">
-                    必須資料 {submittedRequired}/{required.length} 提出済み
-                  </span>
-                </Link>
-              );
-            })}
+        <div className="flex flex-col gap-8 md:col-span-2">
+          <section>
+            <SectionHeading
+              action={
+                canEditSummary &&
+                !editingSummary && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraft(summary);
+                      setEditingSummary(true);
+                    }}
+                    className="text-sm text-brand-600 hover:underline"
+                  >
+                    編集する
+                  </button>
+                )
+              }
+            >
+              作品の説明
+            </SectionHeading>
+            {editingSummary ? (
+              <div className="flex flex-col gap-2">
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  rows={4}
+                  aria-label="作品の説明"
+                  className={fieldClassName}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="primary"
+                    disabled={draft.trim() === ""}
+                    onClick={() => {
+                      setSummary(draft.trim());
+                      setEditingSummary(false);
+                    }}
+                  >
+                    保存する
+                  </Button>
+                  <Button variant="secondary" onClick={() => setEditingSummary(false)}>
+                    キャンセル
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed text-slate-700">{summary}</p>
+            )}
+          </section>
+          <div>
+            <SectionHeading>発表会ごとの提出状況</SectionHeading>
+            <div className="flex flex-col gap-3">
+              {announcements.map((a) => {
+                const submission = getSubmission(a.id, team.id);
+                const required = a.materialSlots.filter((s) => s.required);
+                const submittedRequired =
+                  submission?.materials.filter(
+                    (m) => required.some((s) => s.name === m.name) && m.status === "提出済み"
+                  ).length ?? 0;
+                return (
+                  <Link
+                    key={a.id}
+                    href={`/announcements/${a.id}/teams/${team.id}`}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 hover:border-brand-300"
+                  >
+                    <div className="flex items-center gap-2">
+                      <PhaseBadge phase={a.phase} />
+                      <span className="font-medium text-slate-900">{a.title}</span>
+                    </div>
+                    <span className="text-sm text-slate-500">
+                      必須資料 {submittedRequired}/{required.length} 提出済み
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
 

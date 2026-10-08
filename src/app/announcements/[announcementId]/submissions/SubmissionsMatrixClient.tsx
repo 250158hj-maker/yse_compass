@@ -8,7 +8,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { RoleGate, TeacherOnlyNotice } from "@/components/session/RoleGate";
 import { Button } from "@/components/ui/Button";
 import { formatDateTime } from "@/lib/format";
-import { formatSubmittedAt, getTeamsByYear, getSubmission, isLateSubmission } from "@/lib/mock";
+import { formatSubmittedAt, getTeamsByYear, getSubmission, isLateSubmission, materialHref } from "@/lib/mock";
+import { MaterialLink } from "@/components/ui/MaterialLink";
 import type { Announcement } from "@/lib/types";
 
 export function SubmissionsMatrixClient({ announcement: a }: { announcement: Announcement }) {
@@ -98,15 +99,13 @@ export function SubmissionsMatrixClient({ announcement: a }: { announcement: Ann
                                 <StatusBadge status={material?.status ?? "未提出"} />
                                 {late && <LateBadge />}
                               </span>
-                              {material?.driveUrl && (
-                                <a
-                                  href={material.driveUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                              {material && materialHref(a.id, team.id, material) && (
+                                <MaterialLink
+                                  href={materialHref(a.id, team.id, material)!}
                                   className="text-xs text-brand-600 hover:underline"
                                 >
                                   資料を開く
-                                </a>
+                                </MaterialLink>
                             )}
                             {material && formatSubmittedAt(a.submissionDeadline, material) && (
                               <span className="text-xs text-slate-400">

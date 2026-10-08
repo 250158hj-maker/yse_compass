@@ -166,6 +166,8 @@ flowchart TB
 
 **Docker Desktop でも、WSL（Ubuntu）内に直接入れた Docker Engine でも、上の `docker-compose.yml` は同じに動く。** 設計が求めるのは `docker compose` が使えることだけで、どちらを使うかは縛らない（決定ではなく、動作確認の結果）。**混ぜないこと** — 両方が有効だと `docker` の向き先が分かりにくくなる。
 
+**Docker Desktop が入っている場合は、先に Desktop の Settings > Resources > WSL Integration でこのディストリビューションを OFF にしてから入れる**（両方が有効だと競合しうる。https://docs.docker.com/desktop/features/wsl/ ）。Engine を入れたあとに OFF にした場合は、直後に `/run/docker.sock` が消えて `docker` が繋がらなくなることがある。Engine は壊れていないので `sudo systemctl restart docker.socket docker.service` で戻る（`db` は `restart: unless-stopped` で自動復帰する）。**先に OFF にすれば当たりにくい、というのは推測で、実機では試していない**
+
 Docker Desktop なしで入れる手順（Ubuntu。2026-10-08 に Ubuntu 26.04 で確認。24.04 も同じ手順 — コードネームは `os-release` から自動で入る）：
 
 ```bash
@@ -179,9 +181,8 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 sudo usermod -aG docker $USER && sudo systemctl enable --now docker
 ```
 
-- 前提は `/etc/wsl.conf` の `systemd=true`（古い WSL では無効なことがある。PowerShell で `wsl --update`）。`docker` グループの追加は **`wsl --shutdown` で WSL を開き直すまで反映されない**
-- 確認：`which -a docker` の先頭が `/usr/bin/docker`、`docker context ls` で `default` に `*` が付いていること（`/mnt/c/Program Files/Docker/...` は Docker Desktop の入口で、先頭でなければ無視してよい）
-- **Docker Desktop が入っている場合は、WSL integration を OFF にする。** OFF にした直後に `/run/docker.sock` が消えて `docker` が繋がらなくなることがある。Engine は壊れていないので `sudo systemctl restart docker.socket docker.service` で戻る（`db` は `restart: unless-stopped` で自動復帰する）
+- 前提は systemd が動いていること（`ps -p 1 -o comm=` が `systemd`）。動いていなければ `/etc/wsl.conf` の `[boot]` 節に `systemd=true` を書き、PowerShell で `wsl --shutdown` してから開き直す（WSL 本体が古いときは先に `wsl --update`）。`docker` グループの追加も、**`wsl --shutdown` で WSL を開き直すまで反映されない**
+- 確認：`readlink -f "$(command -v docker)"` が `/usr/bin/docker`（`/mnt/wsl/docker-desktop/...` なら Desktop の CLI）、`docker info --format '{{.OperatingSystem}}'` が `Ubuntu ...`（`Docker Desktop` なら Desktop の Engine）であること。`which -a docker` に出る `/bin/docker`（`/usr/bin` と同じもの）と `/mnt/c/Program Files/Docker/...`（Windows 側の Desktop の入口）は無視してよい。**Engine 側の出力（`/usr/bin/docker`・`Ubuntu 26.04 LTS`・`systemd`）は 2026-10-08 に実機で確かめた。Desktop 側の表示（`/mnt/wsl/docker-desktop/...`・`Docker Desktop`）は、公式の文書でも実機でも確かめていない**
 - Docker Desktop 側のイメージ・ボリューム（DB のデータ）は WSL 内の Engine へ引き継がれない。開発用 DB は `prisma migrate deploy` で作り直せるが、中身が要る場合は移行前に確認する
 - ターミナルを閉じても Docker は止まらない（systemd が管理するため）。止まるのは `wsl --shutdown` や Windows の再起動で WSL ごと終了したとき。`enabled` のままなら、次の WSL 起動で Docker も `db` も戻る。Docker 自体を止めるなら `sudo systemctl stop docker.service docker.socket`（**`docker.socket` も止める** — 残すと `docker` コマンドで自動復活する）
 

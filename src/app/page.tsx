@@ -222,8 +222,10 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
                       </span>
                       <span className="flex items-center gap-2">
                         {submittedAtText && <span className="text-xs text-slate-400">{submittedAtText}</span>}
-                        <StatusBadge status={material?.status ?? "未提出"} />
-                        {late && <LateBadge />}
+                        <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                          <StatusBadge status={material?.status ?? "未提出"} />
+                          {late && <LateBadge />}
+                        </span>
                       </span>
                     </li>
                   );

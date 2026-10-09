@@ -12,6 +12,7 @@ import {
   getSubmission,
   getTeamById,
   getTeamsByYear,
+  getTemplateById,
   getTimetableFor,
   isLateSubmission,
   users,
@@ -167,6 +168,7 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
       return {
         slot,
         material,
+        template: slot.templateId ? getTemplateById(slot.templateId) : null,
         submitted,
         missingRequired: slot.required && !submitted,
         late: material ? isLateSubmission(a.submissionDeadline, material.firstSubmittedAt) : false,
@@ -198,7 +200,7 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
               <span className="text-xs text-slate-500">締切 {formatDateTime(a.submissionDeadline)}</span>
             </div>
             <ul className="flex flex-col gap-1.5">
-              {slots.map(({ slot, material, missingRequired, late }) => {
+              {slots.map(({ slot, material, template, missingRequired, late }) => {
                 const submittedAtText = material ? formatSubmittedAt(a.submissionDeadline, material) : null;
                 return (
                   <li
@@ -220,6 +222,16 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
                         {late && <LateBadge />}
                       </span>
                     </span>
+                    {template && (
+                      <a
+                        href={template.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="basis-full text-sm text-brand-600 hover:underline"
+                      >
+                        テンプレートを開く →
+                      </a>
+                    )}
                   </li>
                 );
               })}

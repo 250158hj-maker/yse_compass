@@ -4,24 +4,16 @@ import Link from "next/link";
 import { useState } from "react";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card } from "@/components/ui/Card";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { Badge, PhaseBadge, StatusBadge, LateBadge } from "@/components/ui/Badge";
+import { Badge, PhaseBadge } from "@/components/ui/Badge";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RoleGate } from "@/components/session/RoleGate";
 import { useSession } from "@/context/SessionContext";
-import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
+import { isTeacher } from "@/lib/session-helpers";
 import { formatDate, formatDateTime } from "@/lib/format";
-import {
-  getYearById,
-  getTemplateById,
-  getTeamsByYear,
-  formatSubmittedAt,
-  getSubmission,
-  isLateSubmission,
-} from "@/lib/mock";
+import { getYearById, getTemplateById, getTeamsByYear } from "@/lib/mock";
 import type { Announcement } from "@/lib/types";
 
 export function AnnouncementHubClient({ announcement: a }: { announcement: Announcement }) {
@@ -29,13 +21,12 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
   const year = getYearById(a.yearId);
   const teams = getTeamsByYear(a.yearId);
   const teacher = isTeacher(currentUser);
-  const ownTeam = teams.find((t) => isOwnTeam(currentUser, t.id)) ?? null;
 
   const [isPublished, setIsPublished] = useState(a.isPublished);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // 資料枠は提出に関わる情報なので、閲覧する生徒には出さず、代わりに発表一覧(チーム一覧)を出す。進行はホームに集約した。
-  const isPureViewer = !teacher && !ownTeam;
+  // 資料枠は先生だけに出し、生徒は(提出する生徒も)発表一覧(チーム一覧)を見る。提出と進行はホームに集約した。
+  const isPureViewer = !teacher;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -86,8 +77,8 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
         </div>
       </RoleGate>
 
-      <div className={`mt-6 grid gap-6 ${ownTeam ? "md:grid-cols-3" : ""}`}>
-        <div className={`flex flex-col gap-6 ${ownTeam ? "md:col-span-2" : ""}`}>
+      <div className="mt-6">
+        <div className="flex flex-col gap-6">
           {!isPureViewer && (
             <div>
               <SectionHeading>資料枠</SectionHeading>
@@ -112,14 +103,6 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
                         >
                           テンプレートを開く →
                         </a>
-                      )}
-                      {ownTeam && slot.name === "概要集" && (
-                        <Link
-                          href={`/announcements/${a.id}/teams/${ownTeam.id}/summary`}
-                          className="text-sm text-brand-600 hover:underline"
-                        >
-                          概要を入力する →
-                        </Link>
                       )}
                     </div>
                   );
@@ -149,41 +132,6 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
             </div>
           )}
         </div>
-
-        {ownTeam && (
-          <div>
-            <Card>
-              <SectionHeading>自チームの提出状況({ownTeam.name})</SectionHeading>
-              <div className="flex flex-col gap-2">
-                {a.materialSlots.map((slot) => {
-                  const submission = getSubmission(a.id, ownTeam.id);
-                  const material = submission?.materials.find((m) => m.name === slot.name);
-                  const late = material ? isLateSubmission(a.submissionDeadline, material.firstSubmittedAt) : false;
-                  const submittedAtText = material ? formatSubmittedAt(a.submissionDeadline, material) : null;
-                  return (
-                    <div key={slot.id} className="flex flex-col gap-0.5 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-700">{slot.name}</span>
-                        <span className="flex items-center gap-1">
-                          <StatusBadge status={material?.status ?? "未提出"} />
-                          {late && <LateBadge />}
-                        </span>
-                      </div>
-                      {submittedAtText && <span className="text-xs text-slate-400">初回提出 {submittedAtText}</span>}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-4 flex flex-col gap-2">
-                <Link href={`/announcements/${a.id}/teams/${ownTeam.id}/submit`}>
-                  <Button variant="primary" className="w-full">
-                    資料を提出する
-                  </Button>
-                </Link>
-              </div>
-            </Card>
-          </div>
-        )}
       </div>
 
       <ConfirmDialog

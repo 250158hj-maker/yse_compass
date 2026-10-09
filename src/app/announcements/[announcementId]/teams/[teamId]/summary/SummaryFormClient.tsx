@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { InlineNotice } from "@/components/ui/InlineNotice";
@@ -16,6 +16,7 @@ import { getSubmission, submissions } from "@/lib/mock";
 import type { Announcement, SummaryEntry, Team } from "@/lib/types";
 
 export function SummaryFormClient({ announcement: a, team }: { announcement: Announcement; team: Team }) {
+  const router = useRouter();
   const { currentUser } = useSession();
   const submission = getSubmission(a.id, team.id);
   const [summary, setSummary] = useState<SummaryEntry | null>(submission?.summary ?? null);
@@ -157,9 +158,9 @@ export function SummaryFormClient({ announcement: a, team }: { announcement: Ann
         </Button>
       </form>
 
-      <Link href={`/announcements/${a.id}/teams/${team.id}`} className="mt-6 inline-block text-sm text-brand-600 hover:underline">
-        発表詳細へ戻る →
-      </Link>
+      <button type="button" onClick={() => router.back()} className="mt-6 inline-block text-sm text-brand-600 hover:underline">
+        ← 前の画面へ戻る
+      </button>
     </div>
   );
 }

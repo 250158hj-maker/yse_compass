@@ -16,6 +16,7 @@ import {
   isLateSubmission,
   users,
 } from "@/lib/mock";
+import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Card, CardLink } from "@/components/ui/Card";
@@ -158,7 +159,6 @@ function ProgressSection({ announcement: a, teacher }: { announcement: Announcem
 
 // 通知を送らない(2026-07-24 決定)ので、締切と未提出の可視化はこの一覧が最後の砦。必須枠の未提出だけを強調する(H-15)。
 function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; team: Team }) {
-  const [open, setOpen] = useState(false);
   const rows = announcements.map((a) => {
     const submission = getSubmission(a.id, team.id);
     const slots = a.materialSlots.map((slot) => {
@@ -178,69 +178,63 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
 
   return (
     <section className="mt-8">
-      <ToggleHeading
-        open={open}
-        onToggle={() => setOpen((v) => !v)}
-        controls="home-own-slots"
-        aside={
-          <span className="flex items-center gap-2 text-sm text-slate-500">
-            必須枠の未提出
-            <Badge tone={missingCount > 0 ? "rose" : "emerald"}>{missingCount}件</Badge>
-          </span>
-        }
-      >
-        自チームの提出すべき資料枠({team.name})
-      </ToggleHeading>
-      {open && (
-        <div id="home-own-slots" className="grid gap-3 md:grid-cols-2">
-          {rows.map(({ announcement: a, slots }) => (
-            <Card key={a.id} className="shadow-sm shadow-slate-900/5">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <PhaseBadge phase={a.phase} />
-                  <Link href={`/announcements/${a.id}`} className="font-semibold text-slate-900 hover:text-brand-700">
-                    {a.title}
-                  </Link>
-                </div>
-                <span className="text-xs text-slate-500">締切 {formatDateTime(a.submissionDeadline)}</span>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h2 className="text-sm font-semibold text-slate-500">自チームの提出すべき資料枠({team.name})</h2>
+        <span className="flex items-center gap-2 text-sm text-slate-500">
+          必須枠の未提出
+          <Badge tone={missingCount > 0 ? "rose" : "emerald"}>{missingCount}件</Badge>
+        </span>
+      </div>
+      <div id="home-own-slots" className="grid gap-3 md:grid-cols-2">
+        {rows.map(({ announcement: a, slots }) => (
+          <Card key={a.id} className="shadow-sm shadow-slate-900/5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <PhaseBadge phase={a.phase} />
+                <Link href={`/announcements/${a.id}`} className="font-semibold text-slate-900 hover:text-brand-700">
+                  {a.title}
+                </Link>
               </div>
-              <ul className="flex flex-col gap-1.5">
-                {slots.map(({ slot, material, missingRequired, late }) => {
-                  const submittedAtText = material ? formatSubmittedAt(a.submissionDeadline, material) : null;
-                  return (
-                    <li
-                      key={slot.id}
-                      className={`flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${
-                        missingRequired ? "bg-rose-50 ring-1 ring-rose-200" : "bg-slate-50"
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className={missingRequired ? "font-semibold text-rose-700" : "text-slate-700"}>
-                          {slot.name}
-                        </span>
-                        <Badge tone={slot.required ? "rose" : "slate"}>{slot.required ? "必須" : "任意"}</Badge>
+              <span className="text-xs text-slate-500">締切 {formatDateTime(a.submissionDeadline)}</span>
+            </div>
+            <ul className="flex flex-col gap-1.5">
+              {slots.map(({ slot, material, missingRequired, late }) => {
+                const submittedAtText = material ? formatSubmittedAt(a.submissionDeadline, material) : null;
+                return (
+                  <li
+                    key={slot.id}
+                    className={`flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${
+                      missingRequired ? "bg-rose-50 ring-1 ring-rose-200" : "bg-slate-50"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={missingRequired ? "font-semibold text-rose-700" : "text-slate-700"}>
+                        {slot.name}
                       </span>
-                      <span className="flex items-center gap-2">
-                        {submittedAtText && <span className="text-xs text-slate-400">{submittedAtText}</span>}
-                        <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-                          <StatusBadge status={material?.status ?? "未提出"} />
-                          {late && <LateBadge />}
-                        </span>
+                      <Badge tone={slot.required ? "rose" : "slate"}>{slot.required ? "必須" : "任意"}</Badge>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {submittedAtText && <span className="text-xs text-slate-400">{submittedAtText}</span>}
+                      <span className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                        <StatusBadge status={material?.status ?? "未提出"} />
+                        {late && <LateBadge />}
                       </span>
-                    </li>
-                  );
-                })}
-              </ul>
-              <Link
-                href={`/announcements/${a.id}/teams/${team.id}/submit`}
-                className="mt-3 inline-block text-xs font-semibold text-brand-600 hover:underline"
-              >
-                資料を提出する →
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link href={`/announcements/${a.id}/teams/${team.id}/submit`}>
+                <Button variant="primary">プレゼン資料を提出</Button>
               </Link>
-            </Card>
-          ))}
-        </div>
-      )}
+              <Link href={`/announcements/${a.id}/teams/${team.id}/summary`}>
+                <Button variant="secondary">概要を入力</Button>
+              </Link>
+            </div>
+          </Card>
+        ))}
+      </div>
     </section>
   );
 }
@@ -427,16 +421,11 @@ export default function HomePage() {
             いま発表中：{getTeamById(presenting.timetable!.currentPresentingTeamId!)?.name}
             (「{presenting.announcement.title}」)
           </p>
-          {/* 生徒は、進行表ではなく、いま発表しているチームの発表詳細へ直接行く。先生は進行表(発表中の切り替え)へ行く。 */}
           <Link
-            href={
-              teacher
-                ? `/announcements/${presenting.announcement.id}/timetable`
-                : `/announcements/${presenting.announcement.id}/teams/${presenting.timetable!.currentPresentingTeamId}`
-            }
+            href={`/announcements/${presenting.announcement.id}/teams/${presenting.timetable!.currentPresentingTeamId}`}
             className="text-xs font-semibold text-rose-700 underline underline-offset-2"
           >
-            {teacher ? "タイムテーブルを見る" : "発表を見る"}
+            発表を見る
           </Link>
         </div>
       )}

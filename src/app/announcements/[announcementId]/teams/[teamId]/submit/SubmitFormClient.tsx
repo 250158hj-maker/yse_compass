@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -17,6 +17,7 @@ import { formatSubmittedAt, getSubmission, getTemplateById, getYearById, isLateS
 import type { Announcement, Material, Team } from "@/lib/types";
 
 export function SubmitFormClient({ announcement: a, team }: { announcement: Announcement; team: Team }) {
+  const router = useRouter();
   const { currentUser } = useSession();
   const submission = getSubmission(a.id, team.id);
   const [materials, setMaterials] = useState<Material[]>(submission?.materials ?? []);
@@ -53,9 +54,9 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
             この操作は発表する生徒(自チームのメンバー)のみ行えます。
           </InlineNotice>
         </div>
-        <Link href={`/announcements/${a.id}/teams/${team.id}`} className="mt-4 inline-block text-sm text-brand-600 hover:underline">
-          発表詳細へ戻る →
-        </Link>
+        <button type="button" onClick={() => router.back()} className="mt-4 inline-block text-sm text-brand-600 hover:underline">
+          ← 前の画面へ戻る
+        </button>
       </div>
     );
   }
@@ -158,20 +159,9 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
         })}
       </div>
 
-      {!readOnly && a.materialSlots.some((slot) => slot.name === "概要集") && (
-        <div className="mt-4">
-          <InlineNotice tone="info">
-            概要集はこのアプリの中で作ります。リンクの提出は不要です。{" "}
-            <Link href={`/announcements/${a.id}/teams/${team.id}/summary`} className="font-semibold underline">
-              概要を入力する →
-            </Link>
-          </InlineNotice>
-        </div>
-      )}
-
-      <Link href={`/announcements/${a.id}/teams/${team.id}`} className="mt-6 inline-block text-sm text-brand-600 hover:underline">
-        発表詳細へ戻る →
-      </Link>
+      <button type="button" onClick={() => router.back()} className="mt-6 inline-block text-sm text-brand-600 hover:underline">
+        ← 前の画面へ戻る
+      </button>
     </div>
   );
 }

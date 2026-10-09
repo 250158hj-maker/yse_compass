@@ -32,6 +32,8 @@ export function PresentationDetailClient({
 }) {
   const { currentUser } = useSession();
   const [submission, setSubmission] = useState(initialSubmission);
+  // 概要集はすぐ下の「概要」に同じ内容が出るので、資料の行には出さない。
+  const presentationMaterials = submission.materials.filter((m) => m.name !== "概要集");
   const [filter, setFilter] = useState<"すべて" | CommentLabel>("すべて");
   const [newBody, setNewBody] = useState("");
   const [newLabel, setNewLabel] = useState<CommentLabel>("感想");
@@ -113,11 +115,11 @@ export function PresentationDetailClient({
         <>
           <section className="mt-6">
             <SectionHeading>資料</SectionHeading>
-            {submission.materials.length === 0 ? (
+            {presentationMaterials.length === 0 ? (
               <EmptyState message="まだ資料が提出されていません。" />
             ) : (
               <div className="flex flex-col gap-2">
-                {submission.materials.map((m) => (
+                {presentationMaterials.map((m) => (
                   <div
                     key={m.id}
                     className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-900/5"

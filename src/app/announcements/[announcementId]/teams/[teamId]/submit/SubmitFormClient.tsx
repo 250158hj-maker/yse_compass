@@ -158,17 +158,6 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
         })}
       </div>
 
-      {!readOnly && a.materialSlots.some((slot) => slot.name === "概要集") && (
-        <div className="mt-4">
-          <InlineNotice tone="info">
-            概要集はこのアプリの中で作ります。リンクの提出は不要です。{" "}
-            <Link href={`/announcements/${a.id}/teams/${team.id}/summary`} className="font-semibold underline">
-              概要を入力する →
-            </Link>
-          </InlineNotice>
-        </div>
-      )}
-
       <Link href={`/announcements/${a.id}/teams/${team.id}`} className="mt-6 inline-block text-sm text-brand-600 hover:underline">
         発表詳細へ戻る →
       </Link>

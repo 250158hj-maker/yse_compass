@@ -43,7 +43,7 @@ export const announcements: Announcement[] = [
     isPublished: true,
     materialSlots: [
       { id: "slot-kikaku-slide", name: "プレゼン資料", required: true, templateId: "template-kikaku-slide" },
-      { id: "slot-kikaku-sub", name: "概要集", required: false, templateId: null },
+      { id: "slot-kikaku-sub", name: "概要集", required: true, templateId: null },
     ],
   },
   {
@@ -57,7 +57,7 @@ export const announcements: Announcement[] = [
     isPublished: false,
     materialSlots: [
       { id: "slot-sekkei-doc", name: "プレゼン資料", required: true, templateId: "template-sekkei-doc" },
-      { id: "slot-sekkei-er", name: "概要集", required: false, templateId: null },
+      { id: "slot-sekkei-er", name: "概要集", required: true, templateId: null },
     ],
   },
   {
@@ -71,7 +71,7 @@ export const announcements: Announcement[] = [
     isPublished: false,
     materialSlots: [
       { id: "slot-shisaku-slide", name: "プレゼン資料", required: true, templateId: "template-shisaku-slide" },
-      { id: "slot-shisaku-demo", name: "概要集", required: false, templateId: null },
+      { id: "slot-shisaku-demo", name: "概要集", required: true, templateId: null },
     ],
   },
   {
@@ -85,7 +85,7 @@ export const announcements: Announcement[] = [
     isPublished: false,
     materialSlots: [
       { id: "slot-saishu-slide", name: "プレゼン資料", required: true, templateId: "template-saishu-slide" },
-      { id: "slot-saishu-report", name: "概要集", required: false, templateId: null },
+      { id: "slot-saishu-report", name: "概要集", required: true, templateId: null },
     ],
   },
 

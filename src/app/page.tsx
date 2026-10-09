@@ -229,7 +229,7 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
                 <Button variant="primary">プレゼン資料を提出</Button>
               </Link>
               <Link href={`/announcements/${a.id}/teams/${team.id}/summary`}>
-                <Button variant="secondary">概要集を入力</Button>
+                <Button variant="secondary">概要を入力</Button>
               </Link>
             </div>
           </Card>

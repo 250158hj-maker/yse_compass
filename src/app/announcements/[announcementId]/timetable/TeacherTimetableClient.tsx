@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { TimetableRows } from "@/components/timetable/TimetableRows";
@@ -15,6 +16,12 @@ import type { Announcement } from "@/lib/types";
 //   当日・開始前は「最初の発表を開始」だけを出し、開始後に「次の発表へ」と各行の ▲▼(当日の入れ替え)を出す。
 // - 並び・発表中は先生の共有状態(useTimetable)を読む。モックに直書きの currentPresentingTeamId は読まない。
 // - 生徒が見る SC-07 は TimetableClient の従来の描画(getTimetableFor)のまま。
+
+// 「最初の発表を開始」を押した直後、同じ帯の右端(同じ座標)に「次の発表へ」が出る。ダブルクリックの 2 回目が
+// それに当たって先頭のチームが飛ばされないよう、開始からこの間に来た「次の発表へ」のクリックは無視する。
+// disabled にしないのは、主ボタンが一瞬灰色に点滅して撮影の画に残るため。
+const NEXT_GUARD_MS = 600;
+
 export function TeacherTimetableClient({ announcement: a }: { announcement: Announcement }) {
   const {
     timetable,
@@ -32,6 +39,17 @@ export function TeacherTimetableClient({ announcement: a }: { announcement: Anno
   const presentingTeam = currentPresentingTeamId ? getTeamById(currentPresentingTeamId) : null;
   const firstSlot = teamSlotsInOrder(slots)[0];
   const firstTeam = firstSlot ? getTeamById(firstSlot.teamId) : null;
+  const startedAtRef = useRef(0);
+
+  function handleStart() {
+    startedAtRef.current = Date.now();
+    start();
+  }
+
+  function handleNext() {
+    if (Date.now() - startedAtRef.current < NEXT_GUARD_MS) return;
+    next();
+  }
 
   return (
     <>
@@ -42,7 +60,7 @@ export function TeacherTimetableClient({ announcement: a }: { announcement: Anno
             {firstSlot ? `${firstSlot.startTime} 開始予定・まだ始まっていません` : "まだ始まっていません"}
             {firstTeam && <span className="font-normal">(最初は {firstTeam.name})</span>}
           </p>
-          <Button variant="primary" onClick={start} disabled={!firstSlot}>
+          <Button variant="primary" onClick={handleStart} disabled={!firstSlot}>
             最初の発表を開始
           </Button>
         </div>
@@ -64,7 +82,7 @@ export function TeacherTimetableClient({ announcement: a }: { announcement: Anno
                 : "いま発表中のチームはいません"}
           </p>
           {!presentationsFinished && (
-            <Button variant="primary" onClick={next}>
+            <Button variant="primary" onClick={handleNext}>
               次の発表へ
             </Button>
           )}

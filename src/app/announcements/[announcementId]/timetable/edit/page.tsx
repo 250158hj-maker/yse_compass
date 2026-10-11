@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getAnnouncementById, getTimetableFor } from "@/lib/mock";
+import { getAnnouncementById } from "@/lib/mock";
 import { TimetableEditClient } from "./TimetableEditClient";
 
 export default async function TimetableEditPage({
@@ -11,7 +11,6 @@ export default async function TimetableEditPage({
   const announcement = getAnnouncementById(announcementId);
   if (!announcement) notFound();
 
-  const timetable = getTimetableFor(announcementId);
-
-  return <TimetableEditClient announcement={announcement} timetable={timetable} />;
+  // 並びは先生の共有状態(useTimetable)から読む。初期値はモックのタイムテーブル。
+  return <TimetableEditClient announcement={announcement} />;
 }

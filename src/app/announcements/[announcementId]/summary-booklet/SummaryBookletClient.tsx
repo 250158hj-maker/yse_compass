@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -8,40 +9,30 @@ import { Button } from "@/components/ui/Button";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RoleGate, TeacherOnlyNotice } from "@/components/session/RoleGate";
-import { getSubmission, getTeamsByYear, getTimetableFor } from "@/lib/mock";
-import type { Announcement, Submission, Team } from "@/lib/types";
+import { NextStep, backToHub } from "@/components/flow/NextStep";
+import { useBooklet, useTimetable } from "@/context/TeacherDemoContext";
+import { teamSlotsInOrder } from "@/lib/demo/teacher-derived";
+import { formatDateTime } from "@/lib/format";
+import type { Announcement } from "@/lib/types";
 
+// SC-11 概要集生成・プレビュー。
+// 並びは SC-08 で保存した発表順(useTimetable の slots)、中身はデモ用の時刻の時点で提出済みの概要(useBooklet)。
+// 「生成」した事実は先生の共有状態に記録し(markGenerated)、ハブの工程表が読む。
 export function SummaryBookletClient({ announcement: a }: { announcement: Announcement }) {
-  const teams = getTeamsByYear(a.yearId);
-  const timetable = getTimetableFor(a.id);
-
-  const orderedTeams: Team[] = timetable
-    ? [...timetable.slots]
-        .filter((s): s is Extract<typeof s, { isBreak: false }> => !s.isBreak)
-        .sort((x, y) => x.order - y.order)
-        .map((s) => teams.find((t) => t.id === s.teamId))
-        .filter((t): t is Team => Boolean(t))
-    : teams;
-
-  const entries = orderedTeams.map((team) => ({ team, submission: getSubmission(a.id, team.id) }));
-  const missing = entries.filter((e) => !e.submission?.summary);
-
+  const { entries, missing, generatedAt, markGenerated } = useBooklet(a.id);
+  const { slots, orderConfirmed } = useTimetable(a.id);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [generated, setGenerated] = useState<{ team: Team; submission: Submission }[] | null>(null);
 
-  function generate() {
-    setGenerated(
-      entries
-        .filter((e): e is { team: Team; submission: Submission } => Boolean(e.submission?.summary))
-        .map((e) => e)
-    );
-  }
+  const teamSlots = teamSlotsInOrder(slots);
+  const slotByTeam = new Map(teamSlots.map((s, i) => [s.teamId, { order: i + 1, startTime: s.startTime }]));
+  const orderText = entries.map((e) => e.team.name).join(" → ");
+  const generated = generatedAt !== null;
 
   function handleGenerateClick() {
     if (missing.length > 0) {
       setConfirmOpen(true);
     } else {
-      generate();
+      markGenerated();
     }
   }
 
@@ -57,77 +48,118 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
               { label: "概要集生成" },
             ]}
           />
-          <PageHeader eyebrow={a.title} title="概要集生成・プレビュー" meta={<PhaseBadge phase={a.phase} />} />
+          <PageHeader
+            eyebrow={a.title}
+            title="概要集生成・プレビュー"
+            meta={
+              <>
+                <PhaseBadge phase={a.phase} />
+                {generated && <Badge tone="emerald">生成済み</Badge>}
+              </>
+            }
+          />
 
           <div className="mt-4 flex flex-col gap-3">
+            {orderConfirmed ? (
+              <InlineNotice tone="info">
+                確定した発表順({orderText || "なし"})のとおりに並びます。
+              </InlineNotice>
+            ) : (
+              <InlineNotice tone="warning">
+                発表順がまだ確定していません。いまの並び({orderText || "なし"})で作られます。
+                <Link
+                  href={`/announcements/${a.id}/timetable/edit`}
+                  className="ml-1 font-medium underline underline-offset-2"
+                >
+                  発表順を確定する
+                </Link>
+              </InlineNotice>
+            )}
             {missing.length > 0 && (
               <InlineNotice tone="warning">
-                {missing.length}チームが概要未提出です({missing.map((e) => e.team.name).join("、")})。
+                {missing.length}チームが概要未提出です({missing.map((t) => t.name).join("、")})。
                 生成する場合はスキップされます。
               </InlineNotice>
             )}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <Button variant="primary" onClick={handleGenerateClick}>
-                概要集を生成する
+                {generated ? "概要集を作り直す" : "概要集を生成する"}
               </Button>
               {generated && (
                 <Button variant="secondary" onClick={() => window.print()}>
                   印刷する
                 </Button>
               )}
+              {generatedAt && <span className="text-xs text-slate-400">生成 {formatDateTime(generatedAt)}</span>}
             </div>
           </div>
         </div>
 
         {generated && (
           <div className="mt-8 flex flex-col gap-8">
-            {generated.map(({ team, submission }) => (
-              <div
-                key={team.id}
-                style={{ pageBreakAfter: "always" }}
-                className="rounded-lg border border-slate-200 bg-white p-8 print:border-none print:p-0"
-              >
-                <p className="text-xs font-medium text-brand-600">{team.className}</p>
-                <h2 className="mt-1 text-xl font-bold text-slate-900">{team.projectTitle}</h2>
-                <p className="text-sm text-slate-500">{team.name}・{team.members.join("、")}</p>
-
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-semibold text-slate-400">背景・動機</p>
-                    <p className="mt-1 text-sm text-slate-700">{submission.summary!.background}</p>
+            {entries.map(({ team, summary }) => {
+              const slot = slotByTeam.get(team.id);
+              return (
+                <div
+                  key={team.id}
+                  style={{ pageBreakAfter: "always" }}
+                  className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm shadow-slate-900/5 print:border-none print:p-0 print:shadow-none"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-brand-600">{team.className}</p>
+                    {slot && (
+                      <p className="text-xs text-slate-400">
+                        発表 {slot.order} 番目・{slot.startTime}〜
+                      </p>
+                    )}
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-400">使用技術</p>
-                    <div className="mt-1 flex flex-wrap gap-1.5">
-                      {submission.summary!.techUsed.map((tech) => (
-                        <Badge key={tech} tone="brand">
-                          {tech}
-                        </Badge>
-                      ))}
+                  <h2 className="mt-1 text-xl font-bold text-slate-900">{team.projectTitle}</h2>
+                  <p className="text-sm text-slate-500">
+                    {team.name}・{team.members.join("、")}
+                  </p>
+
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400">背景・動機</p>
+                      <p className="mt-1 text-sm text-slate-700">{summary.background}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400">使用技術</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {summary.techUsed.map((tech) => (
+                          <Badge key={tech} tone="brand">
+                            {tech}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-4">
-                  <p className="text-xs font-semibold text-slate-400">概要</p>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-700">{submission.summary!.onePageBody}</p>
-                </div>
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold text-slate-400">概要</p>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-700">{summary.onePageBody}</p>
+                  </div>
 
-                <div className="mt-4 flex justify-between text-sm text-slate-600">
-                  <p>起: {submission.summary!.opening}</p>
+                  <div className="mt-4 text-sm text-slate-600">起: {summary.opening}</div>
+                  <div className="mt-1 text-sm text-slate-600">結: {summary.closing}</div>
                 </div>
-                <div className="mt-1 text-sm text-slate-600">結: {submission.summary!.closing}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
+
+        <NextStep
+          description={generated ? "概要集ができました。次は当日の進行です。" : "概要集を生成すると、当日の進行へ進めます。"}
+          next={generated ? { href: `/announcements/${a.id}/timetable`, label: "次へ：当日の進行 →" } : null}
+          back={backToHub(a.id)}
+        />
 
         <ConfirmDialog
           open={confirmOpen}
           onClose={() => setConfirmOpen(false)}
-          onConfirm={generate}
+          onConfirm={markGenerated}
           title="未提出チームがあります"
-          description={`${missing.map((e) => e.team.name).join("、")} は概要が未提出です。スキップして概要集を生成しますか?`}
+          description={`${missing.map((t) => t.name).join("、")} は概要が未提出です。スキップして概要集を生成しますか?`}
           confirmLabel="スキップして生成する"
         />
       </div>

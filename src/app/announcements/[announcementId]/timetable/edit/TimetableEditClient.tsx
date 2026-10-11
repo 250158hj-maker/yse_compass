@@ -93,7 +93,26 @@ export function TimetableEditClient({ announcement: a }: { announcement: Announc
           </InlineNotice>
         </div>
 
-        <div className="mt-6 flex flex-col gap-3">
+        {/* 「保存する」は並びの一覧の上に置く。1152×620(1440×900 のウィンドウを 125% にした相当)でも、
+            スクロールせずに ▲▼ と保存が同じ画面に見えるようにするため(一覧の下だと画面の外に出る)。 */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Button variant="primary" onClick={save} disabled={!hasTimetable && ordered.length === 0}>
+            保存する
+          </Button>
+          {isDirty && (
+            <Button variant="secondary" onClick={discard}>
+              変更を取り消す
+            </Button>
+          )}
+          {isDirty && <span className="text-xs text-slate-400">未保存の変更があります</span>}
+          {saved && (
+            <span className="text-sm text-slate-500">
+              発表順を確定しました{confirmedAt ? `(${formatDateTime(confirmedAt)})` : ""}。概要集はこの順で作られます。
+            </span>
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3">
           {ordered.map((slot, index) => (
             <div
               key={slot.id}
@@ -186,26 +205,6 @@ export function TimetableEditClient({ announcement: a }: { announcement: Announc
             + 休憩を追加
           </Button>
         </div>
-
-        <div className="mt-6 flex flex-wrap items-center gap-2">
-          <Button variant="primary" onClick={save} disabled={!hasTimetable && ordered.length === 0}>
-            保存する
-          </Button>
-          {isDirty && (
-            <Button variant="secondary" onClick={discard}>
-              変更を取り消す
-            </Button>
-          )}
-          {isDirty && <span className="text-xs text-slate-400">未保存の変更があります</span>}
-        </div>
-
-        {saved && (
-          <div className="mt-4">
-            <InlineNotice tone="info">
-              発表順を確定しました{confirmedAt ? `(${formatDateTime(confirmedAt)})` : ""}。概要集はこの順で作られます。
-            </InlineNotice>
-          </div>
-        )}
 
         <NextStep
           description={

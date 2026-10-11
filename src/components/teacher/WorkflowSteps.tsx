@@ -17,6 +17,10 @@ import type { Announcement } from "@/lib/types";
 // - 済み・いまの判定は、時期(useTimetable の period)・発表順の確定(orderConfirmed)・概要集の生成(generatedAt)・
 //   公開(isPublished)・必須の未提出(countMissingRequired)から導く。新しい状態は持たない。
 
+// 当日のハブで ①〜⑥ が 1 画面(1152×620)に収まるよう、行とボタンの縦の余白だけを詰める(文字の大きさは変えない)。
+// Button の py-2 を py-1 にする(同じ性質のクラスはクラス名の順では勝ち負けが決まらないので、! で優先させる)。
+const STEP_BUTTON_CLASS = "py-1!";
+
 type Step = {
   no: number;
   name: string;
@@ -77,7 +81,9 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
 
   const linkButton = (key: keyof typeof done, href: string, label: string) => (
     <Link href={href}>
-      <Button variant={isCurrent(key) ? "primary" : "secondary"}>{label}</Button>
+      <Button variant={isCurrent(key) ? "primary" : "secondary"} className={STEP_BUTTON_CLASS}>
+        {label}
+      </Button>
     </Link>
   );
 
@@ -197,7 +203,11 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
       done: done.publish,
       current: isCurrent("publish"),
       action: (
-        <Button variant={isCurrent("publish") ? "primary" : "secondary"} onClick={() => setConfirmOpen(true)}>
+        <Button
+          variant={isCurrent("publish") ? "primary" : "secondary"}
+          className={STEP_BUTTON_CLASS}
+          onClick={() => setConfirmOpen(true)}
+        >
           {isPublished ? "公開を解除する" : "公開する"}
         </Button>
       ),
@@ -206,7 +216,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
 
   return (
     <>
-      <ol className="flex flex-col gap-2">
+      <ol className="flex flex-col gap-1">
         {steps.map((step) => (
           <StepRow key={step.no} step={step} />
         ))}
@@ -233,7 +243,7 @@ function StepRow({ step }: { step: Step }) {
   return (
     <li
       aria-current={step.current ? "step" : undefined}
-      className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md px-3 py-2 ${
+      className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md px-3 py-1 ${
         step.current ? "bg-brand-50 ring-1 ring-brand-200" : "bg-slate-50"
       }`}
     >

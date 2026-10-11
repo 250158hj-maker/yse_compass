@@ -7,7 +7,6 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Badge, PhaseBadge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
 import { WorkflowSteps } from "@/components/teacher/WorkflowSteps";
 import { PERIOD_TONE } from "@/components/teacher/teacher-format";
 import type { Announcement } from "@/lib/types";
@@ -15,6 +14,9 @@ import type { Announcement } from "@/lib/types";
 // ハブ(SC-04)の先生の画面。編集する対象ごとの導線ではなく、発表会の時期に沿った工程表を中心に置く。
 // 公開(§3-3)は工程表の ⑥ に移し、usePublish に繋いで画面を移っても戻らないようにした。
 // 資料枠の一覧(SC-04【T のみ】)は工程 ① の要約に畳んだ(1 画面に収めるため)。
+// 1 画面に収める目安:ビューポート 1152×620(1440×900 のウィンドウを 125% にした相当で、タブ・アドレスバーを除いた高さ)で、
+// ①〜⑥ がスクロールなしに見えること。そのため見出しの年度(eyebrow)を属性の並びへ移し、属性の並びを見出しの右
+// (PageHeader の actions)に置いて 1 行に収め、工程表の枠と行の縦の余白を詰めている。
 export function TeacherAnnouncementHub({ announcement: a }: { announcement: Announcement }) {
   const year = getYearById(a.yearId);
   const { period } = useTimetable(a.id);
@@ -30,26 +32,28 @@ export function TeacherAnnouncementHub({ announcement: a }: { announcement: Anno
         ]}
       />
       <PageHeader
-        eyebrow={year?.label}
         title={a.title}
-        meta={
-          <>
+        actions={
+          // PageHeader の meta と同じ見た目(text-sm text-slate-500)。見出しの文字の高さに合わせて少し下げる。
+          <div className="flex flex-wrap items-center gap-2 pt-1.5 text-sm text-slate-500">
+            {year && <span>{year.label}</span>}
             <PhaseBadge phase={a.phase} />
             <span>開催日 {formatDate(a.period)}</span>
             <span>提出締切 {formatDateTime(a.submissionDeadline)}</span>
             <Badge tone={PERIOD_TONE[period]}>{period}</Badge>
             <Badge tone={isPublished ? "emerald" : "slate"}>{isPublished ? "公開中" : "非公開"}</Badge>
-          </>
+          </div>
         }
       />
 
-      <section className="mt-6">
+      <section className="mt-4">
         <SectionHeading action={<span className="text-xs text-slate-400">どの工程からでも開けます</span>}>
           工程表
         </SectionHeading>
-        <Card className="shadow-sm shadow-slate-900/5">
+        {/* Card と同じ見た目で、余白だけ p-5 → p-3 に詰める(Card の p-5 は className で上書きできないため div で書く) */}
+        <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm shadow-slate-900/5">
           <WorkflowSteps announcement={a} />
-        </Card>
+        </div>
       </section>
     </div>
   );

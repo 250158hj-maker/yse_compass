@@ -71,7 +71,7 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
                   href={`/announcements/${a.id}/timetable/edit`}
                   className="ml-1 font-medium underline underline-offset-2"
                 >
-                  発表順を確定する
+                  発表順を編集
                 </Link>
               </InlineNotice>
             )}
@@ -150,7 +150,7 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
 
         <NextStep
           description={generated ? "概要集ができました。次は当日の進行です。" : "概要集を生成すると、当日の進行へ進めます。"}
-          next={generated ? { href: `/announcements/${a.id}/timetable`, label: "次へ：当日の進行 →" } : null}
+          next={generated ? { href: `/announcements/${a.id}/timetable`, label: "次へ：当日進行 →" } : null}
           back={backToHub(a.id)}
         />
 

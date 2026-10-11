@@ -14,6 +14,7 @@ import type { Announcement, TimetableSlot } from "@/lib/types";
 
 // 先生のホームの最上部に置く「次にやること」。先生が毎回ここから入り、時期に合った 1 つの画面へ進む。
 // 中身は useTeacherNextAction の kind(collect / prepare / start / run / publish / none)で決まる。
+// 見出しとボタンの文言は、ハブの工程表(WorkflowSteps)の工程名・ボタンとそろえる(同じ工程・同じ遷移先に 2 つの呼び名を作らない)。
 export function TeacherNextAction({ announcements }: { announcements: Announcement[] }) {
   const focus = useTeacherFocusAnnouncement(announcements);
   if (!focus) return null;
@@ -74,7 +75,7 @@ function buildView(a: Announcement, action: NextAction, slots: TimetableSlot[]):
     case "collect": {
       const { daysLeft, missing } = action;
       return {
-        headline: "提出状況を確認する",
+        headline: "提出確認",
         status: (
           <>
             <span>{daysLeft > 0 ? `締切まで ${daysLeft} 日` : "締切は今日"}</span>
@@ -92,11 +93,11 @@ function buildView(a: Announcement, action: NextAction, slots: TimetableSlot[]):
       const { orderConfirmed, bookletGenerated, missing } = action;
       const headline =
         !orderConfirmed && !bookletGenerated
-          ? "発表順を確定して、概要集を作る"
+          ? "発表順確定・概要集生成"
           : !orderConfirmed
-            ? "発表順を確定する"
+            ? "発表順確定"
             : !bookletGenerated
-              ? "概要集を作る"
+              ? "概要集生成"
               : "当日の準備がそろいました";
       return {
         headline,
@@ -118,22 +119,22 @@ function buildView(a: Announcement, action: NextAction, slots: TimetableSlot[]):
         ),
         primary: { href: base, label: "工程表で進める" },
         secondary: !orderConfirmed
-          ? { href: `${base}/timetable/edit`, label: "発表順を編集する" }
+          ? { href: `${base}/timetable/edit`, label: "発表順を編集" }
           : !bookletGenerated
-            ? { href: `${base}/summary-booklet`, label: "概要集を作る" }
+            ? { href: `${base}/summary-booklet`, label: "概要集を開く" }
             : null,
       };
     }
     case "start":
       // 当日に入っても発表は自動では始まらない。先生が SC-07 で「最初の発表を開始」を押す。
       return {
-        headline: "当日の発表を始める",
+        headline: "当日進行",
         status: (
           <span>
             {action.startTime ? `${action.startTime} 開始予定・` : ""}まだ始まっていません
           </span>
         ),
-        primary: { href: `${base}/timetable`, label: "タイムテーブルで進行する" },
+        primary: { href: `${base}/timetable`, label: "タイムテーブルを開く" },
         secondary: hub,
       };
     case "run": {
@@ -143,7 +144,7 @@ function buildView(a: Announcement, action: NextAction, slots: TimetableSlot[]):
       const nextId = current ? nextTeamId(slots, current) : null;
       const nextSlot = teamSlots.find((s) => s.teamId === nextId);
       return {
-        headline: "当日の発表を進行する",
+        headline: "当日進行",
         status: current ? (
           <>
             <span>
@@ -161,14 +162,14 @@ function buildView(a: Announcement, action: NextAction, slots: TimetableSlot[]):
         ) : (
           <span>いま発表中のチームはありません。</span>
         ),
-        primary: { href: `${base}/timetable`, label: "タイムテーブルで進行する" },
+        primary: { href: `${base}/timetable`, label: "タイムテーブルを開く" },
         secondary: hub,
       };
     }
     case "publish":
       return {
-        headline: "発表会を公開する",
-        status: <span>全発表が終わりました。公開すると、聴く生徒が資料を閲覧できます。</span>,
+        headline: "資料公開",
+        status: <span>全発表が終わりました。</span>,
         primary: { href: base, label: "工程表で公開する" },
         secondary: null,
       };

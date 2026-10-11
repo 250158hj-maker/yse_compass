@@ -18,15 +18,13 @@ import type { Announcement } from "@/lib/types";
 //   公開(isPublished)・必須の未提出(countMissingRequired)から導く。新しい状態は持たない。
 
 // 当日のハブで ①〜⑥ が 1 画面(1152×620)に収まるよう、行とボタンの縦の余白だけを詰める(文字の大きさは変えない)。
-// 説明文も、「いまここ」が付いた行で 2 行に折れないよう短くしてある(1152 幅で 1 行に収まる長さ)。
 // Button の py-2 を py-1 にする(同じ性質のクラスはクラス名の順では勝ち負けが決まらないので、! で優先させる)。
-// 文言の長いボタン(「タイムテーブルで進行する」)が 2 行に折れないよう、折り返しも止める。
-const STEP_BUTTON_CLASS = "py-1! whitespace-nowrap";
+// 6 行のボタンは同じ幅(w-44)にそろえ、最も長い文言(「タイムテーブルを開く」)でも折れないよう折り返しを止める。
+const STEP_BUTTON_CLASS = "w-44 py-1! whitespace-nowrap";
 
 type Step = {
   no: number;
   name: string;
-  description: string;
   summary: ReactNode;
   done: boolean;
   current: boolean;
@@ -94,8 +92,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
   const steps: Step[] = [
     {
       no: 1,
-      name: "発表会を整える",
-      description: "日程・資料枠・締切を決める",
+      name: "発表会準備",
       // SC-04 の【T のみ】資料枠の一覧(種類・必須/任意)をここに畳む。テンプレートへの導線は SC-04 から外してある(H-34)。
       summary: a.materialSlots.map((slot) => (
         <span key={slot.id} className="flex items-center gap-1">
@@ -109,8 +106,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
     },
     {
       no: 2,
-      name: "提出を確認する",
-      description: "必須の資料がそろったか",
+      name: "提出確認",
       summary:
         missing.count === 0 ? (
           <Badge tone="emerald">全チーム提出済み</Badge>
@@ -127,8 +123,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
     },
     {
       no: 3,
-      name: "発表順を確定する",
-      description: "順番を決めて保存する",
+      name: "発表順確定",
       summary: orderConfirmed ? (
         <>
           <Badge tone="emerald">確定済み</Badge>
@@ -143,8 +138,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
     },
     {
       no: 4,
-      name: "概要集を作る",
-      description: "確定した順で生成する",
+      name: "概要集生成",
       summary: booklet.generatedAt ? (
         <>
           <Badge tone="emerald">生成済み</Badge>
@@ -166,8 +160,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
     },
     {
       no: 5,
-      name: "当日の進行",
-      description: "発表中のチームを順に進める",
+      name: "当日進行",
       summary:
         period === "当日" && presentationsStarted ? (
           presentationsFinished ? (
@@ -195,12 +188,11 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
         ),
       done: done.run,
       current: isCurrent("run"),
-      action: linkButton("run", `${base}/timetable`, "タイムテーブルで進行する"),
+      action: linkButton("run", `${base}/timetable`, "タイムテーブルを開く"),
     },
     {
       no: 6,
-      name: "公開する",
-      description: "聴く生徒に資料を公開する",
+      name: "資料公開",
       summary: <Badge tone={isPublished ? "emerald" : "slate"}>{isPublished ? "公開中" : "非公開"}</Badge>,
       done: done.publish,
       current: isCurrent("publish"),
@@ -250,13 +242,13 @@ function StepRow({ step }: { step: Step }) {
       }`}
     >
       <StepMarker no={step.no} done={step.done} current={step.current} />
-      <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
+      {/* 名前の列は「いまここ」込みで幅をそろえ、要約の書き出しを 6 行で同じ位置にする */}
+      <p className="flex shrink-0 items-center gap-2 sm:w-40">
         <span className="text-sm font-semibold text-slate-900">{step.name}</span>
         {step.current && <Badge tone="brand">いまここ</Badge>}
-        <span className="text-xs text-slate-500">{step.description}</span>
       </p>
-      <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 sm:w-72">{step.summary}</div>
-      <div className="flex shrink-0 sm:w-56 sm:justify-end">{step.action}</div>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm text-slate-600">{step.summary}</div>
+      <div className="flex shrink-0">{step.action}</div>
     </li>
   );
 }

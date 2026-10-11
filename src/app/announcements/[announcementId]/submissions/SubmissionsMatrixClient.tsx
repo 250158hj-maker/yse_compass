@@ -134,7 +134,7 @@ export function SubmissionsMatrixClient({ announcement: a }: { announcement: Ann
               ? `締切(${formatDateTime(a.submissionDeadline)})まで提出を受け付けています。締切を過ぎたら、発表順の確定へ進みます。`
               : "提出の受付は締め切りました。次は発表順を確定します。"
           }
-          next={period === "受付中" ? null : { href: `/announcements/${a.id}/timetable/edit`, label: "次へ：発表順を確定する →" }}
+          next={period === "受付中" ? null : { href: `/announcements/${a.id}/timetable/edit`, label: "次へ：発表順確定 →" }}
           back={backToHub(a.id)}
         />
       </div>

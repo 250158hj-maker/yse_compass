@@ -13,7 +13,7 @@ export type DemoClockPreset = {
 };
 
 export const DEMO_CLOCK_PRESETS: DemoClockPreset[] = [
-  // 場面 1: 受付中(締切 10/14 23:59 の 2 日前)。Nova・Lumen はまだ出していない。
+  // 場面 1: 受付中(締切 10/14 23:59 の 2 日前)。Nova・Lumen の 2 件ずつと Cheers の概要は、まだ出していない。
   { id: "accepting", label: "10/12 受付中", at: "2026-10-12T10:00:00+09:00" },
   // 場面 2: 締切後・発表前(全チーム提出済み。発表の開始 13:00 より前)。
   { id: "afterDeadline", label: "10/15 12:30 締切後", at: "2026-10-15T12:30:00+09:00" },

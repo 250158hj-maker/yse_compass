@@ -25,14 +25,15 @@ export type TeacherDemoSubmissionPatch = {
 
 export const teacherDemoSubmissionPatches: TeacherDemoSubmissionPatch[] = [
   // --- 2026年度 設計書発表会(締切 2026-10-14 23:59) ---
-  // Cheers のプレゼン資料は submissions.ts の 8/18 提出のまま。概要は場面 1(10/12)より前に出ていることにする。
+  // Cheers のプレゼン資料は submissions.ts の 8/18 提出のまま。概要は場面 1(10/12)の後・締切前の 10/13 に出す
+  // (区間 B の生徒の画面では Cheers の概要がまだ未提出なので、区間 A の場面 1 でも未提出にそろえる)。
   {
     announcementId: "ann-2026-sekkei",
     teamId: "team-cheers",
     materials: {
       概要集: {
-        firstSubmittedAt: "2026-10-11T20:15:00+09:00",
-        updatedAt: "2026-10-11T20:15:00+09:00",
+        firstSubmittedAt: "2026-10-13T21:40:00+09:00",
+        updatedAt: "2026-10-13T21:40:00+09:00",
         driveUrl: null,
       },
     },
@@ -44,7 +45,7 @@ export const teacherDemoSubmissionPatches: TeacherDemoSubmissionPatch[] = [
       closing: "提出という 1 つの行為から運営の仕事が導かれる設計を固め、試作へ進む。",
       onePageBody:
         "YSE Compass は卒業制作発表会の運営プラットフォームです。設計では、生徒の提出(資料のリンク登録・概要のフォーム入力)を起点に、先生の提出状況の確認・発表順の決定・概要集の生成・資料の公開が副産物として成り立つよう、画面とデータの構造を決めました。資料の実体は Google ドライブに置いたまま、システムは提出の記録とコメントだけを持ちます。",
-      submittedAt: "2026-10-11T20:15:00+09:00",
+      submittedAt: "2026-10-13T21:40:00+09:00",
     },
   },
   // Nova・Lumen は場面 1(10/12)の時点では未提出で、締切までに出す。

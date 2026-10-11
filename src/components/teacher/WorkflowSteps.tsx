@@ -18,6 +18,7 @@ import type { Announcement } from "@/lib/types";
 //   公開(isPublished)・必須の未提出(countMissingRequired)から導く。新しい状態は持たない。
 
 // 当日のハブで ①〜⑥ が 1 画面(1152×620)に収まるよう、行とボタンの縦の余白だけを詰める(文字の大きさは変えない)。
+// 説明文も、「いまここ」が付いた行で 2 行に折れないよう短くしてある(1152 幅で 1 行に収まる長さ)。
 // Button の py-2 を py-1 にする(同じ性質のクラスはクラス名の順では勝ち負けが決まらないので、! で優先させる)。
 // 文言の長いボタン(「タイムテーブルで進行する」)が 2 行に折れないよう、折り返しも止める。
 const STEP_BUTTON_CLASS = "py-1! whitespace-nowrap";
@@ -109,7 +110,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
     {
       no: 2,
       name: "提出を確認する",
-      description: "締切までに必須の資料がそろったかを見る",
+      description: "必須の資料がそろったか",
       summary:
         missing.count === 0 ? (
           <Badge tone="emerald">全チーム提出済み</Badge>
@@ -127,7 +128,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
     {
       no: 3,
       name: "発表順を確定する",
-      description: "タイムテーブルの順番を決めて保存する",
+      description: "順番を決めて保存する",
       summary: orderConfirmed ? (
         <>
           <Badge tone="emerald">確定済み</Badge>
@@ -143,7 +144,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
     {
       no: 4,
       name: "概要集を作る",
-      description: "確定した発表順で概要集を生成する",
+      description: "確定した順で生成する",
       summary: booklet.generatedAt ? (
         <>
           <Badge tone="emerald">生成済み</Badge>
@@ -199,7 +200,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
     {
       no: 6,
       name: "公開する",
-      description: "聴く生徒が資料を閲覧できるようにする",
+      description: "聴く生徒に資料を公開する",
       summary: <Badge tone={isPublished ? "emerald" : "slate"}>{isPublished ? "公開中" : "非公開"}</Badge>,
       done: done.publish,
       current: isCurrent("publish"),

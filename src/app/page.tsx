@@ -30,18 +30,6 @@ import { TimetableRows } from "@/components/timetable/TimetableRows";
 import { formatDateTime, formatShortDate, formatShortDateTime } from "@/lib/format";
 import type { Announcement, Team, Timetable, Year } from "@/lib/types";
 
-function isFullySubmitted(announcement: Announcement, teamId: string): boolean {
-  const submission = getSubmission(announcement.id, teamId);
-  const required = announcement.materialSlots.filter((s) => s.required);
-  return (
-    !!submission && required.every((slot) => submission.materials.find((m) => m.name === slot.name)?.status === "提出済み")
-  );
-}
-
-function findNextUrgent(announcements: Announcement[], isDone: (a: Announcement) => boolean): Announcement | null {
-  return announcements.find((a) => !isDone(a)) ?? null;
-}
-
 // ホームの開閉できる見出し。閉じていても見出し横の補足(件数など)とリンクは見える。
 function ToggleHeading({
   open,
@@ -161,7 +149,7 @@ function ProgressSection({ announcement: a, teacher }: { announcement: Announcem
 }
 
 // 生徒のホームに出す締切。必須枠に未提出が残る発表会だけを、締切の早い順に見る。
-// 今と締切の比較は teacherRing と同じく現在時刻で行う。件数は資料枠の単位で数え、見出しの「必須枠の未提出」とそろえる。
+// 今と締切の比較は現在時刻(new Date())で行う。件数は資料枠の単位で数え、見出しの「必須枠の未提出」とそろえる。
 function ownTeamDeadlines(rows: { announcement: Announcement; missing: number }[]) {
   const now = new Date();
   const pending = rows
@@ -291,38 +279,6 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
   );
 }
 
-function RingTile({
-  href,
-  label,
-  percent,
-  caption,
-}: {
-  href: string;
-  label: string;
-  percent: number;
-  caption: string;
-}) {
-  return (
-    <CardLink
-      href={href}
-      className="flex items-center gap-4 shadow-sm shadow-slate-900/5 hover:-translate-y-0.5 hover:shadow-md hover:shadow-brand-500/20"
-    >
-      <div
-        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
-        style={{ background: `conic-gradient(#1a73e8 0% ${percent}%, #e2e8f0 ${percent}% 100%)` }}
-      >
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xs font-semibold text-brand-700">
-          {percent}%
-        </div>
-      </div>
-      <div>
-        <p className="text-xs text-slate-500">{label}</p>
-        <p className="mt-0.5 text-sm font-semibold text-slate-900">{caption}</p>
-      </div>
-    </CardLink>
-  );
-}
-
 function StatTile({
   href,
   label,
@@ -355,7 +311,7 @@ function StatTile({
   );
 }
 
-// ホームのStatTile/RingTileで使うアイコン(丸背景)。全ロール共通。
+// ホームのStatTileで使うアイコン(丸背景)。全ロール共通。
 function AnnounceIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -416,8 +372,7 @@ function UsersAdminIcon() {
 
 // 先生のホーム。生徒のホームとは別のコンポーネントにして、デモ用の時刻・先生の共有状態のフックをここで呼ぶ
 // (生徒の分岐 = 動画の区間 B・C の描画は変えない)。手書きの status・モックの currentPresentingTeamId は読まない。
-// 旧 teacherRing(「x/y完了・〇〇発表会が締切間近」→ 押すと一覧へ)は削除した。共有の RingTile・findNextUrgent・
-// isFullySubmitted は生徒のホームが使うので変えていない。
+// 旧 teacherRing(「x/y完了・〇〇発表会が締切間近」→ 押すと一覧へ)は削除した。
 function TeacherHome({
   year,
   announcements,

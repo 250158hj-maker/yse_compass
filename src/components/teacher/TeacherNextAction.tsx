@@ -170,7 +170,7 @@ function buildView(a: Announcement, action: NextAction, slots: TimetableSlot[]):
       return {
         headline: "資料公開",
         status: <span>全発表が終わりました。</span>,
-        primary: { href: base, label: "工程表で公開する" },
+        primary: { href: base, label: "工程表で進める" },
         secondary: null,
       };
     case "none":

@@ -11,7 +11,7 @@ import {
   pickTeacherFocusAnnouncement,
   nextTeamId,
   sortSlots,
-  teamIdAtTime,
+  teamSlotsInOrder,
   type AnnouncementPeriod,
   type BookletEntry,
   type TeacherNextAction,
@@ -24,11 +24,13 @@ import type { Announcement, Team, Timetable, TimetableSlot } from "@/lib/types";
 // - 持つのは「先生が操作で変えた差分」だけ。何も操作していない発表会は、モックのデータ
 //   (lib/mock/announcements.ts の timetables・isPublished)をそのまま初期値として読む。
 // - タイムテーブルの currentPresentingTeamId(モックに直書きの "team-cheers")は読まない。
-//   発表中は「当日に入ったら時刻に合う枠が初期値、先生が手で進めたらその値」で決める。
+//   発表中は先生の操作(「最初の発表を開始」「次の発表へ」)だけで決める。当日に入っても、先生が開始するまでは null。
+//   (glossary.md 末尾の注記:状態遷移は先生の明示操作を正とし、時刻・条件による自動遷移は持たない)
 // - ブラウザ(localStorage)に保存する。読み書きに失敗してもメモリ上の状態で動く。
 
 const STORAGE_KEY = "yse-compass-demo-teacher-v1";
 
+// 先生が当日の進行に手を入れた記録。これがあること = 先生が発表を開始したこと。
 type PresentingOverride = {
   teamId: string | null;
   // 「次の発表へ」で最後のチームを終えた。
@@ -148,11 +150,15 @@ export type UseTimetableResult = {
   confirmedAt: string | null;
   // いまの時期(受付中 / 締切後 / 当日 / 終了)。
   period: AnnouncementPeriod;
-  // いま発表中のチーム。当日以外は常に null。
+  // いま発表中のチーム。当日以外は常に null。当日でも、先生が開始するまでは null(時刻からは決めない)。
   currentPresentingTeamId: string | null;
+  // 当日に先生が「最初の発表を開始」(または「次の発表へ」)を押したか。
+  presentationsStarted: boolean;
   // 当日に「次の発表へ」で最後のチームを終えた。
   presentationsFinished: boolean;
   setPresenting: (teamId: string | null) => void;
+  // SC-07: 最初の発表を開始(先頭の発表枠のチームを発表中にする)。
+  start: () => void;
   // 次の発表へ(だれもいなければ先頭へ、最後の次は終了)。
   next: () => void;
   // TimetableRows などにそのまま渡せる形(currentPresentingTeamId は上の導出値)。無ければ null。
@@ -172,12 +178,13 @@ export function useTimetable(announcementId: string): UseTimetableResult {
     ? deriveAnnouncementPeriod(announcement, slots, nowMs)
     : "受付中";
 
-  // 上書きは「同じ時刻(プリセット)の中で操作したもの」だけ有効。時刻を切り替えたら初期値に戻る。
+  // 上書きは「同じ時刻(プリセット)の中で操作したもの」だけ有効。時刻を切り替えたら開始前に戻る
+  // (撮り直しで場面 3 に戻ったとき、前回の進行が残らないようにするため)。
   const presenting = override.presenting?.setAt === nowIso ? override.presenting : undefined;
-  const initialTeamId = announcement ? teamIdAtTime(announcement, slots, nowMs) : null;
   const onTheDay = period === "当日";
-  const currentPresentingTeamId = onTheDay ? (presenting ? presenting.teamId : initialTeamId) : null;
-  const presentationsFinished = onTheDay && !!presenting?.finished;
+  const presentationsStarted = onTheDay && !!presenting;
+  const currentPresentingTeamId = presentationsStarted ? presenting!.teamId : null;
+  const presentationsFinished = presentationsStarted && !!presenting!.finished;
 
   function setPresentingOverride(teamId: string | null, finished = false) {
     update((prev) =>
@@ -214,20 +221,18 @@ export function useTimetable(announcementId: string): UseTimetableResult {
       update((prev) =>
         patchTimetable(prev, announcementId, (t) => ({
           ...t,
+          // 並べ替えで時刻が動いても、いま発表中のチームはそのまま(発表中は時刻からは決めない)。
           slots: moveSlot(t.slots ?? slots, slotId, direction),
-          // 並べ替えで時刻が動いても、いま発表中のチームはそのままにする(時刻連動の自動進行はしない)。
-          presenting:
-            onTheDay && !presenting
-              ? { teamId: currentPresentingTeamId, finished: false, setAt: nowIso }
-              : t.presenting,
         })),
       ),
     orderConfirmed: !!override.confirmedAt,
     confirmedAt: override.confirmedAt ?? null,
     period,
     currentPresentingTeamId,
+    presentationsStarted,
     presentationsFinished,
     setPresenting: (teamId) => setPresentingOverride(teamId),
+    start: () => setPresentingOverride(teamSlotsInOrder(slots)[0]?.teamId ?? null),
     next: () => {
       if (presentationsFinished) return;
       const nextId = nextTeamId(slots, currentPresentingTeamId);
@@ -303,11 +308,13 @@ export function useTeacherNextAction(announcementId: string): TeacherNextAction 
   return deriveTeacherNextAction({
     announcement,
     teams: getTeamsByYear(announcement.yearId),
+    slots: timetable.slots,
     period: timetable.period,
     nowMs,
     orderConfirmed: timetable.orderConfirmed,
     bookletGenerated: !!generatedAt,
     presentingTeamId: timetable.currentPresentingTeamId,
+    presentationsStarted: timetable.presentationsStarted,
     presentationsFinished: timetable.presentationsFinished,
     isPublished,
   });

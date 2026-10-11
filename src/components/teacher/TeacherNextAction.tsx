@@ -13,7 +13,7 @@ import { PERIOD_TONE, joinTeamNames } from "@/components/teacher/teacher-format"
 import type { Announcement, TimetableSlot } from "@/lib/types";
 
 // 先生のホームの最上部に置く「次にやること」。先生が毎回ここから入り、時期に合った 1 つの画面へ進む。
-// 中身は useTeacherNextAction の kind(collect / prepare / run / publish / none)で決まる。
+// 中身は useTeacherNextAction の kind(collect / prepare / start / run / publish / none)で決まる。
 export function TeacherNextAction({ announcements }: { announcements: Announcement[] }) {
   const focus = useTeacherFocusAnnouncement(announcements);
   if (!focus) return null;
@@ -124,6 +124,18 @@ function buildView(a: Announcement, action: NextAction, slots: TimetableSlot[]):
             : null,
       };
     }
+    case "start":
+      // 当日に入っても発表は自動では始まらない。先生が SC-07 で「最初の発表を開始」を押す。
+      return {
+        headline: "当日の発表を始める",
+        status: (
+          <span>
+            {action.startTime ? `${action.startTime} 開始予定・` : ""}まだ始まっていません
+          </span>
+        ),
+        primary: { href: `${base}/timetable`, label: "進行画面へ" },
+        secondary: hub,
+      };
     case "run": {
       const current = action.presentingTeamId;
       const teamSlots = teamSlotsInOrder(slots);

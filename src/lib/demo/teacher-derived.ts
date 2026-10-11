@@ -153,16 +153,6 @@ export function moveSlot(slots: TimetableSlot[], slotId: string, direction: -1 |
   return reflowSlots(sorted.map((s, i) => ({ ...s, order: i + 1 }) as TimetableSlot));
 }
 
-// いまの時刻にかかっている発表枠のチーム(休憩中・時間外なら null)。当日に入ったときの「発表中」の初期値に使う。
-export function teamIdAtTime(announcement: Announcement, slots: TimetableSlot[], nowMs: number): string | null {
-  for (const slot of teamSlotsInOrder(slots)) {
-    const start = jstDateTimeMs(announcement.period, slot.startTime);
-    const end = start + slot.durationMin * 60 * 1000;
-    if (nowMs >= start && nowMs < end) return slot.teamId;
-  }
-  return null;
-}
-
 // 「次の発表へ」: 並びで次のチーム。だれも発表中でなければ先頭、最後のチームの次は null(全発表の終了)。
 export function nextTeamId(slots: TimetableSlot[], currentTeamId: string | null): string | null {
   const teamSlots = teamSlotsInOrder(slots);
@@ -219,7 +209,10 @@ export type TeacherNextAction =
   | { kind: "collect"; daysLeft: number; missing: MissingRequired }
   // 場面 2: 締切後・発表前。発表順を確定して概要集を作る(確定済みなら概要集だけ)。
   | { kind: "prepare"; orderConfirmed: boolean; bookletGenerated: boolean; missing: MissingRequired }
-  // 場面 3: 当日の進行中。
+  // 場面 3: 当日に入ったが、先生がまだ発表を開始していない(発表中は時刻からは決めない)。
+  // startTime は先頭の発表枠の開始予定時刻。
+  | { kind: "start"; startTime: string | null }
+  // 場面 3: 当日の進行中(先生が開始した後)。
   | { kind: "run"; presentingTeamId: string | null }
   // 発表が終わって(当日で全発表を終えた、または終了)、まだ公開していない。
   | { kind: "publish" }
@@ -229,11 +222,14 @@ export type TeacherNextAction =
 export function deriveTeacherNextAction(input: {
   announcement: Announcement;
   teams: Team[];
+  slots: TimetableSlot[];
   period: AnnouncementPeriod;
   nowMs: number;
   orderConfirmed: boolean;
   bookletGenerated: boolean;
   presentingTeamId: string | null;
+  // 当日に先生が発表を開始したか(TeacherDemoContext の presentationsStarted)。
+  presentationsStarted: boolean;
   // 当日に「次の発表へ」で最後のチームを終えたか(TeacherDemoContext の finished)。
   presentationsFinished: boolean;
   isPublished: boolean;
@@ -255,6 +251,9 @@ export function deriveTeacherNextAction(input: {
       };
     case "当日":
       if (input.presentationsFinished) return input.isPublished ? { kind: "none" } : { kind: "publish" };
+      if (!input.presentationsStarted) {
+        return { kind: "start", startTime: teamSlotsInOrder(input.slots)[0]?.startTime ?? null };
+      }
       return { kind: "run", presentingTeamId: input.presentingTeamId };
     case "終了":
       return input.isPublished ? { kind: "none" } : { kind: "publish" };

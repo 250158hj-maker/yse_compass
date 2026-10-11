@@ -5,23 +5,50 @@ import { InlineNotice } from "@/components/ui/InlineNotice";
 import { TimetableRows } from "@/components/timetable/TimetableRows";
 import { NextStep, backToHub } from "@/components/flow/NextStep";
 import { useTimetable } from "@/context/TeacherDemoContext";
-import { getPresentationStartMs } from "@/lib/demo/teacher-derived";
+import { getPresentationStartMs, teamSlotsInOrder } from "@/lib/demo/teacher-derived";
 import { formatDateTime } from "@/lib/format";
 import { getTeamById } from "@/lib/mock";
 import type { Announcement } from "@/lib/types";
 
 // SC-07 タイムテーブル(先生)。当日の進行をここで行う(04-screen.md の SC-07)。
-// - いま発表中の強調・「次の発表へ」・各行の ▲▼(当日の入れ替え)は、デモ用の時刻が当日のときだけ出す。
+// - 当日に入っても発表は自動では始まらない(glossary.md 末尾:状態遷移は先生の明示操作を正とする)。
+//   当日・開始前は「最初の発表を開始」だけを出し、開始後に「次の発表へ」と各行の ▲▼(当日の入れ替え)を出す。
 // - 並び・発表中は先生の共有状態(useTimetable)を読む。モックに直書きの currentPresentingTeamId は読まない。
 // - 生徒が見る SC-07 は TimetableClient の従来の描画(getTimetableFor)のまま。
 export function TeacherTimetableClient({ announcement: a }: { announcement: Announcement }) {
-  const { timetable, slots, period, currentPresentingTeamId, presentationsFinished, next, moveNow } = useTimetable(a.id);
+  const {
+    timetable,
+    slots,
+    period,
+    currentPresentingTeamId,
+    presentationsStarted,
+    presentationsFinished,
+    start,
+    next,
+    moveNow,
+  } = useTimetable(a.id);
   const onTheDay = period === "当日";
+  const running = onTheDay && presentationsStarted && !presentationsFinished;
   const presentingTeam = currentPresentingTeamId ? getTeamById(currentPresentingTeamId) : null;
+  const firstSlot = teamSlotsInOrder(slots)[0];
+  const firstTeam = firstSlot ? getTeamById(firstSlot.teamId) : null;
 
   return (
     <>
-      {onTheDay && timetable && (
+      {onTheDay && timetable && !presentationsStarted && (
+        // 開始前は案内の色(InlineNotice の info と同じ)。発表中の rose は、先生が開始してから使う。
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand-200 bg-brand-50 px-5 py-4">
+          <p className="text-sm font-medium text-brand-800">
+            {firstSlot ? `${firstSlot.startTime} 開始予定・まだ始まっていません` : "まだ始まっていません"}
+            {firstTeam && <span className="font-normal">(最初は {firstTeam.name})</span>}
+          </p>
+          <Button variant="primary" onClick={start} disabled={!firstSlot}>
+            最初の発表を開始
+          </Button>
+        </div>
+      )}
+
+      {onTheDay && timetable && presentationsStarted && (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-5 py-4">
           <p className="text-sm font-medium text-rose-700">
             {presentationsFinished
@@ -48,7 +75,7 @@ export function TeacherTimetableClient({ announcement: a }: { announcement: Anno
         </div>
       )}
 
-      {onTheDay && timetable && !presentationsFinished && (
+      {running && timetable && (
         <p className="mt-4 text-sm text-slate-500">
           発表が押したときは、▲▼で順番を入れ替えられます(保存せずにすぐ反映されます)。
         </p>
@@ -59,7 +86,7 @@ export function TeacherTimetableClient({ announcement: a }: { announcement: Anno
           timetable={timetable}
           announcementId={a.id}
           renderLeading={
-            onTheDay && !presentationsFinished
+            running
               ? (slot, index, count) => (
                   <div className="flex w-5 flex-col items-center gap-1">
                     <button
@@ -91,7 +118,9 @@ export function TeacherTimetableClient({ announcement: a }: { announcement: Anno
         description={
           presentationsFinished
             ? "すべての発表が終わりました。工程表で資料を生徒に公開します。"
-            : onTheDay
+            : onTheDay && !presentationsStarted
+              ? "発表の開始は、上の「最初の発表を開始」で行います(時刻になっても自動では始まりません)。"
+              : onTheDay
               ? "すべての発表が終わったら、工程表で資料を生徒に公開します。"
               : "当日の進行は、発表会の当日にこの画面で行います。"
         }

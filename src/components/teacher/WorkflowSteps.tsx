@@ -35,7 +35,15 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const base = `/announcements/${a.id}`;
-  const { period, orderConfirmed, confirmedAt, currentPresentingTeamId, presentationsFinished, slots } = timetable;
+  const {
+    period,
+    orderConfirmed,
+    confirmedAt,
+    currentPresentingTeamId,
+    presentationsStarted,
+    presentationsFinished,
+    slots,
+  } = timetable;
   const teams = getTeamsByYear(a.yearId);
   const missing = countMissingRequired(a, teams, nowMs);
   const teamCount = teamSlotsInOrder(slots).length;
@@ -61,7 +69,8 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
   }
   if (period === "当日") {
     currentKeys.add("run");
-    currentKeys.add("publish");
+    // 公開は、先生が当日の発表を開始してから(開始前は ⑤ だけを強調する)。
+    if (presentationsStarted) currentKeys.add("publish");
   }
   if (period === "終了") currentKeys.add("publish");
   const isCurrent = (key: keyof typeof done) => currentKeys.has(key) && !done[key];
@@ -152,7 +161,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
       name: "当日の進行",
       description: "発表中のチームを順に進める",
       summary:
-        period === "当日" ? (
+        period === "当日" && presentationsStarted ? (
           presentationsFinished ? (
             <Badge tone="emerald">全発表が終了</Badge>
           ) : presentingName ? (
@@ -166,9 +175,14 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
         ) : period === "終了" ? (
           <Badge tone="emerald">終了</Badge>
         ) : (
+          // 締切後・当日(先生が開始する前)。当日に入っても、発表は先生が SC-07 で開始するまで始まらない。
           <>
             <Badge tone="slate">開始前</Badge>
-            {firstStart && <span className="text-xs text-slate-400">当日 {firstStart}〜</span>}
+            {firstStart && (
+              <span className="text-xs text-slate-400">
+                {period === "当日" ? `${firstStart} 開始予定` : `当日 ${firstStart}〜`}
+              </span>
+            )}
           </>
         ),
       done: done.run,

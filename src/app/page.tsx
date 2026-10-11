@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { useSession } from "@/context/SessionContext";
-import { usePublish, useTeacherFocusAnnouncement, useTimetable } from "@/context/TeacherDemoContext";
+import { usePublish, useTeacherFocusAnnouncement, useTeacherRoster, useTimetable } from "@/context/TeacherDemoContext";
 import { TeacherNextAction } from "@/components/teacher/TeacherNextAction";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import {
@@ -17,7 +17,6 @@ import {
   getTemplateById,
   getTimetableFor,
   isLateSubmission,
-  users,
 } from "@/lib/mock";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -430,6 +429,7 @@ function TeacherHome({
 }) {
   const focus = useTeacherFocusAnnouncement(announcements);
   const { currentPresentingTeamId } = useTimetable(focus?.id ?? "");
+  const { teachers } = useTeacherRoster();
   const presentingTeam = focus && currentPresentingTeamId ? getTeamById(currentPresentingTeamId) : null;
 
   return (
@@ -502,9 +502,9 @@ function TeacherHome({
           />
           <StatTile
             href="/admin/users"
-            label="ユーザー管理"
-            value={`${users.length}アカウント`}
-            caption="ロールの確認・変更"
+            label="先生の登録・解除"
+            value={`先生 ${teachers.length}名`}
+            caption="先生の一覧と登録・解除"
             icon={<UsersAdminIcon />}
             iconColor="bg-brand-50 text-brand-600"
           />

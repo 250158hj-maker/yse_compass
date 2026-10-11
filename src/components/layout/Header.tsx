@@ -16,7 +16,7 @@ const navLinks = [
 const adminLinks = [
   { href: "/admin/years", label: "年度管理" },
   { href: "/admin/publish-permissions", label: "公開許可管理" },
-  { href: "/admin/users", label: "ユーザー管理" },
+  { href: "/admin/users", label: "先生の登録・解除" },
 ];
 
 export function Header() {

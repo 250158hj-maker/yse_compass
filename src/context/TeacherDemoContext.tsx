@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useDemoClock } from "@/context/DemoClockContext";
+import { useSession } from "@/context/SessionContext";
 import type { DemoClockPresetId } from "@/lib/demo/clock";
-import { getAnnouncementById, getTeamsByYear, getTimetableFor } from "@/lib/mock";
+import { getAnnouncementById, getTeamsByYear, getTimetableFor, users } from "@/lib/mock";
 import {
   buildBookletEntries,
   deriveAnnouncementPeriod,
@@ -18,7 +19,7 @@ import {
   type TeacherNextAction,
 } from "@/lib/demo/teacher-derived";
 import { readStorage, removeStorage, writeStorage } from "@/lib/demo/storage";
-import type { Announcement, Team, Timetable, TimetableSlot } from "@/lib/types";
+import type { Announcement, AppUser, Team, Timetable, TimetableSlot } from "@/lib/types";
 
 // 先生の画面(ホーム・ハブ・SC-07・SC-08・SC-11)が同じものを読み書きする、デモ用の共有状態。
 //
@@ -28,6 +29,8 @@ import type { Announcement, Team, Timetable, TimetableSlot } from "@/lib/types";
 //   発表中は先生の操作(「最初の発表を開始」「次の発表へ」)だけで決める。当日に入っても、先生が開始するまでは null。
 //   (glossary.md 末尾の注記:状態遷移は先生の明示操作を正とし、時刻・条件による自動遷移は持たない)
 // - ブラウザ(localStorage)に保存する。読み書きに失敗してもメモリ上の状態で動く。
+// - SC-20(先生の登録・解除)の操作もここに持つ。先生の画面にだけ反映し、
+//   ログイン中のロール(SessionContext)・生徒の画面には流さない。
 
 const STORAGE_KEY = "yse-compass-demo-teacher-v1";
 
@@ -55,20 +58,27 @@ type TeacherDemoState = {
   timetables: Record<string, TimetableOverride>;
   published: Record<string, boolean>;
   bookletGeneratedAt: Record<string, string>;
+  // SC-20: 先生ホワイトリストに載っている利用者の id(登録順)。無ければモックの users のロールが初期値。
+  // 後から足したキーなので省略可(足す前に保存された値にも無い)。
+  teacherRoster?: string[];
 };
 
 const EMPTY_STATE: TeacherDemoState = { timetables: {}, published: {}, bookletGeneratedAt: {} };
 
+function isRecord(value: unknown): boolean {
+  return typeof value === "object" && value !== null;
+}
+
 function isTeacherDemoState(value: unknown): value is TeacherDemoState {
-  if (typeof value !== "object" || value === null) return false;
+  if (!isRecord(value)) return false;
   const v = value as Record<string, unknown>;
   return (
-    typeof v.timetables === "object" &&
-    v.timetables !== null &&
-    typeof v.published === "object" &&
-    v.published !== null &&
-    typeof v.bookletGeneratedAt === "object" &&
-    v.bookletGeneratedAt !== null
+    isRecord(v.timetables) &&
+    isRecord(v.published) &&
+    isRecord(v.bookletGeneratedAt) &&
+    // 後から足したキーは、無くてもよい(古い保存値を弾かない)。あるときだけ形を見る。
+    (v.teacherRoster === undefined ||
+      (Array.isArray(v.teacherRoster) && v.teacherRoster.every((id) => typeof id === "string")))
   );
 }
 
@@ -363,7 +373,58 @@ export function useSwitchDemoClockPreset(): (id: DemoClockPresetId) => void {
   };
 }
 
-// デモを最初からやり直す(並び・発表中・公開・概要集の生成をすべてモックの初期値へ)。
+// ------------------------------------------------------------
+// 先生の登録・解除(SC-20)
+// ------------------------------------------------------------
+//
+// 正典: decisions.md 2026-09-06(H-11 決着)・04-screen.md SC-20。
+// - 先生の追加はこの画面だけ。登録できるのは一度サインインした利用者だけ(H-26 の先行方針「初回サインイン後の昇格のみ」)。
+//   モックでは users のうち、いま先生でない人が候補。メールを入力して事前登録する手段は持たない。
+// - 自分自身は解除できない。これでホワイトリストは空にならないので、「最後の 1 人か」を判定する分岐は持たない
+//   (04-screen.md SC-20「できないこと」)。
+// - ログイン中のロール(SessionContext のペルソナ)は変えない。ここで先生に上げた生徒でログインしても生徒のまま。
+
+export type UseTeacherRosterResult = {
+  // 先生として登録されている利用者(登録順)。
+  teachers: AppUser[];
+  // 先生として登録できる利用者(サインイン済みで、いま先生でない人)。
+  candidates: AppUser[];
+  // 解除できるか(自分自身は解除できない)。
+  canUnregister: (userId: string) => boolean;
+  register: (userId: string) => void;
+  unregister: (userId: string) => void;
+};
+
+const BASE_TEACHER_IDS = users.filter((u) => u.role === "teacher").map((u) => u.id);
+
+export function useTeacherRoster(): UseTeacherRosterResult {
+  const { state, update } = useTeacherDemoContext();
+  const { currentUser } = useSession();
+  const ids = state.teacherRoster ?? BASE_TEACHER_IDS;
+  const teachers = ids.map((id) => users.find((u) => u.id === id)).filter((u): u is AppUser => !!u);
+  const candidates = users.filter((u) => !ids.includes(u.id));
+  const canUnregister = (userId: string) => userId !== currentUser?.id && ids.includes(userId);
+  return {
+    teachers,
+    candidates,
+    canUnregister,
+    register: (userId) =>
+      update((prev) => {
+        const current = prev.teacherRoster ?? BASE_TEACHER_IDS;
+        if (current.includes(userId) || !users.some((u) => u.id === userId)) return prev;
+        return { ...prev, teacherRoster: [...current, userId] };
+      }),
+    unregister: (userId) => {
+      if (!canUnregister(userId)) return;
+      update((prev) => ({
+        ...prev,
+        teacherRoster: (prev.teacherRoster ?? BASE_TEACHER_IDS).filter((id) => id !== userId),
+      }));
+    },
+  };
+}
+
+// デモを最初からやり直す(並び・発表中・公開・概要集の生成・先生の登録をすべてモックの初期値へ)。
 export function useTeacherDemoReset(): () => void {
   return useTeacherDemoContext().reset;
 }

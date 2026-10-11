@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -11,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RoleGate } from "@/components/session/RoleGate";
 import { TeacherAnnouncementHub } from "@/components/teacher/TeacherAnnouncementHub";
+import { AnnouncementTeamList } from "@/components/announcement/AnnouncementTeamList";
 import { useSession } from "@/context/SessionContext";
 import { isTeacher } from "@/lib/session-helpers";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -26,7 +26,8 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
   const [isPublished, setIsPublished] = useState(a.isPublished);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // 先生は工程表の画面(デモ用の時刻・共有状態に繋いだもの)を見る。以下は生徒の画面で、描画は変えていない
+  // 先生は工程表の画面(デモ用の時刻・共有状態に繋いだもの)を見る。工程表は先生が足す部分で、その下に
+  // 生徒と同じ発表一覧(AnnouncementTeamList)を置く(土台を引かない)。以下は生徒の画面で、描画は変えていない
   // (動画の区間 B・C)。ヘッダの公開ボタンは RoleGate で生徒には出ないが、DOM を変えないために残してある。
   if (teacher) return <TeacherAnnouncementHub announcement={a} />;
 
@@ -73,17 +74,7 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
               {!isPublished ? (
                 <InlineNotice tone="info">資料は先生の公開操作後に閲覧できます。</InlineNotice>
               ) : (
-                <div className="flex flex-col gap-2">
-                  {teams.map((team) => (
-                    <Link
-                      key={team.id}
-                      href={`/announcements/${a.id}/teams/${team.id}`}
-                      className="rounded-lg border border-slate-200 bg-white p-4 hover:border-brand-300"
-                    >
-                      {team.name}({team.projectTitle})
-                    </Link>
-                  ))}
-                </div>
+                <AnnouncementTeamList announcementId={a.id} teams={teams} />
               )}
             </div>
           )}

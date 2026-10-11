@@ -49,8 +49,14 @@ export function TeacherTimetableClient({ announcement: a }: { announcement: Anno
       )}
 
       {onTheDay && timetable && presentationsStarted && (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-5 py-4">
-          <p className="text-sm font-medium text-rose-700">
+        // 発表中は rose(生徒のホームの「いま発表中」の帯と同じ)。全発表を終えたら、生徒側で「済み・完了」に使う
+        // emerald(StatusBadge の「提出済み」・SC-06 の未提出 0 件のバッジ)へ切り替える。
+        <div
+          className={`mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-5 py-4 ${
+            presentationsFinished ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"
+          }`}
+        >
+          <p className={`text-sm font-medium ${presentationsFinished ? "text-emerald-700" : "text-rose-700"}`}>
             {presentationsFinished
               ? "すべての発表が終わりました"
               : presentingTeam

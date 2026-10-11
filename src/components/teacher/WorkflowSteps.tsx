@@ -19,7 +19,8 @@ import type { Announcement } from "@/lib/types";
 
 // 当日のハブで ①〜⑥ が 1 画面(1152×620)に収まるよう、行とボタンの縦の余白だけを詰める(文字の大きさは変えない)。
 // Button の py-2 を py-1 にする(同じ性質のクラスはクラス名の順では勝ち負けが決まらないので、! で優先させる)。
-const STEP_BUTTON_CLASS = "py-1!";
+// 文言の長いボタン(「タイムテーブルで進行する」)が 2 行に折れないよう、折り返しも止める。
+const STEP_BUTTON_CLASS = "py-1! whitespace-nowrap";
 
 type Step = {
   no: number;
@@ -193,7 +194,7 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
         ),
       done: done.run,
       current: isCurrent("run"),
-      action: linkButton("run", `${base}/timetable`, "進行画面へ"),
+      action: linkButton("run", `${base}/timetable`, "タイムテーブルで進行する"),
     },
     {
       no: 6,
@@ -243,7 +244,7 @@ function StepRow({ step }: { step: Step }) {
   return (
     <li
       aria-current={step.current ? "step" : undefined}
-      className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md px-3 py-1 ${
+      className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-1 ${
         step.current ? "bg-brand-50 ring-1 ring-brand-200" : "bg-slate-50"
       }`}
     >
@@ -253,8 +254,8 @@ function StepRow({ step }: { step: Step }) {
         {step.current && <Badge tone="brand">いまここ</Badge>}
         <span className="text-xs text-slate-500">{step.description}</span>
       </p>
-      <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 sm:w-80">{step.summary}</div>
-      <div className="flex shrink-0 sm:w-36 sm:justify-end">{step.action}</div>
+      <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 sm:w-72">{step.summary}</div>
+      <div className="flex shrink-0 sm:w-56 sm:justify-end">{step.action}</div>
     </li>
   );
 }

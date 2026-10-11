@@ -133,7 +133,7 @@ function buildView(a: Announcement, action: NextAction, slots: TimetableSlot[]):
             {action.startTime ? `${action.startTime} 開始予定・` : ""}まだ始まっていません
           </span>
         ),
-        primary: { href: `${base}/timetable`, label: "進行画面へ" },
+        primary: { href: `${base}/timetable`, label: "タイムテーブルで進行する" },
         secondary: hub,
       };
     case "run": {
@@ -161,7 +161,7 @@ function buildView(a: Announcement, action: NextAction, slots: TimetableSlot[]):
         ) : (
           <span>いま発表中のチームはありません。</span>
         ),
-        primary: { href: `${base}/timetable`, label: "進行画面へ" },
+        primary: { href: `${base}/timetable`, label: "タイムテーブルで進行する" },
         secondary: hub,
       };
     }

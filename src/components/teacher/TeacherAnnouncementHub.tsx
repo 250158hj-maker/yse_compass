@@ -53,9 +53,7 @@ export function TeacherAnnouncementHub({ announcement: a }: { announcement: Anno
       />
 
       <section className="mt-4">
-        <SectionHeading action={<span className="text-xs text-slate-400">どの工程からでも開けます</span>}>
-          工程表
-        </SectionHeading>
+        <SectionHeading>工程表</SectionHeading>
         {/* Card と同じ見た目で、余白だけ p-5 → p-3 に詰める(Card の p-5 は className で上書きできないため div で書く) */}
         <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm shadow-slate-900/5">
           <WorkflowSteps announcement={a} />

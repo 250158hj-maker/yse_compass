@@ -30,10 +30,7 @@ export default function PublishPermissionsPage() {
   return (
     <div>
       <Breadcrumbs items={[{ label: "ホーム", href: "/" }, { label: "公開許可管理" }]} />
-      <PageHeader
-        title="公開許可管理"
-        meta="卒業年度チームのアーカイブ公開許可を確認・代理設定できます(データ削除の手段ではありません)"
-      />
+      <PageHeader title="公開許可管理" />
 
       <div className="mt-6">
         {rows.length === 0 ? (

@@ -100,14 +100,6 @@ export default function TeamsPage() {
         )}
       </RoleGate>
 
-      <RoleGate allow={["teacher"]}>
-        <div className="mt-4">
-          <InlineNotice tone="info">
-            チーム作成・メンバーの割り当ては先生が行います。メンバーは氏名で登録します。
-          </InlineNotice>
-        </div>
-      </RoleGate>
-
       {teams.length === 0 ? (
         <div className="mt-6">
           <EmptyState message="この年度のチームはまだ登録されていません。" />

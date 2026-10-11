@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { useSession } from "@/context/SessionContext";
-import { usePublish, useTeacherFocusAnnouncement, useTeacherRoster, useTimetable } from "@/context/TeacherDemoContext";
+import { useTeacherFocusAnnouncement, useTeacherRoster, useTimetable } from "@/context/TeacherDemoContext";
 import { TeacherNextAction } from "@/components/teacher/TeacherNextAction";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import {
@@ -289,7 +289,7 @@ function StatTile({
   href: string;
   label: string;
   value: string;
-  caption: string;
+  caption?: string;
   icon: ReactNode;
   iconColor: string;
 }) {
@@ -304,7 +304,7 @@ function StatTile({
       <div>
         <p className="text-xl font-semibold text-slate-900">{label}</p>
         <p className="mt-1 text-xs text-slate-500">{value}</p>
-        <p className="mt-1 text-xs text-slate-400">{caption}</p>
+        {caption && <p className="mt-1 text-xs text-slate-400">{caption}</p>}
       </div>
     </CardLink>
   );
@@ -372,11 +372,10 @@ function UsersAdminIcon() {
 // 先生のホームの「発表の進行」。生徒のホームの ProgressSection(全員に共通する土台)と同じ見出し・開閉・行で、
 // 先生のホームから引かないために置く(SC-02:T が SC-07 へ行く入口は、この欄の「タイムテーブルを見る」)。
 // ProgressSection は手書きの status・isPublished・モックの currentPresentingTeamId を読むので、先生のときは
-// デモ用の時刻・共有状態(useTimetable・usePublish)で同じ形を描く。文言は ProgressSection の先生の分岐のまま。
+// デモ用の時刻・共有状態(useTimetable)で同じ形を描く。機能や仕組みを説明するだけの注記(非公開のプレビューである旨など)は置かない。
 function TeacherProgressSection({ announcement: a }: { announcement: Announcement }) {
   const [open, setOpen] = useState(false);
   const { timetable, period } = useTimetable(a.id);
-  const { isPublished } = usePublish(a.id);
   return (
     <section className="mt-8">
       <ToggleHeading
@@ -393,15 +392,8 @@ function TeacherProgressSection({ announcement: a }: { announcement: Announcemen
       </ToggleHeading>
       {open && (
         <div id="home-progress">
-          {!isPublished && (
-            <div className="mb-3">
-              <InlineNotice tone="warning">
-                非公開のため、生徒にはまだ資料が表示されていません(先生によるプレビューです)。
-              </InlineNotice>
-            </div>
-          )}
           {timetable && period === "終了" ? (
-            <InlineNotice tone="info">この発表会の発表は終了しました。全体はタイムテーブルで見られます。</InlineNotice>
+            <InlineNotice tone="info">この発表会の発表は終了しました。</InlineNotice>
           ) : (
             <TimetableRows timetable={timetable && nearbySlots(timetable)} announcementId={a.id} />
           )}
@@ -464,7 +456,6 @@ function TeacherHome({
             href="/announcements"
             label="発表会一覧"
             value={`${announcements.length}件`}
-            caption="日程・締切・公開状態を見る"
             icon={<AnnounceIcon />}
             iconColor="bg-brand-50 text-brand-600"
           />
@@ -472,7 +463,6 @@ function TeacherHome({
             href="/teams"
             label="チーム"
             value={`${teams.length}チーム`}
-            caption="メンバー・提出資料を見る"
             icon={<TeamIcon />}
             iconColor="bg-violet-50 text-violet-500"
           />
@@ -480,7 +470,6 @@ function TeacherHome({
             href="/archive"
             label="アーカイブ"
             value={`${archivedYearCount}年度分`}
-            caption="過去の卒業制作を検索・閲覧"
             icon={<ArchiveIcon />}
             iconColor="bg-slate-100 text-slate-500"
           />
@@ -488,7 +477,6 @@ function TeacherHome({
             href="/admin/years"
             label="年度管理"
             value={year.label}
-            caption="年度の開始・アーカイブ操作"
             icon={<CalendarIcon />}
             iconColor="bg-brand-50 text-brand-600"
           />
@@ -496,7 +484,6 @@ function TeacherHome({
             href="/admin/publish-permissions"
             label="公開許可管理"
             value={permissionText}
-            caption="卒業生の公開許可を管理"
             icon={<PermissionIcon />}
             iconColor="bg-brand-50 text-brand-600"
           />
@@ -504,7 +491,6 @@ function TeacherHome({
             href="/admin/users"
             label="先生の登録・解除"
             value={`先生 ${teachers.length}名`}
-            caption="先生の一覧と登録・解除"
             icon={<UsersAdminIcon />}
             iconColor="bg-brand-50 text-brand-600"
           />

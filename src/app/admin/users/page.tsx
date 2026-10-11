@@ -38,12 +38,6 @@ export default function TeacherRosterPage() {
       <Breadcrumbs items={[{ label: "ホーム", href: "/" }, { label: "先生の登録・解除" }]} />
       <PageHeader title="先生の登録・解除" meta={`先生 ${teachers.length}名`} />
 
-      <div className="mt-4">
-        <InlineNotice tone="info">
-          先生として登録された人だけが、先生の画面を使えます。登録されていない人は、サインインすると生徒になります。
-        </InlineNotice>
-      </div>
-
       {notice && (
         <div className="mt-4">
           <InlineNotice tone="info">{notice}</InlineNotice>
@@ -77,7 +71,6 @@ export default function TeacherRosterPage() {
       <section className="mt-8">
         <SectionHeading>先生として登録</SectionHeading>
         <Card className="shadow-sm shadow-slate-900/5">
-          <p className="mb-3 text-sm text-slate-500">一度サインインした人だけを、先生として登録できます。</p>
           {candidates.length === 0 ? (
             <p className="text-sm text-slate-500">登録できる人はいません。</p>
           ) : (

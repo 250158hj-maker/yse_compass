@@ -75,7 +75,7 @@ export function CreateTeamForm({
     <Card className="max-w-2xl shadow-sm shadow-slate-900/5">
       <SectionHeading>チームを作成</SectionHeading>
       <form onSubmit={handleSubmit} noValidate>
-        <FormField label="チーム名" htmlFor="team-name" required error={errors.name} hint="同じクラスの中で重ならない名前にします。">
+        <FormField label="チーム名" htmlFor="team-name" required error={errors.name}>
           <input
             id="team-name"
             className={fieldClassName}
@@ -90,7 +90,6 @@ export function CreateTeamForm({
           htmlFor="team-class"
           required
           error={errors.className}
-          hint={`年度はクラスの年度(${year.label})になります。`}
         >
           <select
             id="team-class"
@@ -146,14 +145,10 @@ export function CreateTeamForm({
           >
             + メンバーを追加
           </button>
-          {errors.members ? (
-            <p className="mt-1 text-xs text-rose-600">{errors.members}</p>
-          ) : (
-            <p className="mt-1 text-xs text-slate-400">氏名で登録します(メールアドレスは使いません)。</p>
-          )}
+          {errors.members && <p className="mt-1 text-xs text-rose-600">{errors.members}</p>}
         </div>
 
-        <FormField label="リーダー" htmlFor="team-leader" required error={errors.leaderName} hint="メンバーから 1 名選びます。">
+        <FormField label="リーダー" htmlFor="team-leader" required error={errors.leaderName}>
           <select
             id="team-leader"
             className={`${fieldClassName} w-48`}
@@ -170,7 +165,7 @@ export function CreateTeamForm({
           </select>
         </FormField>
 
-        <FormField label="作品名(任意)" htmlFor="team-project" hint="空のままでも作れます。">
+        <FormField label="作品名(任意)" htmlFor="team-project">
           <input
             id="team-project"
             className={fieldClassName}

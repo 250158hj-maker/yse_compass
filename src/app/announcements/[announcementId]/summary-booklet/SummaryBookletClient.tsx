@@ -60,11 +60,7 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
           />
 
           <div className="mt-4 flex flex-col gap-3">
-            {orderConfirmed ? (
-              <InlineNotice tone="info">
-                確定した発表順({orderText || "なし"})のとおりに並びます。
-              </InlineNotice>
-            ) : (
+            {!orderConfirmed && (
               <InlineNotice tone="warning">
                 発表順がまだ確定していません。いまの並び({orderText || "なし"})で作られます。
                 <Link
@@ -149,7 +145,6 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
         )}
 
         <NextStep
-          description={generated ? "概要集ができました。次は当日の進行です。" : "概要集を生成すると、当日の進行へ進めます。"}
           next={generated ? { href: `/announcements/${a.id}/timetable`, label: "次へ：当日進行 →" } : null}
           back={backToHub(a.id)}
         />

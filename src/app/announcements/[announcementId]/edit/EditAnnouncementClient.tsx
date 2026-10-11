@@ -6,7 +6,6 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge, PhaseBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { InlineNotice } from "@/components/ui/InlineNotice";
 import { FormField, fieldClassName } from "@/components/ui/FormField";
 import { RoleGate, TeacherOnlyNotice } from "@/components/session/RoleGate";
 import { templates } from "@/lib/mock";
@@ -61,12 +60,6 @@ export function EditAnnouncementClient({ announcement: a }: { announcement: Anno
         />
         <PageHeader eyebrow="発表会編集" title={a.title} meta={<PhaseBadge phase={a.phase} />} />
 
-        <div className="mt-4">
-          <InlineNotice tone="info">
-            回種別(企画/設計/試作/最終)は固定です。日程・資料枠のみ編集できます。
-          </InlineNotice>
-        </div>
-
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col">
           <FormField label="発表会名" htmlFor="title" required>
             <input
@@ -89,7 +82,7 @@ export function EditAnnouncementClient({ announcement: a }: { announcement: Anno
             />
           </FormField>
 
-          <FormField label="提出締切" htmlFor="deadline" required hint="締切はソフトデッドラインです。超過提出はブロックされず、遅延として可視化されます。">
+          <FormField label="提出締切" htmlFor="deadline" required>
             <input
               id="deadline"
               type="datetime-local"
@@ -159,7 +152,7 @@ export function EditAnnouncementClient({ announcement: a }: { announcement: Anno
             <Button type="button" variant="secondary" onClick={() => router.push(`/announcements/${a.id}`)}>
               発表会詳細へ戻る
             </Button>
-            {saved && <Badge tone="emerald">保存しました(モック内のみ)</Badge>}
+            {saved && <Badge tone="emerald">保存しました</Badge>}
           </div>
         </form>
       </div>

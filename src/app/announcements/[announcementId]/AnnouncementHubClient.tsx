@@ -10,10 +10,11 @@ import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RoleGate } from "@/components/session/RoleGate";
+import { TeacherAnnouncementHub } from "@/components/teacher/TeacherAnnouncementHub";
 import { useSession } from "@/context/SessionContext";
 import { isTeacher } from "@/lib/session-helpers";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { getYearById, getTemplateById, getTeamsByYear } from "@/lib/mock";
+import { getYearById, getTeamsByYear } from "@/lib/mock";
 import type { Announcement } from "@/lib/types";
 
 export function AnnouncementHubClient({ announcement: a }: { announcement: Announcement }) {
@@ -25,7 +26,11 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
   const [isPublished, setIsPublished] = useState(a.isPublished);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // 資料枠は先生だけに出し、生徒は(提出する生徒も)発表一覧(チーム一覧)を見る。提出と進行はホームに集約した。
+  // 先生は工程表の画面(デモ用の時刻・共有状態に繋いだもの)を見る。以下は生徒の画面で、描画は変えていない
+  // (動画の区間 B・C)。ヘッダの公開ボタンは RoleGate で生徒には出ないが、DOM を変えないために残してある。
+  if (teacher) return <TeacherAnnouncementHub announcement={a} />;
+
+  // 生徒は(提出する生徒も)発表一覧(チーム一覧)を見る。提出と進行はホームに集約した。
   const isPureViewer = !teacher;
 
   return (
@@ -60,57 +65,8 @@ export function AnnouncementHubClient({ announcement: a }: { announcement: Annou
         }
       />
 
-      <RoleGate allow={["teacher"]}>
-        <div className="mt-4 flex flex-wrap gap-4 text-sm">
-          <Link href={`/announcements/${a.id}/edit`} className="text-brand-600 hover:underline">
-            発表会編集
-          </Link>
-          <Link href={`/announcements/${a.id}/submissions`} className="text-brand-600 hover:underline">
-            提出状況一覧
-          </Link>
-          <Link href={`/announcements/${a.id}/timetable/edit`} className="text-brand-600 hover:underline">
-            タイムテーブル編集
-          </Link>
-          <Link href={`/announcements/${a.id}/summary-booklet`} className="text-brand-600 hover:underline">
-            概要集生成
-          </Link>
-        </div>
-      </RoleGate>
-
       <div className="mt-6">
         <div className="flex flex-col gap-6">
-          {!isPureViewer && (
-            <div>
-              <SectionHeading>資料枠</SectionHeading>
-              <div className="flex flex-col gap-2">
-                {a.materialSlots.map((slot) => {
-                  const template = slot.templateId ? getTemplateById(slot.templateId) : null;
-                  return (
-                    <div
-                      key={slot.id}
-                      className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4"
-                    >
-                      <div>
-                        <span className="font-medium text-slate-900">{slot.name}</span>
-                        {slot.required && <span className="ml-2 text-xs text-rose-600">必須</span>}
-                      </div>
-                      {template && (
-                        <a
-                          href={template.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-brand-600 hover:underline"
-                        >
-                          テンプレートを開く →
-                        </a>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {isPureViewer && (
             <div>
               <SectionHeading>発表一覧</SectionHeading>

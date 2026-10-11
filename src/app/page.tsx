@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { useSession } from "@/context/SessionContext";
+import { useTeacherFocusAnnouncement, useTimetable } from "@/context/TeacherDemoContext";
+import { TeacherNextAction } from "@/components/teacher/TeacherNextAction";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import {
   formatSubmittedAt,
@@ -26,7 +28,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { TimetableRows } from "@/components/timetable/TimetableRows";
 import { formatDateTime, formatShortDate } from "@/lib/format";
-import type { Announcement, Team, Timetable } from "@/lib/types";
+import type { Announcement, Team, Timetable, Year } from "@/lib/types";
 
 function isFullySubmitted(announcement: Announcement, teamId: string): boolean {
   const submission = getSubmission(announcement.id, teamId);
@@ -374,20 +376,105 @@ function UsersAdminIcon() {
   );
 }
 
-function teacherRing(announcements: Announcement[], teams: Team[]) {
-  const totalSlots = announcements.length * teams.length;
-  const totalSubmitted = announcements.reduce(
-    (sum, a) => sum + teams.filter((t) => isFullySubmitted(a, t.id)).length,
-    0
+// 先生のホーム。生徒のホームとは別のコンポーネントにして、デモ用の時刻・先生の共有状態のフックをここで呼ぶ
+// (生徒の分岐 = 動画の区間 B・C の描画は変えない)。手書きの status・モックの currentPresentingTeamId は読まない。
+// 旧 teacherRing(「x/y完了・〇〇発表会が締切間近」→ 押すと一覧へ)は削除した。共有の RingTile・findNextUrgent・
+// isFullySubmitted は生徒のホームが使うので変えていない。
+function TeacherHome({
+  year,
+  announcements,
+  teams,
+  archivedYearCount,
+  permissionText,
+}: {
+  year: Year;
+  announcements: Announcement[];
+  teams: Team[];
+  archivedYearCount: number;
+  permissionText: string;
+}) {
+  const focus = useTeacherFocusAnnouncement(announcements);
+  const { currentPresentingTeamId } = useTimetable(focus?.id ?? "");
+  const presentingTeam = focus && currentPresentingTeamId ? getTeamById(currentPresentingTeamId) : null;
+
+  return (
+    <div className="mx-auto max-w-6xl">
+      <PageHeader eyebrow={year.label} title="ホーム" />
+
+      {focus && presentingTeam && (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-5 py-4">
+          <p className="text-sm font-medium text-rose-700">
+            いま発表中：{presentingTeam.name}(「{focus.title}」)
+          </p>
+          <Link
+            href={`/announcements/${focus.id}/teams/${presentingTeam.id}`}
+            className="text-xs font-semibold text-rose-700 underline underline-offset-2"
+          >
+            発表を見る
+          </Link>
+        </div>
+      )}
+
+      <section className="mt-6">
+        <TeacherNextAction announcements={announcements} />
+      </section>
+
+      <section className="mt-8">
+        <SectionHeading>YSE Compassでできること</SectionHeading>
+        {/* 進み具合のリングは置かない。特定の発表会の状況と催促は「次にやること」に寄せ、ここはラベルと遷移先が一致する入口だけにする。 */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatTile
+            href="/announcements"
+            label="発表会一覧"
+            value={`${announcements.length}件`}
+            caption="日程・締切・公開状態を見る"
+            icon={<AnnounceIcon />}
+            iconColor="bg-brand-50 text-brand-600"
+          />
+          <StatTile
+            href="/teams"
+            label="チーム"
+            value={`${teams.length}チーム`}
+            caption="メンバー・提出資料を見る"
+            icon={<TeamIcon />}
+            iconColor="bg-violet-50 text-violet-500"
+          />
+          <StatTile
+            href="/archive"
+            label="アーカイブ"
+            value={`${archivedYearCount}年度分`}
+            caption="過去の卒業制作を検索・閲覧"
+            icon={<ArchiveIcon />}
+            iconColor="bg-slate-100 text-slate-500"
+          />
+          <StatTile
+            href="/admin/years"
+            label="年度管理"
+            value={year.label}
+            caption="年度の開始・アーカイブ操作"
+            icon={<CalendarIcon />}
+            iconColor="bg-brand-50 text-brand-600"
+          />
+          <StatTile
+            href="/admin/publish-permissions"
+            label="公開許可管理"
+            value={permissionText}
+            caption="卒業生の公開許可を管理"
+            icon={<PermissionIcon />}
+            iconColor="bg-brand-50 text-brand-600"
+          />
+          <StatTile
+            href="/admin/users"
+            label="ユーザー管理"
+            value={`${users.length}アカウント`}
+            caption="ロールの確認・変更"
+            icon={<UsersAdminIcon />}
+            iconColor="bg-brand-50 text-brand-600"
+          />
+        </div>
+      </section>
+    </div>
   );
-  const percent = totalSlots === 0 ? 0 : Math.round((totalSubmitted / totalSlots) * 100);
-  const urgent = findNextUrgent(announcements, (a) => teams.every((t) => isFullySubmitted(a, t.id)));
-  const caption = urgent
-    ? `${totalSubmitted}/${totalSlots}完了・${urgent.title}が${
-        new Date() > new Date(urgent.submissionDeadline) ? "締切超過" : "締切間近"
-      }`
-    : `${totalSubmitted}/${totalSlots}完了・すべて提出済み`;
-  return { percent, caption };
 }
 
 function ownTeamRing(announcements: Announcement[], ownTeamId: string) {
@@ -423,6 +510,18 @@ export default function HomePage() {
   const archivedTeams = archivedYears.flatMap((y) => getTeamsByYear(y.id));
   const permissionSetCount = archivedTeams.filter((t) => t.publishPermission !== "未設定").length;
 
+  if (teacher) {
+    return (
+      <TeacherHome
+        year={year}
+        announcements={announcements}
+        teams={teams}
+        archivedYearCount={archivedYears.length}
+        permissionText={`${permissionSetCount}/${archivedTeams.length}件設定済み`}
+      />
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader eyebrow={year.label} title="ホーム" />
@@ -448,54 +547,6 @@ export default function HomePage() {
 
       <section className="mt-8">
         <SectionHeading>YSE Compassでできること</SectionHeading>
-
-        {teacher && (
-          <>
-            <RingTile href="/announcements" label="発表会の提出進捗" {...teacherRing(announcements, teams)} />
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              <StatTile
-                href="/teams"
-                label="チーム"
-                value={`${teams.length}チーム`}
-                caption="メンバー・提出資料を見る"
-                icon={<TeamIcon />}
-                iconColor="bg-violet-50 text-violet-500"
-              />
-              <StatTile
-                href="/archive"
-                label="アーカイブ"
-                value={`${archivedYears.length}年度分`}
-                caption="過去の卒業制作を検索・閲覧"
-                icon={<ArchiveIcon />}
-                iconColor="bg-slate-100 text-slate-500"
-              />
-              <StatTile
-                href="/admin/years"
-                label="年度管理"
-                value={year.label}
-                caption="年度の開始・アーカイブ操作"
-                icon={<CalendarIcon />}
-                iconColor="bg-brand-50 text-brand-600"
-              />
-              <StatTile
-                href="/admin/publish-permissions"
-                label="公開許可管理"
-                value={`${permissionSetCount}/${archivedTeams.length}件設定済み`}
-                caption="卒業生の公開許可を管理"
-                icon={<PermissionIcon />}
-                iconColor="bg-brand-50 text-brand-600"
-              />
-              <StatTile
-                href="/admin/users"
-                label="ユーザー管理"
-                value={`${users.length}アカウント`}
-                caption="ロールの確認・変更"
-                icon={<UsersAdminIcon />}
-                iconColor="bg-brand-50 text-brand-600"
-              />
-            </div>
-          </>
-        )}
 
         {!teacher && ownTeam && (
           <>

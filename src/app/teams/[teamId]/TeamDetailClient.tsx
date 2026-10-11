@@ -16,7 +16,14 @@ import { getAnnouncementsByYear, getSubmission, getYearById, users } from "@/lib
 import { isOwnTeam, isTeacher } from "@/lib/session-helpers";
 import type { Team } from "@/lib/types";
 
-export function TeamDetailClient({ team }: { team: Team }) {
+export function TeamDetailClient({
+  team,
+  linkPresentations = true,
+}: {
+  team: Team;
+  // 発表会の行を発表詳細(SC-12)へのリンクにするか。先生がこのデモで作ったチーム(SC-12 が読めない)だけ false。
+  linkPresentations?: boolean;
+}) {
   const { currentUser } = useSession();
   const year = getYearById(team.yearId);
   const announcements = getAnnouncementsByYear(team.yearId);
@@ -43,7 +50,7 @@ export function TeamDetailClient({ team }: { team: Team }) {
       />
       <PageHeader
         eyebrow={year?.label}
-        title={`${team.name}(${team.projectTitle})`}
+        title={team.projectTitle ? `${team.name}(${team.projectTitle})` : team.name}
         meta={
           <>
             <Badge tone="slate">{team.className}</Badge>
@@ -100,7 +107,11 @@ export function TeamDetailClient({ team }: { team: Team }) {
                 </div>
               </div>
             ) : (
-              <p className="text-sm leading-relaxed text-slate-700">{summary}</p>
+              summary ? (
+                <p className="text-sm leading-relaxed text-slate-700">{summary}</p>
+              ) : (
+                <p className="text-sm text-slate-400">まだ入力されていません。</p>
+              )
             )}
           </section>
           <div>
@@ -113,12 +124,8 @@ export function TeamDetailClient({ team }: { team: Team }) {
                   submission?.materials.filter(
                     (m) => required.some((s) => s.name === m.name) && m.status === "提出済み"
                   ).length ?? 0;
-                return (
-                  <Link
-                    key={a.id}
-                    href={`/announcements/${a.id}/teams/${team.id}`}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 hover:border-brand-300"
-                  >
+                const content = (
+                  <>
                     <div className="flex items-center gap-2">
                       <PhaseBadge phase={a.phase} />
                       <span className="font-medium text-slate-900">{a.title}</span>
@@ -126,6 +133,25 @@ export function TeamDetailClient({ team }: { team: Team }) {
                     <span className="text-sm text-slate-500">
                       必須資料 {submittedRequired}/{required.length} 提出済み
                     </span>
+                  </>
+                );
+                if (!linkPresentations) {
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4"
+                    >
+                      {content}
+                    </div>
+                  );
+                }
+                return (
+                  <Link
+                    key={a.id}
+                    href={`/announcements/${a.id}/teams/${team.id}`}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 hover:border-brand-300"
+                  >
+                    {content}
                   </Link>
                 );
               })}

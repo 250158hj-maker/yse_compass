@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import { useState } from "react";
 import { useSession } from "@/context/SessionContext";
+import { useCreatedTeams } from "@/context/TeacherDemoContext";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardLink } from "@/components/ui/Card";
@@ -9,8 +12,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { RoleGate } from "@/components/session/RoleGate";
 import { Button } from "@/components/ui/Button";
-import { getCurrentYear, getTeamsByYear } from "@/lib/mock";
-import { isOwnTeam } from "@/lib/session-helpers";
+import { CreateTeamForm } from "@/components/teacher/CreateTeamForm";
+import { getCurrentYear, getTeamsByYear, users } from "@/lib/mock";
+import { isOwnTeam, isTeacher } from "@/lib/session-helpers";
+import type { Team } from "@/lib/types";
 
 function TeamIcon() {
   return (
@@ -34,7 +39,17 @@ function TeamIcon() {
 export default function TeamsPage() {
   const { currentUser } = useSession();
   const year = getCurrentYear();
-  const teams = year ? getTeamsByYear(year.id) : [];
+  const created = useCreatedTeams();
+  const [formOpen, setFormOpen] = useState(false);
+  const [createdNotice, setCreatedNotice] = useState<Team | null>(null);
+  const baseTeams = year ? getTeamsByYear(year.id) : [];
+  // 先生がこのデモで作ったチームは、先生の一覧にだけ足す(生徒の一覧・ほかの画面には出さない)。
+  const teams =
+    year && isTeacher(currentUser) ? [...baseTeams, ...created.teams.filter((t) => t.yearId === year.id)] : baseTeams;
+  // 選べるクラス: この年度のクラス。モックはクラスを持たないので、この年度のチームと利用者のクラス名から集める。
+  const classNames = [
+    ...new Set([...baseTeams.map((t) => t.className), ...users.map((u) => u.className).filter((c): c is string => !!c)]),
+  ].sort();
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -44,10 +59,46 @@ export default function TeamsPage() {
         meta={year ? `${year.label}・${teams.length}チーム` : undefined}
         actions={
           <RoleGate allow={["teacher"]}>
-            <Button variant="primary">+ チーム作成</Button>
+            <Button
+              variant="primary"
+              disabled={!year || formOpen}
+              onClick={() => {
+                setFormOpen(true);
+                setCreatedNotice(null);
+              }}
+            >
+              + チーム作成
+            </Button>
           </RoleGate>
         }
       />
+
+      <RoleGate allow={["teacher"]}>
+        {year && formOpen && (
+          <div className="mt-6">
+            <CreateTeamForm
+              year={year}
+              classNames={classNames}
+              existingTeams={teams}
+              onCreate={(input) => {
+                setCreatedNotice(created.create(input));
+                setFormOpen(false);
+              }}
+              onCancel={() => setFormOpen(false)}
+            />
+          </div>
+        )}
+        {createdNotice && (
+          <div className="mt-4">
+            <InlineNotice tone="info">
+              {createdNotice.className} に「{createdNotice.name}」チームを作成しました。{" "}
+              <Link href={`/teams/${createdNotice.id}`} className="font-medium underline underline-offset-2">
+                {createdNotice.name}の詳細を見る →
+              </Link>
+            </InlineNotice>
+          </div>
+        )}
+      </RoleGate>
 
       <RoleGate allow={["teacher"]}>
         <div className="mt-4">
@@ -78,7 +129,11 @@ export default function TeamsPage() {
                   {isOwnTeam(currentUser, team.id) && <Badge tone="brand">自チーム</Badge>}
                 </div>
                 <p className="mt-2 text-lg font-semibold text-slate-900">{team.name}</p>
-                <p className="text-sm text-slate-500">{team.projectTitle}</p>
+                {team.projectTitle ? (
+                  <p className="text-sm text-slate-500">{team.projectTitle}</p>
+                ) : (
+                  <p className="text-sm text-slate-400">作品名は未設定</p>
+                )}
                 <ul className="mt-3 flex flex-wrap gap-1.5">
                   {team.members.map((member) => (
                     <li key={member} className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">

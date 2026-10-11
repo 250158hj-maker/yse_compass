@@ -19,6 +19,7 @@ import {
   type TeacherNextAction,
 } from "@/lib/demo/teacher-derived";
 import { readStorage, removeStorage, writeStorage } from "@/lib/demo/storage";
+import { createdTeamToTeam, type CreatedTeam, type NewTeamInput } from "@/lib/demo/team-create";
 import type { Announcement, AppUser, Team, Timetable, TimetableSlot } from "@/lib/types";
 
 // 先生の画面(ホーム・ハブ・SC-07・SC-08・SC-11)が同じものを読み書きする、デモ用の共有状態。
@@ -29,8 +30,8 @@ import type { Announcement, AppUser, Team, Timetable, TimetableSlot } from "@/li
 //   発表中は先生の操作(「最初の発表を開始」「次の発表へ」)だけで決める。当日に入っても、先生が開始するまでは null。
 //   (glossary.md 末尾の注記:状態遷移は先生の明示操作を正とし、時刻・条件による自動遷移は持たない)
 // - ブラウザ(localStorage)に保存する。読み書きに失敗してもメモリ上の状態で動く。
-// - SC-20(先生の登録・解除)の操作もここに持つ。先生の画面にだけ反映し、
-//   ログイン中のロール(SessionContext)・生徒の画面には流さない。
+// - SC-20(先生の登録・解除)と SC-13(チーム作成)の操作もここに持つ。どちらも先生の画面にだけ反映し、
+//   ログイン中のロール(SessionContext)・生徒の画面・提出状況などの導出には流さない。
 
 const STORAGE_KEY = "yse-compass-demo-teacher-v1";
 
@@ -61,6 +62,8 @@ type TeacherDemoState = {
   // SC-20: 先生ホワイトリストに載っている利用者の id(登録順)。無ければモックの users のロールが初期値。
   // 後から足したキーなので省略可(足す前に保存された値にも無い)。
   teacherRoster?: string[];
+  // SC-13: このデモで先生が作ったチーム(作成順)。省略可(同上)。
+  createdTeams?: CreatedTeam[];
 };
 
 const EMPTY_STATE: TeacherDemoState = { timetables: {}, published: {}, bookletGeneratedAt: {} };
@@ -78,11 +81,29 @@ function isTeacherDemoState(value: unknown): value is TeacherDemoState {
     isRecord(v.bookletGeneratedAt) &&
     // 後から足したキーは、無くてもよい(古い保存値を弾かない)。あるときだけ形を見る。
     (v.teacherRoster === undefined ||
-      (Array.isArray(v.teacherRoster) && v.teacherRoster.every((id) => typeof id === "string")))
+      (Array.isArray(v.teacherRoster) && v.teacherRoster.every((id) => typeof id === "string"))) &&
+    (v.createdTeams === undefined || (Array.isArray(v.createdTeams) && v.createdTeams.every(isCreatedTeam)))
+  );
+}
+
+function isCreatedTeam(value: unknown): value is CreatedTeam {
+  if (!isRecord(value)) return false;
+  const t = value as Record<string, unknown>;
+  return (
+    typeof t.id === "string" &&
+    typeof t.yearId === "string" &&
+    typeof t.name === "string" &&
+    typeof t.className === "string" &&
+    typeof t.projectTitle === "string" &&
+    typeof t.leaderName === "string" &&
+    Array.isArray(t.members) &&
+    t.members.every((m) => typeof m === "string")
   );
 }
 
 type TeacherDemoContextValue = {
+  // 保存値の復元が済んだか。作ったチームの詳細のように、保存値に無ければ「見つからない」と出す画面が待つ。
+  hasHydrated: boolean;
   state: TeacherDemoState;
   update: (fn: (prev: TeacherDemoState) => TeacherDemoState) => void;
   reset: () => void;
@@ -113,7 +134,9 @@ export function TeacherDemoProvider({ children }: { children: React.ReactNode })
   }
 
   return (
-    <TeacherDemoContext.Provider value={{ state, update: setState, reset }}>{children}</TeacherDemoContext.Provider>
+    <TeacherDemoContext.Provider value={{ hasHydrated, state, update: setState, reset }}>
+      {children}
+    </TeacherDemoContext.Provider>
   );
 }
 
@@ -424,7 +447,39 @@ export function useTeacherRoster(): UseTeacherRosterResult {
   };
 }
 
-// デモを最初からやり直す(並び・発表中・公開・概要集の生成・先生の登録をすべてモックの初期値へ)。
+// ------------------------------------------------------------
+// チームの作成(SC-13)と、作ったチームの詳細(SC-14)
+// ------------------------------------------------------------
+//
+// 作ったチームは先生の SC-13 の一覧と、そのチームの SC-14 にだけ出す。提出状況・タイムテーブル・概要集・
+// ホームの件数・生徒の画面には流さない(区間 B・C を変えないため)。
+
+export type UseCreatedTeamsResult = {
+  hasHydrated: boolean;
+  // 作ったチーム(作成順)。画面にそのまま渡せる Team の形(summary は空・公開許可は未設定)。
+  teams: Team[];
+  getById: (teamId: string) => Team | null;
+  create: (input: NewTeamInput) => Team;
+};
+
+export function useCreatedTeams(): UseCreatedTeamsResult {
+  const { hasHydrated, state, update } = useTeacherDemoContext();
+  const created = state.createdTeams ?? [];
+  const teams = created.map(createdTeamToTeam);
+  return {
+    hasHydrated,
+    teams,
+    getById: (teamId) => teams.find((t) => t.id === teamId) ?? null,
+    create: (input) => {
+      // 削除の操作は無いので、件数からの連番で重ならない(「最初から」で 1 に戻る)。
+      const team: CreatedTeam = { id: `created-team-${created.length + 1}`, ...input };
+      update((prev) => ({ ...prev, createdTeams: [...(prev.createdTeams ?? []), team] }));
+      return createdTeamToTeam(team);
+    },
+  };
+}
+
+// デモを最初からやり直す(並び・発表中・公開・概要集の生成・先生の登録・作ったチームをすべてモックの初期値へ)。
 export function useTeacherDemoReset(): () => void {
   return useTeacherDemoContext().reset;
 }

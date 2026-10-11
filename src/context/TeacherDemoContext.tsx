@@ -18,6 +18,13 @@ import {
   type BookletEntry,
   type TeacherNextAction,
 } from "@/lib/demo/teacher-derived";
+import {
+  applySchedule,
+  defaultSchedule,
+  isScheduleSettings,
+  reorderSlotById,
+  type ScheduleSettings,
+} from "@/lib/demo/schedule";
 import { readStorage, removeStorage, writeStorage } from "@/lib/demo/storage";
 import { createdTeamToTeam, type CreatedTeam, type NewTeamInput } from "@/lib/demo/team-create";
 import type { Announcement, AppUser, Team, Timetable, TimetableSlot } from "@/lib/types";
@@ -53,6 +60,11 @@ type TimetableOverride = {
   // SC-08 で保存した時刻(= 発表順を確定した)。
   confirmedAt?: string;
   presenting?: PresentingOverride;
+  // SC-08 の入力:最初の開始時刻と 1 チームの発表時間(保存済み)。無ければ defaultSchedule(データの先頭の開始時刻・15 分)。
+  // 後から足したキーなので省略可。形が壊れていたら読むときに無視する(古い保存値を弾かない)。
+  schedule?: ScheduleSettings;
+  // SC-08 で編集中・未保存の入力。
+  draftSchedule?: ScheduleSettings;
 };
 
 type TeacherDemoState = {
@@ -165,6 +177,16 @@ function clearPresenting(prev: TeacherDemoState): TeacherDemoState {
   };
 }
 
+// 保存済みの並び(時刻は導出済み)。override に並びが無ければモックの並びを、入力が無ければ初期値を使う。
+// 枠が持っている時刻は読まず、入力(開始時刻・一律の発表時間)と休憩の長さから導く(lib/demo/schedule.ts)。
+function resolveSchedule(override: TimetableOverride, baseSlots: TimetableSlot[]): ScheduleSettings {
+  return isScheduleSettings(override.schedule) ? override.schedule : defaultSchedule(baseSlots);
+}
+
+function resolveSavedSlots(override: TimetableOverride, baseSlots: TimetableSlot[]): TimetableSlot[] {
+  return applySchedule(override.slots ?? baseSlots, resolveSchedule(override, baseSlots));
+}
+
 function patchTimetable(
   prev: TeacherDemoState,
   announcementId: string,
@@ -188,16 +210,26 @@ export type UseTimetableResult = {
   // SC-08 で表示する並び(未保存の編集があればそれ、無ければ保存済み)。
   draftSlots: TimetableSlot[];
   isDirty: boolean;
-  // SC-08: 1 つ前後と入れ替える(未保存。開始時刻は先頭から積み直す)。
+  // SC-08: 1 つ前後と入れ替える(未保存。時刻は導出し直される)。
   move: (slotId: string, direction: -1 | 1) => void;
-  // SC-08: 未保存の並びを丸ごと差し替える(時刻・所要・休憩の編集を自前で行う画面向け。開始時刻の積み直しはしない。
-  // 積み直したいときは lib/demo/teacher-derived.ts の reflowSlots を通してから渡す)。
+  // SC-08: id で指した枠を to 番目(動かした後の位置)へ移す(未保存。ドラッグ・キーボードの並べ替え)。
+  reorder: (slotId: string, toIndex: number) => void;
+  // SC-08: 未保存の並びを丸ごと差し替える(休憩を挟む・外す・長さを変える)。
+  // 時刻は読むときに入力から導き直すので、渡す枠の startTime とチームの枠の durationMin は使われない。
   setDraftSlots: (slots: TimetableSlot[]) => void;
+  // SC-08 の入力(保存済み)。slots の時刻はこれから導いてある。
+  schedule: ScheduleSettings;
+  // SC-08 の入力(未保存の編集があればそれ、無ければ保存済み)。draftSlots の時刻はこれから導いてある。
+  draftSchedule: ScheduleSettings;
+  // SC-08: 入力(開始時刻・1 チームの発表時間)の一部を変える(未保存)。
+  setDraftSchedule: (patch: Partial<ScheduleSettings>) => void;
   // SC-08: 未保存の並びを保存し、発表順を確定する(confirmedAt にいまの時刻を記録)。
   save: () => void;
   discard: () => void;
   // SC-07: 当日の入れ替え。保存を挟まずにすぐ反映する(いまの発表中は動かさない)。
   moveNow: (slotId: string, direction: -1 | 1) => void;
+  // SC-07: 当日の入れ替え(ドラッグ・キーボード)。id で指した枠を to 番目へ。すぐ反映し、時刻は同じ規則で詰め直す。
+  reorderNow: (slotId: string, toIndex: number) => void;
   orderConfirmed: boolean;
   confirmedAt: string | null;
   // いまの時期(受付中 / 締切後 / 当日 / 終了)。
@@ -223,9 +255,14 @@ export function useTimetable(announcementId: string): UseTimetableResult {
   const announcement = getAnnouncementById(announcementId);
   const base = getTimetableFor(announcementId);
   const override = state.timetables[announcementId] ?? {};
+  const baseSlots = base?.slots ?? [];
 
-  const slots = sortSlots(override.slots ?? base?.slots ?? []);
-  const draftSlots = sortSlots(override.draft ?? slots);
+  // 時刻はすべて入力から導く(lib/demo/schedule.ts の applySchedule)。生徒の画面は元のデータ(getTimetableFor)を読み続ける。
+  const schedule = resolveSchedule(override, baseSlots);
+  const draftSchedule = isScheduleSettings(override.draftSchedule) ? override.draftSchedule : schedule;
+  const rawSlots = sortSlots(override.slots ?? baseSlots);
+  const slots = applySchedule(rawSlots, schedule);
+  const draftSlots = applySchedule(override.draft ?? rawSlots, draftSchedule);
   const period: AnnouncementPeriod = announcement
     ? deriveAnnouncementPeriod(announcement, slots, nowMs)
     : "受付中";
@@ -250,24 +287,47 @@ export function useTimetable(announcementId: string): UseTimetableResult {
     hasTimetable: !!base,
     slots,
     draftSlots,
-    isDirty: !!override.draft,
+    isDirty: !!override.draft || !!override.draftSchedule,
     move: (slotId, direction) =>
       update((prev) =>
-        patchTimetable(prev, announcementId, (t) => ({ ...t, draft: moveSlot(t.draft ?? t.slots ?? slots, slotId, direction) })),
+        patchTimetable(prev, announcementId, (t) => ({ ...t, draft: moveSlot(t.draft ?? t.slots ?? rawSlots, slotId, direction) })),
+      ),
+    reorder: (slotId, toIndex) =>
+      update((prev) =>
+        patchTimetable(prev, announcementId, (t) => ({
+          ...t,
+          draft: reorderSlotById(t.draft ?? t.slots ?? rawSlots, slotId, toIndex),
+        })),
       ),
     setDraftSlots: (next) => update((prev) => patchTimetable(prev, announcementId, (t) => ({ ...t, draft: next }))),
+    schedule,
+    draftSchedule,
+    setDraftSchedule: (patch) =>
+      update((prev) =>
+        patchTimetable(prev, announcementId, (t) => {
+          const current = isScheduleSettings(t.draftSchedule) ? t.draftSchedule : resolveSchedule(t, baseSlots);
+          const next = { ...current, ...patch };
+          return isScheduleSettings(next) ? { ...t, draftSchedule: next } : t;
+        }),
+      ),
     save: () =>
       update((prev) =>
         patchTimetable(prev, announcementId, (t) => {
-          const { draft, ...rest } = t;
-          return { ...rest, slots: draft ?? t.slots ?? slots, confirmedAt: nowIso };
+          const { draft, draftSchedule: pendingSchedule, ...rest } = t;
+          const nextSchedule = isScheduleSettings(pendingSchedule) ? pendingSchedule : resolveSchedule(t, baseSlots);
+          return {
+            ...rest,
+            slots: applySchedule(draft ?? t.slots ?? rawSlots, nextSchedule),
+            schedule: nextSchedule,
+            confirmedAt: nowIso,
+          };
         }),
       ),
     discard: () =>
       update((prev) =>
         patchTimetable(prev, announcementId, (t) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { draft, ...rest } = t;
+          const { draft, draftSchedule: _pending, ...rest } = t;
           return rest;
         }),
       ),
@@ -276,7 +336,14 @@ export function useTimetable(announcementId: string): UseTimetableResult {
         patchTimetable(prev, announcementId, (t) => ({
           ...t,
           // 並べ替えで時刻が動いても、いま発表中のチームはそのまま(発表中は時刻からは決めない)。
-          slots: moveSlot(t.slots ?? slots, slotId, direction),
+          slots: moveSlot(t.slots ?? rawSlots, slotId, direction),
+        })),
+      ),
+    reorderNow: (slotId, toIndex) =>
+      update((prev) =>
+        patchTimetable(prev, announcementId, (t) => ({
+          ...t,
+          slots: reorderSlotById(t.slots ?? rawSlots, slotId, toIndex),
         })),
       ),
     orderConfirmed: !!override.confirmedAt,
@@ -380,7 +447,7 @@ export function useTeacherFocusAnnouncement(announcements: Announcement[]): Anno
   const { nowMs } = useDemoClock();
   return pickTeacherFocusAnnouncement(
     announcements,
-    (id) => state.timetables[id]?.slots ?? getTimetableFor(id)?.slots ?? [],
+    (id) => resolveSavedSlots(state.timetables[id] ?? {}, getTimetableFor(id)?.slots ?? []),
     nowMs,
   );
 }

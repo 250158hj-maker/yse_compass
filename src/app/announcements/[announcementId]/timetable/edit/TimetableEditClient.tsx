@@ -157,7 +157,7 @@ export function TimetableEditClient({ announcement: a }: { announcement: Announc
         </div>
 
         <NextStep
-          next={saved ? { href: `/announcements/${a.id}/summary-booklet`, label: "次へ：概要集を作る →" } : null}
+          next={saved ? { href: `/announcements/${a.id}/summary-booklet`, label: "次へ：概要集生成 →" } : null}
           back={backToHub(a.id)}
         />
       </div>

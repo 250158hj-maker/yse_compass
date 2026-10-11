@@ -121,7 +121,7 @@ export function TeacherTimetableClient({ announcement: a }: { announcement: Anno
       </div>
 
       <NextStep
-        next={presentationsFinished ? { href: `/announcements/${a.id}`, label: "次へ：工程表で公開する →" } : null}
+        next={presentationsFinished ? { href: `/announcements/${a.id}`, label: "次へ：資料公開 →" } : null}
         back={backToHub(a.id)}
       />
     </>

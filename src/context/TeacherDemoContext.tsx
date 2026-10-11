@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useDemoClock } from "@/context/DemoClockContext";
+import type { DemoClockPresetId } from "@/lib/demo/clock";
 import { getAnnouncementById, getTeamsByYear, getTimetableFor } from "@/lib/mock";
 import {
   buildBookletEntries,
@@ -35,7 +36,8 @@ type PresentingOverride = {
   teamId: string | null;
   // 「次の発表へ」で最後のチームを終えた。
   finished: boolean;
-  // 操作したときのデモ用の時刻。時刻(プリセット)が変わったら、この上書きは無効になり初期値に戻る。
+  // 操作したときのデモ用の時刻。時刻(プリセット)を切り替えるとこの上書き自体を消す(useSwitchDemoClockPreset)。
+  // 消し損ねた保存値(別のタブで時刻だけ変わった等)に備え、いまの時刻と食い違う上書きは読むときにも無視する。
   setAt: string;
 };
 
@@ -113,6 +115,23 @@ function useTeacherDemoContext(): TeacherDemoContextValue {
   return ctx;
 }
 
+// 時刻(プリセット)を切り替えたときに呼ぶ: 全発表会の「発表中」の上書きを消し、当日の進行を開始前に戻す。
+// 発表順・確定・概要集の生成・公開の記録は残す(消すのは「最初から」)。
+function clearPresenting(prev: TeacherDemoState): TeacherDemoState {
+  const entries = Object.entries(prev.timetables);
+  if (!entries.some(([, t]) => t.presenting)) return prev;
+  return {
+    ...prev,
+    timetables: Object.fromEntries(
+      entries.map(([id, t]) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { presenting, ...rest } = t;
+        return [id, rest];
+      }),
+    ),
+  };
+}
+
 function patchTimetable(
   prev: TeacherDemoState,
   announcementId: string,
@@ -180,6 +199,8 @@ export function useTimetable(announcementId: string): UseTimetableResult {
 
   // 上書きは「同じ時刻(プリセット)の中で操作したもの」だけ有効。時刻を切り替えたら開始前に戻る
   // (撮り直しで場面 3 に戻ったとき、前回の進行が残らないようにするため)。
+  // 消すのは切り替えの操作(useSwitchDemoClockPreset)。プリセットの時刻は固定値なので、setAt の照合だけでは
+  // 13:05 → 12:30 → 13:05 と戻したときに前回の上書きが有効に戻ってしまう。ここの照合は消し損ねに備えた保険。
   const presenting = override.presenting?.setAt === nowIso ? override.presenting : undefined;
   const onTheDay = period === "当日";
   const presentationsStarted = onTheDay && !!presenting;
@@ -329,6 +350,17 @@ export function useTeacherFocusAnnouncement(announcements: Announcement[]): Anno
     (id) => state.timetables[id]?.slots ?? getTimetableFor(id)?.slots ?? [],
     nowMs,
   );
+}
+
+// デモ用の時刻(プリセット)を切り替える。帯のプリセットのボタンはこれを使う。
+// 時刻を切り替えたら当日の進行(発表中の上書き)を必ず消す。同じプリセットを押し直しても消す(撮り直しの起点)。
+export function useSwitchDemoClockPreset(): (id: DemoClockPresetId) => void {
+  const { update } = useTeacherDemoContext();
+  const { setPreset } = useDemoClock();
+  return (id) => {
+    setPreset(id);
+    update(clearPresenting);
+  };
 }
 
 // デモを最初からやり直す(並び・発表中・公開・概要集の生成をすべてモックの初期値へ)。

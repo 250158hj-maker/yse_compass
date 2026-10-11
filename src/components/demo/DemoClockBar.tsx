@@ -1,7 +1,7 @@
 "use client";
 
 import { useDemoClock } from "@/context/DemoClockContext";
-import { useTeacherDemoReset } from "@/context/TeacherDemoContext";
+import { useSwitchDemoClockPreset, useTeacherDemoReset } from "@/context/TeacherDemoContext";
 import { useSession } from "@/context/SessionContext";
 import { isTeacher } from "@/lib/session-helpers";
 import { formatDemoClock } from "@/lib/demo/clock";
@@ -11,7 +11,9 @@ import { formatDemoClock } from "@/lib/demo/clock";
 // rounded-full の小さなボタン)と同じ形、文字色は補足の文字と同じ slate。
 export function DemoClockBar() {
   const { currentUser } = useSession();
-  const { nowMs, presetId, presets, setPreset, resetClock } = useDemoClock();
+  const { nowMs, presetId, presets, resetClock } = useDemoClock();
+  // 時刻の切り替えは当日の進行(発表中)も開始前に戻す。setPreset を直接呼ばない。
+  const switchPreset = useSwitchDemoClockPreset();
   const resetTeacherDemo = useTeacherDemoReset();
 
   if (!isTeacher(currentUser)) return null;
@@ -48,7 +50,7 @@ export function DemoClockBar() {
               <button
                 key={preset.id}
                 type="button"
-                onClick={() => setPreset(preset.id)}
+                onClick={() => switchPreset(preset.id)}
                 aria-pressed={active}
                 className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition ${
                   active

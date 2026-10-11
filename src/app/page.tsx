@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { useSession } from "@/context/SessionContext";
-import { useTeacherFocusAnnouncement, useTimetable } from "@/context/TeacherDemoContext";
+import { usePublish, useTeacherFocusAnnouncement, useTimetable } from "@/context/TeacherDemoContext";
 import { TeacherNextAction } from "@/components/teacher/TeacherNextAction";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import {
@@ -370,6 +370,48 @@ function UsersAdminIcon() {
   );
 }
 
+// 先生のホームの「発表の進行」。生徒のホームの ProgressSection(全員に共通する土台)と同じ見出し・開閉・行で、
+// 先生のホームから引かないために置く(SC-02:T が SC-07 へ行く入口は、この欄の「タイムテーブルを見る」)。
+// ProgressSection は手書きの status・isPublished・モックの currentPresentingTeamId を読むので、先生のときは
+// デモ用の時刻・共有状態(useTimetable・usePublish)で同じ形を描く。文言は ProgressSection の先生の分岐のまま。
+function TeacherProgressSection({ announcement: a }: { announcement: Announcement }) {
+  const [open, setOpen] = useState(false);
+  const { timetable, period } = useTimetable(a.id);
+  const { isPublished } = usePublish(a.id);
+  return (
+    <section className="mt-8">
+      <ToggleHeading
+        open={open}
+        onToggle={() => setOpen((v) => !v)}
+        controls="home-progress"
+        action={
+          <Link href={`/announcements/${a.id}/timetable`} className="text-sm text-brand-600 hover:underline">
+            タイムテーブルを見る →
+          </Link>
+        }
+      >
+        発表の進行({a.title})
+      </ToggleHeading>
+      {open && (
+        <div id="home-progress">
+          {!isPublished && (
+            <div className="mb-3">
+              <InlineNotice tone="warning">
+                非公開のため、生徒にはまだ資料が表示されていません(先生によるプレビューです)。
+              </InlineNotice>
+            </div>
+          )}
+          {timetable && period === "終了" ? (
+            <InlineNotice tone="info">この発表会の発表は終了しました。全体はタイムテーブルで見られます。</InlineNotice>
+          ) : (
+            <TimetableRows timetable={timetable && nearbySlots(timetable)} announcementId={a.id} />
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 // 先生のホーム。生徒のホームとは別のコンポーネントにして、デモ用の時刻・先生の共有状態のフックをここで呼ぶ
 // (生徒の分岐 = 動画の区間 B・C の描画は変えない)。手書きの status・モックの currentPresentingTeamId は読まない。
 // 旧 teacherRing(「x/y完了・〇〇発表会が締切間近」→ 押すと一覧へ)は削除した。
@@ -411,6 +453,8 @@ function TeacherHome({
       <section className="mt-6">
         <TeacherNextAction announcements={announcements} />
       </section>
+
+      {focus && <TeacherProgressSection announcement={focus} />}
 
       <section className="mt-8">
         <SectionHeading>YSE Compassでできること</SectionHeading>

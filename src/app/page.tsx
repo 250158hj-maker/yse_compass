@@ -27,7 +27,7 @@ import { Badge, LateBadge, PhaseBadge, StatusBadge } from "@/components/ui/Badge
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { TimetableRows } from "@/components/timetable/TimetableRows";
-import { formatDateTime, formatShortDate } from "@/lib/format";
+import { formatDateTime, formatShortDate, formatShortDateTime } from "@/lib/format";
 import type { Announcement, Team, Timetable, Year } from "@/lib/types";
 
 function isFullySubmitted(announcement: Announcement, teamId: string): boolean {
@@ -160,6 +160,23 @@ function ProgressSection({ announcement: a, teacher }: { announcement: Announcem
   );
 }
 
+// 生徒のホームに出す締切。必須枠に未提出が残る発表会だけを、締切の早い順に見る。
+// 今と締切の比較は teacherRing と同じく現在時刻で行う。件数は資料枠の単位で数え、見出しの「必須枠の未提出」とそろえる。
+function ownTeamDeadlines(rows: { announcement: Announcement; missing: number }[]) {
+  const now = new Date();
+  const pending = rows
+    .filter((row) => row.missing > 0)
+    .sort(
+      (x, y) =>
+        new Date(x.announcement.submissionDeadline).getTime() - new Date(y.announcement.submissionDeadline).getTime()
+    );
+  const isOverdue = (a: Announcement) => now > new Date(a.submissionDeadline);
+  return {
+    overdue: pending.filter((row) => isOverdue(row.announcement)),
+    next: pending.find((row) => !isOverdue(row.announcement)) ?? null,
+  };
+}
+
 // 通知を送らない(2026-07-24 決定)ので、締切と未提出の可視化はこの一覧が最後の砦。必須枠の未提出だけを強調する(H-15)。
 function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; team: Team }) {
   const rows = announcements.map((a) => {
@@ -179,6 +196,9 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
     return { announcement: a, slots };
   });
   const missingCount = rows.reduce((sum, row) => sum + row.slots.filter((s) => s.missingRequired).length, 0);
+  const { overdue, next } = ownTeamDeadlines(
+    rows.map((row) => ({ announcement: row.announcement, missing: row.slots.filter((s) => s.missingRequired).length }))
+  );
 
   return (
     <section className="mt-8">
@@ -189,6 +209,24 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
           <Badge tone={missingCount > 0 ? "rose" : "emerald"}>{missingCount}件</Badge>
         </span>
       </div>
+      {(overdue.length > 0 || next) && (
+        <ul className="mb-3 flex flex-col gap-1.5 text-sm">
+          {overdue.map(({ announcement: a, missing }) => (
+            <li key={a.id} className="rounded-md bg-rose-50 px-3 py-2 font-semibold text-rose-700 ring-1 ring-rose-200">
+              締切超過：{a.title} {formatShortDate(a.submissionDeadline)}(未提出 {missing}件)
+            </li>
+          ))}
+          {next && (
+            <li className="text-slate-500">
+              直近の締切：
+              <span className="font-semibold text-slate-900">
+                {next.announcement.title} {formatShortDateTime(next.announcement.submissionDeadline)}
+              </span>
+              (未提出 {next.missing}件)
+            </li>
+          )}
+        </ul>
+      )}
       <div id="home-own-slots" className="grid gap-3 md:grid-cols-2">
         {rows.map(({ announcement: a, slots }) => (
           <Card key={a.id} className="shadow-sm shadow-slate-900/5">
@@ -477,16 +515,6 @@ function TeacherHome({
   );
 }
 
-function ownTeamRing(announcements: Announcement[], ownTeamId: string) {
-  const doneCount = announcements.filter((a) => isFullySubmitted(a, ownTeamId)).length;
-  const percent = announcements.length === 0 ? 0 : Math.round((doneCount / announcements.length) * 100);
-  const urgent = findNextUrgent(announcements, (a) => isFullySubmitted(a, ownTeamId));
-  const caption = urgent
-    ? `${doneCount}/${announcements.length}回完了・次は${urgent.title}(締切${formatShortDate(urgent.submissionDeadline)})`
-    : `${doneCount}/${announcements.length}回完了・すべて提出済み`;
-  return { percent, caption };
-}
-
 export default function HomePage() {
   const { currentUser } = useSession();
   const year = getCurrentYear();
@@ -550,10 +578,14 @@ export default function HomePage() {
 
         {!teacher && ownTeam && (
           <>
-            <RingTile
+            {/* 進捗は上の資料枠の見出しに出すので、ここは自チーム詳細(SC-14)への入口に徹する */}
+            <StatTile
               href={`/teams/${ownTeam.id}`}
-              label={`自チームの提出状況(${ownTeam.name})`}
-              {...ownTeamRing(announcements, ownTeam.id)}
+              label={`自チーム(${ownTeam.name})`}
+              value="発表会ごとの提出状況・メンバー"
+              caption="自チームの詳細を見る"
+              icon={<TeamIcon />}
+              iconColor="bg-brand-50 text-brand-600"
             />
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <StatTile

@@ -346,7 +346,8 @@ export function useTimetable(announcementId: string): UseTimetableResult {
           slots: reorderSlotById(t.slots ?? rawSlots, slotId, toIndex),
         })),
       ),
-    orderConfirmed: !!override.confirmedAt,
+    // 終了した発表会は、保存の記録が無くても発表順は確定しているものとして扱う(発表を終えた並びがそのまま確定の並び)。
+    orderConfirmed: !!override.confirmedAt || period === "終了",
     confirmedAt: override.confirmedAt ?? null,
     period,
     currentPresentingTeamId,

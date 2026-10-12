@@ -111,10 +111,8 @@ export function TimetableEditClient({ announcement: a }: { announcement: Announc
         <p className="mt-2 min-h-5 text-xs text-slate-400" aria-live="polite">
           {isDirty ? (
             "未保存の変更があります"
-          ) : saved ? (
-            <span className="text-sm text-slate-500">
-              発表順を確定しました{confirmedAt ? `(${formatDateTime(confirmedAt)})` : ""}
-            </span>
+          ) : saved && confirmedAt ? (
+            <span className="text-sm text-slate-500">発表順を確定しました({formatDateTime(confirmedAt)})</span>
           ) : null}
         </p>
 

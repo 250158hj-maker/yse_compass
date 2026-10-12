@@ -8,14 +8,21 @@ import { Button } from "@/components/ui/Button";
 import { PublishPermissionBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { PublishPermissionStatus, Team } from "@/lib/types";
-import { getArchivedYears, getTeamsByYear } from "@/lib/mock";
+import { getAnnouncementsByYear, getArchivedYears, getCurrentYear, getTeamsByYear } from "@/lib/mock";
 
-type Row = Team & { yearLabel: string };
+type Row = Team & { yearLabel: string; canSet: boolean };
 
+// SC-18 は卒業年度チームの公開許可の一覧(04 SC-18)。当年度(卒業年度)のチームを先頭に、アーカイブ済み年度のチームを続ける。
+// 設定(代理設定・訂正)は、その年度の全発表会が終わってから(decisions 2026-07-26・2026-09-26)。それまでは状況だけを出す。
+// 判定は SC-14(TeamDetailClient.tsx)の allEnded と同じく、モックの発表会の status を読む。
 function buildRows(): Row[] {
-  return getArchivedYears().flatMap((year) =>
-    getTeamsByYear(year.id).map((team) => ({ ...team, yearLabel: year.label }))
-  );
+  const current = getCurrentYear();
+  const years = [...(current ? [current] : []), ...getArchivedYears()];
+  return years.flatMap((year) => {
+    const announcements = getAnnouncementsByYear(year.id);
+    const allEnded = announcements.length > 0 && announcements.every((a) => a.status === "終了");
+    return getTeamsByYear(year.id).map((team) => ({ ...team, yearLabel: year.label, canSet: allEnded }));
+  });
 }
 
 const statusOptions: PublishPermissionStatus[] = ["未設定", "許可", "拒否"];
@@ -34,7 +41,7 @@ export default function PublishPermissionsPage() {
 
       <div className="mt-6">
         {rows.length === 0 ? (
-          <EmptyState message="アーカイブ済み年度のチームがまだありません。" />
+          <EmptyState message="卒業年度のチームがまだありません。" />
         ) : (
           <div className="flex flex-col gap-3">
             {rows.map((row) => (
@@ -48,18 +55,20 @@ export default function PublishPermissionsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <PublishPermissionBadge status={row.publishPermission} />
-                  <div className="flex gap-1.5">
-                    {statusOptions.map((status) => (
-                      <Button
-                        key={status}
-                        variant={row.publishPermission === status ? "primary" : "secondary"}
-                        onClick={() => setStatus(row.id, status)}
-                        disabled={row.publishPermission === status}
-                      >
-                        {status}にする
-                      </Button>
-                    ))}
-                  </div>
+                  {row.canSet && (
+                    <div className="flex gap-1.5">
+                      {statusOptions.map((status) => (
+                        <Button
+                          key={status}
+                          variant={row.publishPermission === status ? "primary" : "secondary"}
+                          onClick={() => setStatus(row.id, status)}
+                          disabled={row.publishPermission === status}
+                        >
+                          {status}にする
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </Card>
             ))}

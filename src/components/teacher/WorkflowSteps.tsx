@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { useDemoClock } from "@/context/DemoClockContext";
 import { useBooklet, usePublish, useTimetable } from "@/context/TeacherDemoContext";
-import { getTeamById, getTeamsByYear } from "@/lib/mock";
+import { getTeamById, getTeamsByYear, getTemplateById } from "@/lib/mock";
 import { countMissingRequired, teamSlotsInOrder } from "@/lib/demo/teacher-derived";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -93,13 +93,28 @@ export function WorkflowSteps({ announcement: a }: { announcement: Announcement 
     {
       no: 1,
       name: "発表会準備",
-      // SC-04 の【T のみ】資料枠の一覧(種類・必須/任意)をここに畳む。テンプレートへの導線は SC-04 から外してある(H-34)。
-      summary: a.materialSlots.map((slot) => (
-        <span key={slot.id} className="flex items-center gap-1">
-          <span>{slot.name}</span>
-          <Badge tone={slot.required ? "rose" : "slate"}>{slot.required ? "必須" : "任意"}</Badge>
-        </span>
-      )),
+      // SC-04 の【T のみ】資料枠の一覧(種類・必須/任意・テンプレート参照)をここに畳む(04 SC-04・SC-05)。
+      // H-34 で SC-04 から外したのは生徒向けのテンプレートへの導線で、先生の資料枠の一覧のテンプレート参照は残る。
+      // テンプレートのある枠にだけリンクを出す(無い枠は何も出さない)。リンクの見た目は生徒の SC-09 にそろえる。
+      summary: a.materialSlots.map((slot) => {
+        const template = slot.templateId ? getTemplateById(slot.templateId) : null;
+        return (
+          <span key={slot.id} className="flex items-center gap-1">
+            <span>{slot.name}</span>
+            <Badge tone={slot.required ? "rose" : "slate"}>{slot.required ? "必須" : "任意"}</Badge>
+            {template && (
+              <a
+                href={template.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-1 text-xs text-brand-600 hover:underline"
+              >
+                テンプレートを開く →
+              </a>
+            )}
+          </span>
+        );
+      }),
       done: done.setup,
       current: false,
       action: linkButton("setup", `${base}/edit`, "発表会を編集"),

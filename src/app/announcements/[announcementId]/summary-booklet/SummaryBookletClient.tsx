@@ -22,17 +22,24 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
   const { entries, missing, generatedAt, markGenerated } = useBooklet(a.id);
   const { slots, orderConfirmed } = useTimetable(a.id);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   const teamSlots = teamSlotsInOrder(slots);
   const slotByTeam = new Map(teamSlots.map((s, i) => [s.teamId, { order: i + 1, startTime: s.startTime }]));
   const orderText = entries.map((e) => e.team.name).join(" → ");
   const generated = generatedAt !== null;
 
+  // 作り直したら、前のダウンロードの完了表示は消す。
+  function generate() {
+    markGenerated();
+    setDownloaded(false);
+  }
+
   function handleGenerateClick() {
     if (missing.length > 0) {
       setConfirmOpen(true);
     } else {
-      markGenerated();
+      generate();
     }
   }
 
@@ -82,11 +89,13 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
                 {generated ? "概要集を作り直す" : "概要集を生成する"}
               </Button>
               {generated && (
-                <Button variant="secondary" onClick={() => window.print()}>
-                  印刷する
+                // K3(サーバーサイド生成)の one-click ダウンロードを描く。モックなのでファイルは作らず、押したことだけを示す。
+                <Button variant="secondary" onClick={() => setDownloaded(true)}>
+                  PDF をダウンロード
                 </Button>
               )}
               {generatedAt && <span className="text-xs text-slate-400">生成 {formatDateTime(generatedAt)}</span>}
+              {generated && downloaded && <Badge tone="emerald">ダウンロードしました</Badge>}
             </div>
           </div>
         </div>
@@ -152,7 +161,7 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
         <ConfirmDialog
           open={confirmOpen}
           onClose={() => setConfirmOpen(false)}
-          onConfirm={markGenerated}
+          onConfirm={generate}
           title="未提出チームがあります"
           description={`${missing.map((t) => t.name).join("、")} は概要が未提出です。スキップして概要集を生成しますか?`}
           confirmLabel="スキップして生成する"

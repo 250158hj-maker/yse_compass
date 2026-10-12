@@ -108,11 +108,8 @@ export default function TeacherRosterPage() {
           setNotice(`${removing.name}さんの先生の登録を解除しました。`);
         }}
         title="先生の登録を解除しますか?"
-        description={
-          removing
-            ? `${removing.name}さんは先生の画面を使えなくなり、次にサインインしたときから生徒になります。`
-            : ""
-        }
+        // 解除がセッションへ反映されるタイミングは未決(H-30)なので、いつから生徒になるかは書かない。
+        description={removing ? `${removing.name}さんを先生から解除します。` : ""}
         confirmLabel="解除する"
         confirmVariant="danger"
       />

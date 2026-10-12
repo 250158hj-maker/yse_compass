@@ -106,3 +106,17 @@ export function getTeacherDemoPatch(announcementId: string, teamId: string): Tea
     teacherDemoSubmissionPatches.find((p) => p.announcementId === announcementId && p.teamId === teamId) ?? null
   );
 }
+
+// SC-11 の［PDF を開く］が開く、モックの概要集 PDF。public/ 配下に置いた固定のファイルで、生成のたびに作り直しはしない。
+// 中身は設計書発表会の統一レイアウトを、デモ動画の場面 2 で SC-08 を入れ替えた後の順(Cheers → Nova → Lumen)で書き出したもの。
+// SC-08 で別の順にしても、締切前で未提出のチームがスキップされても、中身は変わらない(モックは UI/UX の検証なので、この食い違いは許容)。
+// pages はこの PDF のページ数(1 チーム 1 ページ)。PDF を作り直したら合わせる。
+export type TeacherDemoBookletPdf = { href: string; pages: number };
+
+const teacherDemoBookletPdfs: Record<string, TeacherDemoBookletPdf> = {
+  "ann-2026-sekkei": { href: "/mock/summary-booklet-sekkei.pdf", pages: 3 },
+};
+
+export function getTeacherDemoBookletPdf(announcementId: string): TeacherDemoBookletPdf | null {
+  return teacherDemoBookletPdfs[announcementId] ?? null;
+}

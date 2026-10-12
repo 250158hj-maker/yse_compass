@@ -24,6 +24,9 @@ import type { Announcement } from "@/lib/types";
 // 読む人が見るのは配られた PDF で、中身の描画は PDF の 1 か所に持つ(requirements §3-3「確認・修正せずそのまま配布」)。
 // 並びは SC-08 で保存した発表順(useTimetable の slots)、中身はデモ用の時刻の時点で提出済みの概要(useBooklet)。
 // 「生成」した事実は先生の共有状態に記録し(markGenerated)、ハブの工程表が読む。
+// 発表会が終わった後でも、いつでも何度でも生成できる(04 SC-11)。未提出のチームは確認ダイアログを経てスキップする。
+// 概要を出したチームが 1 つも無いときだけは中身が空になるので、生成・作り直しのボタンを押せなくし、状態だけを出す。
+// ［PDF を開く］とページ数は、PDF を用意した発表会(getTeacherDemoBookletPdf)で、入るチームがあるときだけ出す。
 export function SummaryBookletClient({ announcement: a }: { announcement: Announcement }) {
   const { entries, missing, generatedAt, markGenerated } = useBooklet(a.id);
   const { slots, orderConfirmed } = useTimetable(a.id);
@@ -32,18 +35,22 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
   const teamSlots = teamSlotsInOrder(slots);
   const orderByTeam = new Map(teamSlots.map((s, i) => [s.teamId, i + 1]));
   const orderText = entries.map((e) => e.team.name).join(" → ");
-  const pdf = getTeacherDemoBookletPdf(a.id);
+  const canGenerate = entries.length > 0;
+  const pdf = canGenerate ? getTeacherDemoBookletPdf(a.id) : null;
   const yearLabel = getYearById(a.yearId)?.label;
   // 正典に概要集の命名規則は無い。モックのデータ(年度・発表会名)から組み立てる。
   const fileName = `${yearLabel ? `${yearLabel}_` : ""}${a.title}_概要集.pdf`;
 
   function handleGenerateClick() {
+    if (!canGenerate) return;
     if (missing.length > 0) {
       setConfirmOpen(true);
     } else {
       markGenerated();
     }
   }
+
+  const noSummaries = <span className="self-center text-sm text-slate-500">概要の提出がありません</span>;
 
   return (
     <RoleGate allow={["teacher"]} fallback={<TeacherOnlyNotice />}>
@@ -68,7 +75,7 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
         />
 
         <div className="mt-4 flex flex-col gap-3">
-          {!orderConfirmed && (
+          {canGenerate && !orderConfirmed && (
             <InlineNotice tone="warning">
               発表順がまだ確定していません。いまの並び({orderText || "なし"})で作られます。
               <Link
@@ -79,7 +86,7 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
               </Link>
             </InlineNotice>
           )}
-          {!generatedAt && missing.length > 0 && (
+          {canGenerate && !generatedAt && missing.length > 0 && (
             <InlineNotice tone="warning">
               {missing.length}チームが概要未提出です({missing.map((t) => t.name).join("、")})。
               生成する場合はスキップされます。
@@ -87,9 +94,10 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
           )}
           {!generatedAt && (
             <div className="flex flex-wrap gap-2">
-              <Button variant="primary" onClick={handleGenerateClick}>
+              <Button variant="primary" onClick={handleGenerateClick} disabled={!canGenerate}>
                 概要集を生成する
               </Button>
+              {!canGenerate && noSummaries}
             </div>
           )}
         </div>
@@ -108,9 +116,10 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
                   PDF を開く
                 </a>
               )}
-              <Button variant="secondary" onClick={handleGenerateClick}>
+              <Button variant="secondary" onClick={handleGenerateClick} disabled={!canGenerate}>
                 作り直す
               </Button>
+              {!canGenerate && noSummaries}
             </div>
 
             <div className="mt-5">

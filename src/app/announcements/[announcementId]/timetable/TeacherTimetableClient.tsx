@@ -14,6 +14,7 @@ import type { Announcement } from "@/lib/types";
 // SC-07 タイムテーブル(先生)。当日の進行をここで行う(04-screen.md の SC-07)。
 // - 当日に入っても発表は自動では始まらない(glossary.md 末尾:状態遷移は先生の明示操作を正とする)。
 //   当日・開始前は「最初の発表を開始」だけを出し、開始後に「次の発表へ」と各行のつまみ(当日の入れ替え・ドラッグ)を出す。
+//   つまみを出すのは、まだ発表していない行だけ(発表を終えた行・いま発表中の行は動かせない)。
 // - 当日の入れ替えは SC-08 と同じ部品(SortableList)と同じ時刻の規則(lib/demo/schedule.ts)。並べ替えたら時刻を詰め直す。
 // - 並び・発表中は先生の共有状態(useTimetable)を読む。モックに直書きの currentPresentingTeamId は読まない。
 // - 生徒が見る SC-07 は TimetableClient の従来の描画(getTimetableFor)のまま。
@@ -41,6 +42,11 @@ export function TeacherTimetableClient({ announcement: a }: { announcement: Anno
   const firstSlot = teamSlotsInOrder(slots)[0];
   const firstTeam = firstSlot ? getTeamById(firstSlot.teamId) : null;
   const startedAtRef = useRef(0);
+  // いま発表中の行と、それより前の行(発表を終えたチーム・過ぎた休憩)は動かせない。当日の入れ替えは、まだ発表していない行どうしだけ。
+  const presentingIndex = currentPresentingTeamId
+    ? slots.findIndex((s) => !s.isBreak && s.teamId === currentPresentingTeamId)
+    : -1;
+  const lockedSlotIds = new Set(slots.slice(0, presentingIndex + 1).map((s) => s.id));
 
   function handleStart() {
     startedAtRef.current = Date.now();
@@ -106,11 +112,17 @@ export function TeacherTimetableClient({ announcement: a }: { announcement: Anno
             getLabel={(slot) => (slot.isBreak ? slot.breakLabel : (getTeamById(slot.teamId)?.name ?? "(不明なチーム)"))}
             listLabel="発表順(当日の入れ替え)"
             onMove={(_from, to, slot) => reorderNow(slot.id, to)}
+            isLocked={(slot) => lockedSlotIds.has(slot.id)}
             renderItem={({ item: slot, handle }) => (
               <div className="flex items-center gap-2">
                 {handle}
                 <div className="min-w-0 flex-1">
-                  <TimetableSlotRow slot={slot} timetable={timetable} announcementId={a.id} />
+                  <TimetableSlotRow
+                    slot={slot}
+                    timetable={timetable}
+                    announcementId={a.id}
+                    presented={lockedSlotIds.has(slot.id)}
+                  />
                 </div>
               </div>
             )}

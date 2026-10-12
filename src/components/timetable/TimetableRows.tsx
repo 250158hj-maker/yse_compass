@@ -25,14 +25,17 @@ export function TimetableRows({ timetable, announcementId }: { timetable: Timeta
 }
 
 // タイムテーブルの 1 行。チーム枠は発表詳細へのリンク、休憩はリンクにしない。発表中のチームは rose で強調する。
+// presented は先生の SC-07 の当日の進行だけが渡す(発表を終えたチームに「発表済み」を添える)。省略時は従来どおり。
 export function TimetableSlotRow({
   slot,
   timetable,
   announcementId,
+  presented = false,
 }: {
   slot: TimetableSlot;
   timetable: Timetable | null;
   announcementId: string;
+  presented?: boolean;
 }) {
   const isCurrent = !slot.isBreak && slot.teamId === timetable?.currentPresentingTeamId;
   const team = !slot.isBreak ? getTeamById(slot.teamId) : null;
@@ -52,6 +55,7 @@ export function TimetableSlotRow({
       <div className="flex items-center gap-2">
         <span className="text-xs text-slate-400">{slot.durationMin}分</span>
         {isCurrent && <Badge tone="rose">発表中</Badge>}
+        {presented && !slot.isBreak && !isCurrent && <Badge tone="slate">発表済み</Badge>}
       </div>
     </>
   );

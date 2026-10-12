@@ -10,6 +10,9 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEve
 // - キーボード:つまみにフォーカスして ↑↓ で 1 つずつ動く。Space(または Enter)で掴む → ↑↓ → Space で離す。
 //   掴んでいる間の Esc は、掴んだときの位置へ戻す。動かした結果は live region で読み上げる。
 // - 並びの持ち主は親。ここは「from 番目を to 番目(動かした後の位置)へ」を onMove で伝えるだけ。
+// - 動かせない行(isLocked。例:SC-07 の発表を終えた行・いま発表中の行)は、つまみを出さず(同じ幅の空きだけ置く)、
+//   ほかの行もその行を越えて動かせない(動かせない行の位置が変わる移動は、ポインターでもキーボードでも起こさない)。
+//   isLocked を渡さなければ、すべての行が動かせる(従来どおり)。
 
 const OUTSIDE_MARGIN_PX = 32;
 
@@ -44,6 +47,7 @@ export function SortableList<T>({
   renderGap,
   listLabel,
   className = "flex flex-col gap-2",
+  isLocked,
 }: {
   items: T[];
   getKey: (item: T) => string;
@@ -55,6 +59,8 @@ export function SortableList<T>({
   renderGap?: (afterIndex: number) => ReactNode;
   listLabel: string;
   className?: string;
+  // 動かせない行か。省略時はすべて動かせる。
+  isLocked?: (item: T) => boolean;
 }) {
   const instructionsId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,6 +72,16 @@ export function SortableList<T>({
   const [announcement, setAnnouncement] = useState("");
 
   const count = items.length;
+  const lockedAt = (index: number) => (isLocked ? isLocked(items[index]) : false);
+
+  // from 番目の行が動ける範囲(両端を含む)。動かせない行の手前で止まる。isLocked が無ければ 0 〜 count - 1。
+  function rangeOf(fromIndex: number): { lo: number; hi: number } {
+    let lo = fromIndex;
+    while (lo > 0 && !lockedAt(lo - 1)) lo -= 1;
+    let hi = fromIndex;
+    while (hi < count - 1 && !lockedAt(hi + 1)) hi += 1;
+    return { lo, hi };
+  }
 
   // キーボードで動かしたあと、つまみにフォーカスを戻す(行の DOM が並べ替えで付け替わると、フォーカスが外れることがあるため)。
   useEffect(() => {
@@ -97,7 +113,8 @@ export function SortableList<T>({
     d.rows.forEach((r, i) => {
       if (i !== d.fromIndex && (r.top + r.bottom) / 2 < center) to += 1;
     });
-    return to;
+    const { lo, hi } = rangeOf(d.fromIndex);
+    return Math.min(Math.max(to, lo), hi);
   }
 
   // 行と行の間隔(px)。ドラッグ開始時の位置から測る。
@@ -142,7 +159,7 @@ export function SortableList<T>({
   }
 
   function handlePointerDown(e: PointerEvent<HTMLButtonElement>, key: string, index: number) {
-    if (e.button !== 0 || drag) return;
+    if (e.button !== 0 || drag || lockedAt(index)) return;
     const box = containerRef.current?.getBoundingClientRect();
     if (!box) return;
     // 文字の選択とスクロールを止め、以降の pointermove をつまみに集める。
@@ -185,7 +202,8 @@ export function SortableList<T>({
 
   function moveByKey(index: number, delta: -1 | 1, item: T) {
     const to = index + delta;
-    if (to < 0 || to >= count) {
+    const { lo, hi } = rangeOf(index);
+    if (to < lo || to > hi) {
       setAnnouncement(`${getLabel(item)} はいま ${index + 1} 番目で、これ以上${delta < 0 ? "上" : "下"}へは動かせません`);
       return;
     }
@@ -195,6 +213,7 @@ export function SortableList<T>({
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLButtonElement>, item: T, index: number) {
+    if (lockedAt(index)) return;
     const key = getKey(item);
     const label = getLabel(item);
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -239,7 +258,10 @@ export function SortableList<T>({
           const grabbed = grab?.key === key;
           const lifted = dragging || grabbed;
           const shift = drag && !dragging ? shiftOf(drag, index) : 0;
-          const handle = (
+          const handle = lockedAt(index) ? (
+            // 動かせない行はつまみを出さず、同じ幅を空けて行の書き出しをそろえる(押してなぞっても文字の選択を始めない)。
+            <span aria-hidden="true" className="h-9 w-7 shrink-0 select-none" />
+          ) : (
             <button
               type="button"
               ref={(el) => {

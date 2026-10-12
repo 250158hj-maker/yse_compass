@@ -8,7 +8,7 @@ import type { Material, SummaryEntry } from "@/lib/types";
 //     (SummaryFormClient.tsx の useState(submission?.summary))
 //   - どのチームの summary でも、使用技術を足すと SC-10 の候補タグの並びが変わる
 //     (SummaryFormClient.tsx は submissions 全件の techUsed を数えている)
-//   - 概要集・プレゼン資料の status を「提出済み」にすると、水戸のホームの必須枠の未提出件数・リング、
+//   - 概要・プレゼン資料の status を「提出済み」にすると、水戸のホームの必須枠の未提出件数・リング、
 //     発表会一覧の「提出完了 n/3 チーム」が変わる(app/page.tsx・announcements/page.tsx は status を直に読む)
 // ので、既存のレコードには触らず、先生用の導出(lib/demo/teacher-derived.ts)だけがここを読む。
 // ここに無い発表会・チーム・資料は、submissions.ts の値(firstSubmittedAt・summary)をそのまま使う。
@@ -31,7 +31,7 @@ export const teacherDemoSubmissionPatches: TeacherDemoSubmissionPatch[] = [
     announcementId: "ann-2026-sekkei",
     teamId: "team-cheers",
     materials: {
-      概要集: {
+      概要: {
         firstSubmittedAt: "2026-10-13T21:40:00+09:00",
         updatedAt: "2026-10-13T21:40:00+09:00",
         driveUrl: null,
@@ -58,7 +58,7 @@ export const teacherDemoSubmissionPatches: TeacherDemoSubmissionPatch[] = [
         updatedAt: "2026-10-13T19:20:00+09:00",
         driveUrl: "https://docs.google.com/document/d/nova-sekkei/edit",
       },
-      概要集: {
+      概要: {
         firstSubmittedAt: "2026-10-14T21:05:00+09:00",
         updatedAt: "2026-10-14T21:05:00+09:00",
         driveUrl: null,
@@ -83,7 +83,7 @@ export const teacherDemoSubmissionPatches: TeacherDemoSubmissionPatch[] = [
         updatedAt: "2026-10-14T22:40:00+09:00",
         driveUrl: "https://docs.google.com/document/d/lumen-sekkei/edit",
       },
-      概要集: {
+      概要: {
         firstSubmittedAt: "2026-10-14T23:30:00+09:00",
         updatedAt: "2026-10-14T23:30:00+09:00",
         driveUrl: null,

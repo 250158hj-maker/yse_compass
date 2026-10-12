@@ -127,9 +127,6 @@ export default function LoginPage() {
           </svg>
           Google でログイン
         </Button>
-        <p className="mt-3 text-xs leading-relaxed text-slate-400">
-          本番では学校 Google アカウント(Workspace)の OAuth 認証になります(このモック環境では未接続のため無効化しています)。
-        </p>
       </Card>
 
       <div className="mt-10">

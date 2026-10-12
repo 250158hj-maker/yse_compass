@@ -5,7 +5,6 @@ import { DemoClockProvider } from "@/context/DemoClockContext";
 import { TeacherDemoProvider } from "@/context/TeacherDemoContext";
 import { AuthGuard } from "@/components/session/AuthGuard";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { DemoClockBar } from "@/components/demo/DemoClockBar";
 
 export const metadata: Metadata = {
@@ -29,7 +28,6 @@ export default function RootLayout({
                 <Header />
                 <DemoClockBar />
                 <main className="flex-1 px-6 py-8">{children}</main>
-                <Footer />
               </AuthGuard>
             </TeacherDemoProvider>
           </DemoClockProvider>

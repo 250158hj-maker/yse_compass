@@ -1,4 +1,14 @@
+import type { Metadata } from "next";
 import "./globals.css";
+import { SessionProvider } from "@/context/SessionContext";
+import { AuthGuard } from "@/components/session/AuthGuard";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+
+export const metadata: Metadata = {
+  title: "YSE Compass",
+  description: "卒業制作の発表会運営を支える学内向けプラットフォーム(モック画面)",
+};
 
 export default function RootLayout({
   children,
@@ -6,10 +16,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ja"
-    >
-      <body>{children}</body>
+    <html lang="ja">
+      <body className="flex min-h-screen flex-col bg-white text-slate-900">
+        <SessionProvider>
+          <AuthGuard>
+            <Header />
+            <main className="flex-1 px-6 py-8">{children}</main>
+            <Footer />
+          </AuthGuard>
+        </SessionProvider>
+      </body>
     </html>
   );
 }

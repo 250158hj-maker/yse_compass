@@ -2,17 +2,13 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getTeamById } from "@/lib/mock";
-import type { Timetable } from "@/lib/types";
+import type { Timetable, TimetableSlot } from "@/lib/types";
 
 // 発表会詳細(埋め込み)とタイムテーブル画面(単独ページ)の両方から使う共通の行表示。
 // チーム枠は発表詳細(チーム×発表会)へのリンクにする。
-export function TimetableRows({
-  timetable,
-  announcementId,
-}: {
-  timetable: Timetable | null;
-  announcementId: string;
-}) {
+// 1 行の描画は TimetableSlotRow に切り出してあり、先生の SC-07 の当日の入れ替え(ドラッグ)も同じ行を使う。
+// この一覧の描画(生徒のホーム・生徒の SC-07・発表会詳細)は従来とまったく同じ。
+export function TimetableRows({ timetable, announcementId }: { timetable: Timetable | null; announcementId: string }) {
   const slots = timetable ? [...timetable.slots].sort((x, y) => x.order - y.order) : [];
 
   if (slots.length === 0) {
@@ -21,47 +17,54 @@ export function TimetableRows({
 
   return (
     <div className="flex flex-col gap-2">
-      {slots.map((slot) => {
-        const isCurrent = !slot.isBreak && slot.teamId === timetable?.currentPresentingTeamId;
-        const team = !slot.isBreak ? getTeamById(slot.teamId) : null;
-        const rowClassName = `flex items-center justify-between rounded-lg border p-4 ${
-          isCurrent ? "border-rose-300 bg-rose-50" : "border-slate-200 bg-white"
-        } ${slot.isBreak ? "opacity-70" : ""}`;
-
-        const rowContent = (
-          <>
-            <div className="flex items-center gap-3">
-              <span className="w-16 text-sm font-medium text-slate-500">{slot.startTime}</span>
-              <span className="font-medium text-slate-900">
-                {slot.isBreak ? slot.breakLabel : (team?.name ?? "(不明なチーム)")}
-              </span>
-              {!slot.isBreak && team && <span className="text-sm text-slate-400">{team.projectTitle}</span>}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">{slot.durationMin}分</span>
-              {isCurrent && <Badge tone="rose">発表中</Badge>}
-            </div>
-          </>
-        );
-
-        if (!slot.isBreak && team) {
-          return (
-            <Link
-              key={slot.id}
-              href={`/announcements/${announcementId}/teams/${team.id}`}
-              className={`${rowClassName} hover:border-brand-300`}
-            >
-              {rowContent}
-            </Link>
-          );
-        }
-
-        return (
-          <div key={slot.id} className={rowClassName}>
-            {rowContent}
-          </div>
-        );
-      })}
+      {slots.map((slot) => (
+        <TimetableSlotRow key={slot.id} slot={slot} timetable={timetable} announcementId={announcementId} />
+      ))}
     </div>
+  );
+}
+
+// タイムテーブルの 1 行。チーム枠は発表詳細へのリンク、休憩はリンクにしない。発表中のチームは rose で強調する。
+// presented は先生の SC-07 の当日の進行だけが渡す(発表を終えたチームに「発表済み」を添える)。省略時は従来どおり。
+export function TimetableSlotRow({
+  slot,
+  timetable,
+  announcementId,
+  presented = false,
+}: {
+  slot: TimetableSlot;
+  timetable: Timetable | null;
+  announcementId: string;
+  presented?: boolean;
+}) {
+  const isCurrent = !slot.isBreak && slot.teamId === timetable?.currentPresentingTeamId;
+  const team = !slot.isBreak ? getTeamById(slot.teamId) : null;
+  const rowClassName = `flex items-center justify-between rounded-lg border p-4 ${
+    isCurrent ? "border-rose-300 bg-rose-50" : "border-slate-200 bg-white"
+  } ${slot.isBreak ? "opacity-70" : ""}`;
+
+  const rowContent = (
+    <>
+      <div className="flex items-center gap-3">
+        <span className="w-16 text-sm font-medium text-slate-500">{slot.startTime}</span>
+        <span className="font-medium text-slate-900">
+          {slot.isBreak ? slot.breakLabel : (team?.name ?? "(不明なチーム)")}
+        </span>
+        {!slot.isBreak && team && <span className="text-sm text-slate-400">{team.projectTitle}</span>}
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-slate-400">{slot.durationMin}分</span>
+        {isCurrent && <Badge tone="rose">発表中</Badge>}
+        {presented && !slot.isBreak && !isCurrent && <Badge tone="slate">発表済み</Badge>}
+      </div>
+    </>
+  );
+
+  return !slot.isBreak && team ? (
+    <Link href={`/announcements/${announcementId}/teams/${team.id}`} className={`${rowClassName} hover:border-brand-300`}>
+      {rowContent}
+    </Link>
+  ) : (
+    <div className={rowClassName}>{rowContent}</div>
   );
 }

@@ -32,8 +32,8 @@ export function PresentationDetailClient({
 }) {
   const { currentUser } = useSession();
   const [submission, setSubmission] = useState(initialSubmission);
-  // 概要集はすぐ下の「概要」に同じ内容が出るので、資料の行には出さない。
-  const presentationMaterials = submission.materials.filter((m) => m.name !== "概要集");
+  // 概要の資料枠はすぐ下の「概要」に同じ内容が出るので、資料の行には出さない。
+  const presentationMaterials = submission.materials.filter((m) => m.name !== "概要");
   const [filter, setFilter] = useState<"すべて" | CommentLabel>("すべて");
   const [newBody, setNewBody] = useState("");
   const [newLabel, setNewLabel] = useState<CommentLabel>("感想");

@@ -17,7 +17,7 @@ export const submissions: Submission[] = [
       },
       {
         id: "mat-k-cheers-sub",
-        name: "概要集",
+        name: "概要",
         status: "提出済み",
         firstSubmittedAt: "2026-07-17T08:10:00+09:00",
         updatedAt: "2026-07-17T08:10:00+09:00",
@@ -75,7 +75,7 @@ export const submissions: Submission[] = [
         updatedAt: "2026-07-14T18:00:00+09:00",
         driveUrl: "https://docs.google.com/presentation/d/nova-kikaku/edit",
       },
-      { id: "mat-k-nova-sub", name: "概要集", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-k-nova-sub", name: "概要", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
     ],
     summary: {
       background: "部活動・委員会の備品貸出が紙の貸出簿で管理され、在庫状況が分からない。",
@@ -110,7 +110,7 @@ export const submissions: Submission[] = [
         updatedAt: "2026-07-17T07:50:00+09:00",
         driveUrl: "https://docs.google.com/presentation/d/lumen-kikaku/edit",
       },
-      { id: "mat-k-lumen-sub", name: "概要集", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-k-lumen-sub", name: "概要", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
     ],
     summary: null,
     comments: [],
@@ -130,7 +130,7 @@ export const submissions: Submission[] = [
         updatedAt: "2026-08-18T22:00:00+09:00",
         driveUrl: "https://docs.google.com/document/d/cheers-sekkei/edit",
       },
-      { id: "mat-s-cheers-er", name: "概要集", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-s-cheers-er", name: "概要", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
     ],
     summary: null,
     comments: [],
@@ -141,7 +141,7 @@ export const submissions: Submission[] = [
     likeCount: 0,
     materials: [
       { id: "mat-s-nova-doc", name: "プレゼン資料", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
-      { id: "mat-s-nova-er", name: "概要集", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-s-nova-er", name: "概要", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
     ],
     summary: null,
     comments: [],
@@ -152,7 +152,7 @@ export const submissions: Submission[] = [
     likeCount: 0,
     materials: [
       { id: "mat-s-lumen-doc", name: "プレゼン資料", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
-      { id: "mat-s-lumen-er", name: "概要集", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
+      { id: "mat-s-lumen-er", name: "概要", status: "未提出", firstSubmittedAt: null, updatedAt: null, driveUrl: null },
     ],
     summary: null,
     comments: [],
@@ -174,7 +174,7 @@ export const submissions: Submission[] = [
       },
       {
         id: "mat-25k-aurora-gaiyou",
-        name: "概要集",
+        name: "概要",
         status: "提出済み",
         firstSubmittedAt: "2025-07-16T21:00:00+09:00",
         updatedAt: "2025-07-16T21:00:00+09:00",
@@ -206,7 +206,7 @@ export const submissions: Submission[] = [
       },
       {
         id: "mat-25s-aurora-gaiyou",
-        name: "概要集",
+        name: "概要",
         status: "提出済み",
         firstSubmittedAt: "2025-10-14T21:00:00+09:00",
         updatedAt: "2025-10-14T21:00:00+09:00",
@@ -238,7 +238,7 @@ export const submissions: Submission[] = [
       },
       {
         id: "mat-25t-aurora-gaiyou",
-        name: "概要集",
+        name: "概要",
         status: "提出済み",
         firstSubmittedAt: "2025-12-15T21:00:00+09:00",
         updatedAt: "2025-12-15T21:00:00+09:00",
@@ -270,7 +270,7 @@ export const submissions: Submission[] = [
       },
       {
         id: "mat-25f-aurora-gaiyou",
-        name: "概要集",
+        name: "概要",
         status: "提出済み",
         firstSubmittedAt: "2026-02-08T21:00:00+09:00",
         updatedAt: "2026-02-08T21:00:00+09:00",

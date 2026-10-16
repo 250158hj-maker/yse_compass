@@ -8,26 +8,26 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { RoleGate, TeacherOnlyNotice } from "@/components/session/RoleGate";
 import { Button } from "@/components/ui/Button";
 import { formatDateTime } from "@/lib/format";
-import { formatSubmittedAt, getTeamsByYear, getSubmission, isLateSubmission, materialHref } from "@/lib/mock";
+import { formatSubmittedAt, getTeamsByYear, isLateSubmission, materialHref } from "@/lib/mock";
 import { MaterialLink } from "@/components/ui/MaterialLink";
+import { NextStep, backToHub } from "@/components/flow/NextStep";
+import { useDemoClock } from "@/context/DemoClockContext";
+import { useTimetable } from "@/context/TeacherDemoContext";
+import { countMissingRequired, snapshotSubmission } from "@/lib/demo/teacher-derived";
 import type { Announcement } from "@/lib/types";
 
 export function SubmissionsMatrixClient({ announcement: a }: { announcement: Announcement }) {
   const teams = getTeamsByYear(a.yearId);
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
+  // 提出の判定はデモ用の時刻の時点に巻き戻した写しで行う(元のレコードの status は読まない)。
+  const { nowMs } = useDemoClock();
+  const { period } = useTimetable(a.id);
 
   // 進捗の分母は必須枠のみに統一する。任意枠の未提出はここでの「未提出」に数えない(open-questions.md H-15)。
-  const requiredSlots = a.materialSlots.filter((slot) => slot.required);
-  const isMissing = (teamId: string, slotName: string) =>
-    getSubmission(a.id, teamId)?.materials.find((m) => m.name === slotName)?.status !== "提出済み";
-  const rows = teams.filter((team) => {
-    if (!onlyIncomplete) return true;
-    return requiredSlots.some((slot) => isMissing(team.id, slot.name));
-  });
-  const missingCount = teams.reduce(
-    (sum, team) => sum + requiredSlots.filter((slot) => isMissing(team.id, slot.name)).length,
-    0,
-  );
+  const missing = countMissingRequired(a, teams, nowMs);
+  const missingTeamIds = new Set(missing.teams.map((t) => t.id));
+  const rows = teams.filter((team) => !onlyIncomplete || missingTeamIds.has(team.id));
+  const missingCount = missing.count;
 
   return (
     <RoleGate allow={["teacher"]} fallback={<TeacherOnlyNotice />}>
@@ -77,13 +77,14 @@ export function SubmissionsMatrixClient({ announcement: a }: { announcement: Ann
               </thead>
               <tbody>
                 {rows.map((team) => {
-                  const submission = getSubmission(a.id, team.id);
+                  const submission = snapshotSubmission(a.id, team.id, nowMs);
+                  const teamMissing = missingTeamIds.has(team.id);
                   return (
                     <tr key={team.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/60">
                       <td className="px-4 py-3 font-medium text-slate-900">
                         <div className="flex items-center gap-2">
                           <PhaseBadge phase={a.phase} />
-                          {team.name}
+                          <span className={teamMissing ? "font-semibold text-rose-700" : undefined}>{team.name}</span>
                         </div>
                       </td>
                       {a.materialSlots.map((slot) => {
@@ -93,7 +94,10 @@ export function SubmissionsMatrixClient({ announcement: a }: { announcement: Ann
                           : false;
                         const missingRequired = slot.required && (material?.status ?? "未提出") !== "提出済み";
                         return (
-                          <td key={slot.id} className={`px-4 py-3 ${missingRequired ? "bg-rose-50/50" : ""}`}>
+                          <td
+                            key={slot.id}
+                            className={`px-4 py-3 ${missingRequired ? "bg-rose-50 ring-1 ring-inset ring-rose-200" : ""}`}
+                          >
                             <div className="flex flex-col items-start gap-1">
                               <span className="flex items-center gap-1">
                                 <StatusBadge status={material?.status ?? "未提出"} />
@@ -123,6 +127,11 @@ export function SubmissionsMatrixClient({ announcement: a }: { announcement: Ann
           </table>
         </div>
         )}
+
+        <NextStep
+          next={period === "受付中" ? null : { href: `/announcements/${a.id}/timetable/edit`, label: "次へ：発表順確定 →" }}
+          back={backToHub(a.id)}
+        />
       </div>
     </RoleGate>
   );

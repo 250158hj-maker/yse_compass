@@ -97,8 +97,8 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
       </div>
 
       <div className="mt-6 flex flex-col gap-4">
-        {/* 概要集はアプリ内で管理する(概要の入力から作る)ので、ドライブのリンクは求めない。 */}
-        {materials.filter((m) => m.name !== "概要集").map((material) => {
+        {/* 概要はアプリ内で管理する(フォームで入力する)ので、ドライブのリンクは求めない。 */}
+        {materials.filter((m) => m.name !== "概要").map((material) => {
           const late = isLateSubmission(a.submissionDeadline, material.firstSubmittedAt);
           const submittedAtText = formatSubmittedAt(a.submissionDeadline, material);
           const slot = a.materialSlots.find((s) => s.name === material.name);

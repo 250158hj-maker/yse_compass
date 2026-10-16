@@ -5,6 +5,7 @@ import { PhaseBadge } from "@/components/ui/Badge";
 import { RoleGate } from "@/components/session/RoleGate";
 import { TimetableRows } from "@/components/timetable/TimetableRows";
 import type { Announcement, Timetable } from "@/lib/types";
+import { TeacherTimetableClient } from "./TeacherTimetableClient";
 
 export function TimetableClient({
   announcement: a,
@@ -39,9 +40,17 @@ export function TimetableClient({
         }
       />
 
-      <div className="mt-6">
-        <TimetableRows timetable={timetable} announcementId={a.id} />
-      </div>
+      {/* 先生は当日の進行(発表中・次の発表へ・当日の入れ替え)を行う。生徒の描画は従来のまま(fallback)。 */}
+      <RoleGate
+        allow={["teacher"]}
+        fallback={
+          <div className="mt-6">
+            <TimetableRows timetable={timetable} announcementId={a.id} />
+          </div>
+        }
+      >
+        <TeacherTimetableClient announcement={a} />
+      </RoleGate>
     </div>
   );
 }

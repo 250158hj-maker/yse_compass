@@ -37,8 +37,26 @@ jobs:
           SCHOOL_WORKSPACE_DOMAIN: example.invalid
 
   # 単体テスト（Vitest）。日時の整形のタイムゾーンは vitest.config.mts が日本時間に固定している。
+  # DB を使うテスト（src/lib/auth/callbacks.test.ts）のため、Postgres を立ててマイグレーションを適用する。
+  # ジョブ ID（test）と、ジョブ直下の name は変えない（必須チェックの名前になるため。変えると保護が待つチェックが来なくなる）。
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
     steps:
       - uses: actions/checkout@v4
 
@@ -51,6 +69,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm exec prisma migrate deploy --config prisma7.config.ts
 
       - name: Test
         run: pnpm test

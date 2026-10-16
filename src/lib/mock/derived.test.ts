@@ -58,6 +58,10 @@ describe("isReplacedAfterDeadline（締切後の差し替え・2 値方式 2026-
     expect(isReplacedAfterDeadline(deadline, material(first, "2026-10-20T10:00:00+09:00"))).toBe(true);
   });
 
+  // いまの isReplacedAfterDeadline は、初回と最終を文字列の不一致で比べる（derived.ts）。同じ時刻が別の表記で入ると差し替えと誤判定する。
+  // モックのデータは同じ表記なので実害は無い。本実装は timestamp の値で比べる（06-data.md 6-6）ので、このケースが通るはず。
+  it.todo("同じ時刻が別の表記（+09:00 と Z）で入っても、差し替えなしと判定する");
+
   it("日時のどちらかが無いときは、差し替えなし", () => {
     expect(isReplacedAfterDeadline(deadline, material(null, null))).toBe(false);
     expect(isReplacedAfterDeadline(deadline, material("2026-10-19T23:30:00+09:00", null))).toBe(false);

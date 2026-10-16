@@ -111,15 +111,15 @@ flowchart TB
 - **権限判定の一次防衛線はデータアクセス層に置く**（2026-09-06・H-16 決着・`../decisions.md`／`../requirements.md` §4 セキュリティ）。**読み取りか書き込みかを問わず、データアクセス層を通る際に必ずロールと文脈（その発表が自チームか否か）を判定する。** **Server Action / Route Handler の入口に重複した権限判定は置かない**（2026-09-06 の設計判断・`09-nfr.md` 9-4）。「置いてよい」という許可の形にすると、**実装者ごとに判断が割れる余地が 2 枚目の側に残る** — H-16 が一次防衛線について消したものと同じ余地である。画面側の表示制御は二次的な UX であって防御ではない
   > **旧・先行方針（「書き込みと機微な読み取り」だけ Server Action 経由で判定）は採らない。** 8-3 の構成では**読み取りが Server Action を通らない**ため、公開前の資料（`../requirements.md` §3-3）・公開許可のない作品（同 §3-7）という**認可の主戦場である一覧画面が防衛線の外に出る**。かといって「機微な読み取り」を広く取ると 8-4 の Server Component 優先が崩れる。**データアクセス層へ移すとこの二択自体が消えるため、「機微な読み取り」という区別は設計から削除した。**
   > **文脈（自チームか否か）の判定の実装は 06 データ設計に依存する**（所属関係の照会が要る）。層の決定は 06 と独立だが、判定の具体は 06 の後
-- **現状の実態との差分**：`main` の `src/` は DB 疎通確認（`app/api/health/db/route.ts`）・認証（`auth.ts`／`lib/auth/callbacks.ts`／`app/api/auth/[...nextauth]/route.ts`。サインインの一次検証と、サインイン時のロール解決）・Prisma クライアント（`lib/prisma.ts`）と、**モックの画面一式**（`src/lib/mock/*`・`SessionContext`・`AuthGuard`・`RoleGate`。2026-10-16 に `feature/mock` を `main` へ統合した）で、Data Access 層・Server Action 層は存在しない。統合後の実態としては、すべての画面が `src/lib/mock/*` のインメモリ配列を直接参照し、認可も `SessionContext`（`localStorage` の persona 切り替え）による**クライアント側の見た目の出し分けのみ**という、**H-16 が指摘していた状態そのもの**になる見込み（**2026-09-06 に決着したので、統合時にデータアクセス層での判定へ寄せる**）。06 データ設計の骨格が引けた時点（K2）で、Data Access 層と Server Action の導入に着手する
-- **Client Component の範囲は限定する**：セッション状態、認証ガード、ロールに応じた表示切り替え、フォームの入力状態、モーダル・確認ダイアログの開閉。**一覧・詳細のデータ取得を Client Component 側で行わない**（Server Component 優先の原則・8-4）。`feature/mock`（未マージ）はこの範囲を `SessionContext`／`AuthGuard`／`RoleGate` として実装しており、統合後の実装もこの3コンポーネントの役割分担を踏襲する想定
+- **現状の実態との差分**：`main` の `src/` は DB 疎通確認（`app/api/health/db/route.ts`）・認証（`auth.ts`／`lib/auth/callbacks.ts`／`app/api/auth/[...nextauth]/route.ts`。サインインの一次検証と、サインイン時のロール解決）・Prisma クライアント（`lib/prisma.ts`）と、**モックの画面一式**（`src/lib/mock/*`・`SessionContext`・`AuthGuard`・`RoleGate`。2026-10-16 に `feature/mock` を `main` へ統合した）で、Data Access 層・Server Action 層は存在しない。統合後の実態は、すべての画面が `src/lib/mock/*` のインメモリ配列を直接参照し、認可も `SessionContext`（`localStorage` の persona 切り替え）による**クライアント側の見た目の出し分けのみ**という、**H-16 が指摘していた状態そのもの**である（**2026-09-06 に決着したので、データアクセス層での判定へ寄せる**）。06 データ設計の骨格が引けた時点（K2）で、Data Access 層と Server Action の導入に着手する
+- **Client Component の範囲は限定する**：セッション状態、認証ガード、ロールに応じた表示切り替え、フォームの入力状態、モーダル・確認ダイアログの開閉。**一覧・詳細のデータ取得を Client Component 側で行わない**（Server Component 優先の原則・8-4）。モック（2026-10-16 に `feature/mock` を `main` へ統合した）はこの範囲を `SessionContext`／`AuthGuard`／`RoleGate` として実装しており、統合後の実装もこの3コンポーネントの役割分担を踏襲する想定
 
 ---
 
 ## 8-4. 状態管理とデータ取得の方針
 
 - **原則**：Server Component を既定とし、取得したデータはページ単位で完結させる。グローバルなクライアント状態管理ライブラリ（Redux・Zustand 等）は導入しない — 要件の大半は「一覧を見る・フォームを送る」の単純な往復で、状態管理の複雑さに見合う UI 遷移が無い
-- **Client Component が持ってよい状態**：認証セッション（`feature/mock`（未マージ）実装では `SessionContext`）、フォームの未送信入力、UI のローカルな開閉状態のみ。**サーバーから取得したデータのキャッシュや同期はクライアント側で持たない**
+- **Client Component が持ってよい状態**：認証セッション（モックの実装では `SessionContext`）、フォームの未送信入力、UI のローカルな開閉状態のみ。**サーバーから取得したデータのキャッシュや同期はクライアント側で持たない**
 - **再検証（revalidate）のタイミング**：
   - 通常の一覧・詳細画面は、遷移・再読み込み時の Server Component 再実行で最新化する（Next.js の既定動作）
   - 当日タイムテーブルの進行状態のみ特別扱いが要る（8-5）
@@ -248,7 +248,7 @@ pnpm dev
 | ビルドに devDependencies が要る | `prisma`・`dotenv`・`typescript`・`tailwindcss`・`babel-plugin-react-compiler` はすべて devDependencies | **ビルド段階の install は `--prod` にしない**（`pnpm install --frozen-lockfile`）。`--prod` では `postinstall` の `prisma generate` が `prisma` 不在で失敗する |
 | Prisma クライアントは生成物でリポジトリに無い | `src/generated/prisma` は `.gitignore` 対象。`postinstall` が `prisma generate` を実行 | **`next build` の前に `prisma generate` が済んでいること**が要る。install の `postinstall` に任せるなら、`schema.prisma` と `prisma7.config.ts` が install の時点で見える状態にする（スキーマより先に依存だけを install する形は失敗する） |
 | マイグレーションの適用に Prisma CLI が要る | `pnpm exec prisma migrate deploy`（8-6）。CLI は `prisma7.config.ts` を読み、`dotenv` を import する | **適用を行う環境には `prisma` と `dotenv` が必要。** 実行時の環境（`next start` だけを動かす環境）に入れないなら、適用はビルド側・リリース段階の別ジョブで行う。**適用を行う環境は、本番 DB へ到達でき、本番の `DATABASE_URL` を持つこと**（`prisma7.config.ts` が `DATABASE_URL` から読む） |
-| ビルド時に `SCHOOL_WORKSPACE_DOMAIN` が要る | `src/auth.ts` が読み込み時に未設定なら例外を投げる（8-6）。**2026-10-04 に `next build --webpack` で確かめた**：未設定だと `/api/auth/[...nextauth]` のページデータ収集で失敗し、設定すると通る。**2026-10-16 に本番の `pnpm build`〔`--turbopack`〕でも確かめた**：未設定だと同じ `Failed to collect page data for /api/auth/[...nextauth]` で失敗し、設定すると通る（手元と、GitHub Actions の `lint-and-build` ジョブ〔ダミーの値を渡す〕） | **ビルド環境にも `SCHOOL_WORKSPACE_DOMAIN` を渡す。** 値を空のままだとビルドが落ちる |
+| ビルド時に `SCHOOL_WORKSPACE_DOMAIN` が要る | `src/auth.ts` が読み込み時に未設定なら例外を投げる（8-6）。**2026-10-04 に `next build --webpack` で確かめた**：未設定だと `/api/auth/[...nextauth]` のページデータ収集で失敗し、設定すると通る。**2026-10-16 に本番の `pnpm build`〔`--turbopack`〕でも確かめた**：未設定だと同じ `Failed to collect page data for /api/auth/[...nextauth]` で失敗し、設定すると通る（未設定の失敗は手元で、設定ありの成功は手元と、GitHub Actions の `lint-and-build` ジョブ〔ダミーの値を常に渡す〕で確かめた） | **ビルド環境にも `SCHOOL_WORKSPACE_DOMAIN` を渡す。** 値を空のままだとビルドが落ちる |
 
 **手順の順序**（1 リリースあたり。自前で起動する形の場合。ビルドと起動をホスティング側が行う形は段階②の話で、手順 3 の置き場所はホスティング先が決まってから書く。**段階①で、適用を行う環境と本番 DB の置き場所は、学内の VM または物理サーバー上と見込むが、どのサーバーかが決まる（H-28 (c)）まで決まらない**）：
 
@@ -329,6 +329,6 @@ pnpm dev
 - **H-17**：ORM が正典（Prisma）と実装（`pg` 直接）で乖離している。2026-09-03 の三者整合性監査で M-1 として既出だったが起票が漏れていたものを、本章の執筆時に正式に昇格させた（`../findings.md` F-01）。→ **2026-09-05 に Prisma 採用で決着**（`../decisions.md`）。8-1 に反映済み
 - **H-18**（新規）：UI 層の追加採用（Tailwind CSS 4・React Compiler）が `../../CLAUDE.md` §5・企画書 §2-3 いずれにも記載が無いまま実装されている（レビュー指摘を受けて起票）。→ **2026-09-06 に「§5 へ追記して正典化する」で決着**（`../decisions.md`）。**§5 には出典列が新設され、企画書由来か本ログ由来かが行ごとに読める**。8-1 に反映済み
 
-8-3・8-6 の「現状の実装」の記述は、`main` の実態（`feature/mock` は未マージ）に合わせてある。
+8-3・8-6 の「現状の実装」の記述は、`feature/mock` を `main` へ統合した後（2026-10-16・#94）の `main` の実態に合わせてある。
 
 **2026-09-04：開発環境の方式が変わった。** `docker-compose.yml` の `WATCHPACK_POLLING=true` が Turbopack 起動のため効いておらず、一度は `--webpack` を明示して整合させたが、**その回避策自体が必要かを誰も検証していなかった**（`../findings.md` **F-02**）。決着として **Docker 管理を PostgreSQL のみに絞り、アプリはホスト直起動・バンドラは Turbopack 固定**とした（`../decisions.md`）。8-6 はこの決定を反映済み。

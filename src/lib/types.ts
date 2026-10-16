@@ -1,0 +1,146 @@
+// モック画面専用の型定義（試作）。仕様の正ではない。テーブル定義の正は docs/design/06-data.md、語彙の正は docs/glossary.md。
+// Prisma のスキーマ（prisma/schema.prisma）は 06-data.md から導出しており、このファイルから移さない。
+// 正典に無い属性を含む（06-data.md「既存モック実装との差」の表を参照）。
+
+export type Role = "teacher" | "student";
+
+export const roleLabels: Record<Role, string> = {
+  teacher: "先生",
+  student: "生徒",
+};
+
+export type Year = {
+  id: string;
+  label: string;
+  status: "進行中" | "アーカイブ済み";
+};
+
+export type AnnouncementPhase = "企画" | "設計" | "試作" | "最終";
+
+// 発表会一覧・年度セットアップでの並び順、概要集の束ね順の基準となる固定順序。
+export const ANNOUNCEMENT_PHASE_ORDER: AnnouncementPhase[] = ["企画", "設計", "試作", "最終"];
+
+export type MaterialSlot = {
+  id: string;
+  name: string;
+  required: boolean;
+  templateId: string | null;
+};
+
+export type Announcement = {
+  id: string;
+  yearId: string;
+  phase: AnnouncementPhase;
+  title: string;
+  period: string;
+  submissionDeadline: string;
+  status: "受付中" | "開催予定" | "終了";
+  isPublished: boolean;
+  materialSlots: MaterialSlot[];
+};
+
+export type TemplateFormat = "Google ドキュメント" | "Google スライド" | "Word" | "PowerPoint";
+
+export type Template = {
+  id: string;
+  name: string;
+  relatedPhase: AnnouncementPhase;
+  format: TemplateFormat;
+  url: string;
+};
+
+export type TimetableSlot =
+  | {
+      id: string;
+      teamId: string;
+      order: number;
+      startTime: string;
+      durationMin: number;
+      isBreak: false;
+    }
+  | {
+      id: string;
+      order: number;
+      startTime: string;
+      durationMin: number;
+      isBreak: true;
+      breakLabel: string;
+    };
+
+export type Timetable = {
+  announcementId: string;
+  slots: TimetableSlot[];
+  currentPresentingTeamId: string | null;
+};
+
+export type PublishPermissionStatus = "未設定" | "許可" | "拒否";
+
+export type Team = {
+  id: string;
+  yearId: string;
+  name: string;
+  projectTitle: string;
+  className: string;
+  members: string[];
+  leaderName: string;
+  summary: string;
+  publishPermission: PublishPermissionStatus;
+};
+
+export type SubmissionStatus = "未提出" | "提出済み";
+
+export type Material = {
+  id: string;
+  name: string;
+  status: SubmissionStatus;
+  // 遅延判定には初回提出日時を使い、差し替えで動く最終更新日時とは分ける(H-6・decisions.md 2026-09-29)。
+  firstSubmittedAt: string | null;
+  updatedAt: string | null;
+  driveUrl: string | null;
+};
+
+export type SummaryEntry = {
+  background: string;
+  techUsed: string[];
+  opening: string;
+  closing: string;
+  onePageBody: string;
+  submittedAt: string;
+};
+
+export type CommentLabel = "感想" | "批評" | "その他";
+
+export type Reply = {
+  id: string;
+  authorName: string;
+  authorRole: Role;
+  body: string;
+  postedAt: string;
+};
+
+export type Comment = {
+  id: string;
+  authorName: string;
+  label: CommentLabel;
+  body: string;
+  likeCount: number;
+  postedAt: string;
+  replies: Reply[];
+};
+
+export type Submission = {
+  announcementId: string;
+  teamId: string;
+  likeCount: number;
+  materials: Material[];
+  summary: SummaryEntry | null;
+  comments: Comment[];
+};
+
+export type AppUser = {
+  id: string;
+  name: string;
+  role: Role;
+  className: string | null;
+  teamId: string | null;
+};

@@ -173,6 +173,9 @@ model Submission {
   materialSlot MaterialSlot @relation(fields: [materialSlotId], references: [id])
 
   @@unique([teamId, materialSlotId])
+  // 提出状況一覧（p95 ≦ 1 秒）が material_slots から結合する経路。UNIQUE の先頭は team_id なので
+  // material_slot_id 単独では効かず、PostgreSQL は外部キー列に索引を作らない（06-data.md 6-5）
+  @@index([materialSlotId])
   @@map("submissions")
 }
 

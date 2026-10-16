@@ -1,5 +1,6 @@
-// モック画面用の型定義。DB/API実装前の仮スキーマであり、Prisma導入時にスキーマへ移行する想定。
-// 出典: docs/requirements.md, docs/design/04-screen.md
+// モック画面専用の型定義（試作）。仕様の正ではない。テーブル定義の正は docs/design/06-data.md、語彙の正は docs/glossary.md。
+// Prisma のスキーマ（prisma/schema.prisma）は 06-data.md から導出しており、このファイルから移さない。
+// 正典に無い属性を含む（06-data.md「既存モック実装との差」の表を参照）。
 
 export type Role = "teacher" | "student";
 

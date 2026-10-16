@@ -6,7 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  # 型検査（tsc）は docker-smoke-test.yml のジョブが実行しているので、ここでは lint とビルドだけを見る。
+  # 型検査（tsc --noEmit）は docker-smoke-test.yml のジョブが実行している。next build も型検査をする
+  # （ビルドのログの Running TypeScript）ので、ここでも重なって走る。
   # ジョブ ID は docker-compose と別にしてある（既存のチェック名を変えないため）。
   lint-and-build:
     runs-on: ubuntu-latest
@@ -34,3 +35,43 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
           AUTH_SECRET: ci-build-only
           SCHOOL_WORKSPACE_DOMAIN: example.invalid
+
+  # 単体テスト（Vitest）。日時の整形のタイムゾーンは vitest.config.mts が日本時間に固定している。
+  # DB を使うテスト（src/lib/auth/callbacks.test.ts）のため、Postgres を立ててマイグレーションを適用する。
+  # ジョブ ID（test）と、ジョブ直下の name は変えない（必須チェックの名前になるため。変えると保護が待つチェックが来なくなる）。
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm exec prisma migrate deploy --config prisma7.config.ts
+
+      - name: Test
+        run: pnpm test

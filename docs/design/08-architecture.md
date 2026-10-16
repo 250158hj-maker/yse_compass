@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-10-09（蒲山）
+> **最終更新**：2026-10-16（蒲山）
 
 ## この章が答える問い
 
@@ -257,7 +257,7 @@ pnpm dev
 3. マイグレーションを適用する（`pnpm exec prisma migrate deploy`）。**1 プロセス構成なので、旧アプリを止めてから適用し、新アプリを起動する**（停止時間を許す形。許すかどうかは G-2 が正典に無く未決）。止めずに入れ替えるなら、マイグレーションを旧アプリと両立する形（列・表の追加のみ）に限る
 4. アプリを起動する（`pnpm start`）
 
-**本番で渡す環境変数**（`.env.example` から、ローカル開発専用のものを除く）：`DATABASE_URL`・`AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`SCHOOL_WORKSPACE_DOMAIN`。加えて、`AUTH_URL`（公開 URL）か `AUTH_TRUST_HOST=true` のどちらかが要る見込み（`.env.example` には無い。`@auth/core` 0.41.3 の `lib/utils/env.js` は `trustHost` の既定を、`AUTH_URL`・`AUTH_TRUST_HOST`・Vercel・Cloudflare Pages のいずれも無く `NODE_ENV` が `production` だと false にし、`lib/utils/assert.js` が `UntrustedHost` を返す。ソースを読んだだけで実機では確かめていない）。`POSTGRES_USER`／`POSTGRES_PASSWORD`／`POSTGRES_DB` は `docker-compose.yml` 用で、本番のアプリは使わない。**値の置き場所と渡し方は、段階①では置き場所（H-28 (c)）が、段階②ではホスティング先と請求先（G-1）が決まるまで決まらない。** 秘密の値（`AUTH_SECRET`・`AUTH_GOOGLE_SECRET`・`DATABASE_URL` のパスワード）はリポジトリに置かない。
+**本番で渡す環境変数**（`.env.example` から、ローカル開発専用のものを除く）：`DATABASE_URL`・`AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`SCHOOL_WORKSPACE_DOMAIN`。加えて、`AUTH_URL`（公開 URL）か `AUTH_TRUST_HOST=true` のどちらかが要る見込み（`.env.example` には無い。`@auth/core` 0.41.3 の `lib/utils/env.js` は `trustHost` の既定を、`AUTH_URL`・`AUTH_TRUST_HOST`・Vercel・Cloudflare Pages のいずれも無く `NODE_ENV` が `production` だと false にし、`lib/utils/assert.js` が `UntrustedHost` を返す。ソースを読んだ。2026-10-16 に、ローカルで `next start`〔本番ビルド〕を起動して確かめた：`AUTH_TRUST_HOST` が無いと `/api/auth/providers`・`/api/auth/session` が `UntrustedHost` で 500 になり、`AUTH_TRUST_HOST=true` を付けると 200 で Google のプロバイダーが返る。`AUTH_URL` の側は試していない。確かめたのは `localhost` の範囲で、プロキシや PaaS の背後は未確認）。`POSTGRES_USER`／`POSTGRES_PASSWORD`／`POSTGRES_DB` は `docker-compose.yml` 用で、本番のアプリは使わない。**値の置き場所と渡し方は、段階①では置き場所（H-28 (c)）が、段階②ではホスティング先と請求先（G-1）が決まるまで決まらない。** 秘密の値（`AUTH_SECRET`・`AUTH_GOOGLE_SECRET`・`DATABASE_URL` のパスワード）はリポジトリに置かない。
 
 **未確認（実装時に確かめる）**：上の `AUTH_URL` と `AUTH_TRUST_HOST` のどちらを使うか、プロキシや PaaS の背後で redirect URI が一致するか。`src/auth.ts` と `.env.example` には `AUTH_URL`・`trustHost` の指定が無い。置き場所（段階①ではどのサーバーか）と名前が決まったら、サインインの往復（redirect URI の一致）を実際に通して確かめる。
 

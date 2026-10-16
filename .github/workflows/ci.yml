@@ -1,0 +1,36 @@
+name: Lint and build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  # 型検査（tsc）は docker-smoke-test.yml のジョブが実行しているので、ここでは lint とビルドだけを見る。
+  # ジョブ ID は docker-compose と別にしてある（既存のチェック名を変えないため）。
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      # src/auth.ts は SCHOOL_WORKSPACE_DOMAIN が無いと読み込み時に例外を投げ、ビルドが止まる。
+      # ビルドは DB にも Google にも接続しないので、値はダミーでよい（実際の値は CI に置かない）。
+      - name: Build
+        run: pnpm build
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          AUTH_SECRET: ci-build-only
+          SCHOOL_WORKSPACE_DOMAIN: example.invalid

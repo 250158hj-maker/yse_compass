@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-// アプリ内のリンク(概要集)は同じタブで、外部のドライブのリンクは別タブで開く。
+// アプリ内のリンク(概要)は同じタブで、外部のドライブのリンクは別タブで開く。
 export function MaterialLink({ href, className, children }: { href: string; className: string; children: ReactNode }) {
   if (href.startsWith("/")) {
     return (

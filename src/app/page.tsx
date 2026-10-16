@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { useSession } from "@/context/SessionContext";
+import { useTeacherFocusAnnouncement, useTeacherRoster, useTimetable } from "@/context/TeacherDemoContext";
+import { TeacherNextAction } from "@/components/teacher/TeacherNextAction";
 import { isTeacher, isOwnTeam } from "@/lib/session-helpers";
 import {
   formatSubmittedAt,
@@ -15,7 +17,6 @@ import {
   getTemplateById,
   getTimetableFor,
   isLateSubmission,
-  users,
 } from "@/lib/mock";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -25,20 +26,8 @@ import { Badge, LateBadge, PhaseBadge, StatusBadge } from "@/components/ui/Badge
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { TimetableRows } from "@/components/timetable/TimetableRows";
-import { formatDateTime, formatShortDate } from "@/lib/format";
-import type { Announcement, Team, Timetable } from "@/lib/types";
-
-function isFullySubmitted(announcement: Announcement, teamId: string): boolean {
-  const submission = getSubmission(announcement.id, teamId);
-  const required = announcement.materialSlots.filter((s) => s.required);
-  return (
-    !!submission && required.every((slot) => submission.materials.find((m) => m.name === slot.name)?.status === "提出済み")
-  );
-}
-
-function findNextUrgent(announcements: Announcement[], isDone: (a: Announcement) => boolean): Announcement | null {
-  return announcements.find((a) => !isDone(a)) ?? null;
-}
+import { formatDateTime, formatShortDate, formatShortDateTime } from "@/lib/format";
+import type { Announcement, Team, Timetable, Year } from "@/lib/types";
 
 // ホームの開閉できる見出し。閉じていても見出し横の補足(件数など)とリンクは見える。
 function ToggleHeading({
@@ -158,6 +147,23 @@ function ProgressSection({ announcement: a, teacher }: { announcement: Announcem
   );
 }
 
+// 生徒のホームに出す締切。必須枠に未提出が残る発表会だけを、締切の早い順に見る。
+// 今と締切の比較は現在時刻(new Date())で行う。件数は資料枠の単位で数え、見出しの「必須枠の未提出」とそろえる。
+function ownTeamDeadlines(rows: { announcement: Announcement; missing: number }[]) {
+  const now = new Date();
+  const pending = rows
+    .filter((row) => row.missing > 0)
+    .sort(
+      (x, y) =>
+        new Date(x.announcement.submissionDeadline).getTime() - new Date(y.announcement.submissionDeadline).getTime()
+    );
+  const isOverdue = (a: Announcement) => now > new Date(a.submissionDeadline);
+  return {
+    overdue: pending.filter((row) => isOverdue(row.announcement)),
+    next: pending.find((row) => !isOverdue(row.announcement)) ?? null,
+  };
+}
+
 // 通知を送らない(2026-07-24 決定)ので、締切と未提出の可視化はこの一覧が最後の砦。必須枠の未提出だけを強調する(H-15)。
 function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; team: Team }) {
   const rows = announcements.map((a) => {
@@ -177,6 +183,9 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
     return { announcement: a, slots };
   });
   const missingCount = rows.reduce((sum, row) => sum + row.slots.filter((s) => s.missingRequired).length, 0);
+  const { overdue, next } = ownTeamDeadlines(
+    rows.map((row) => ({ announcement: row.announcement, missing: row.slots.filter((s) => s.missingRequired).length }))
+  );
 
   return (
     <section className="mt-8">
@@ -187,6 +196,24 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
           <Badge tone={missingCount > 0 ? "rose" : "emerald"}>{missingCount}件</Badge>
         </span>
       </div>
+      {(overdue.length > 0 || next) && (
+        <ul className="mb-3 flex flex-col gap-1.5 text-sm">
+          {overdue.map(({ announcement: a, missing }) => (
+            <li key={a.id} className="rounded-md bg-rose-50 px-3 py-2 font-semibold text-rose-700 ring-1 ring-rose-200">
+              締切超過：{a.title} {formatShortDate(a.submissionDeadline)}(未提出 {missing}件)
+            </li>
+          ))}
+          {next && (
+            <li className="text-slate-500">
+              直近の締切：
+              <span className="font-semibold text-slate-900">
+                {next.announcement.title} {formatShortDateTime(next.announcement.submissionDeadline)}
+              </span>
+              (未提出 {next.missing}件)
+            </li>
+          )}
+        </ul>
+      )}
       <div id="home-own-slots" className="grid gap-3 md:grid-cols-2">
         {rows.map(({ announcement: a, slots }) => (
           <Card key={a.id} className="shadow-sm shadow-slate-900/5">
@@ -251,38 +278,6 @@ function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; 
   );
 }
 
-function RingTile({
-  href,
-  label,
-  percent,
-  caption,
-}: {
-  href: string;
-  label: string;
-  percent: number;
-  caption: string;
-}) {
-  return (
-    <CardLink
-      href={href}
-      className="flex items-center gap-4 shadow-sm shadow-slate-900/5 hover:-translate-y-0.5 hover:shadow-md hover:shadow-brand-500/20"
-    >
-      <div
-        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
-        style={{ background: `conic-gradient(#1a73e8 0% ${percent}%, #e2e8f0 ${percent}% 100%)` }}
-      >
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xs font-semibold text-brand-700">
-          {percent}%
-        </div>
-      </div>
-      <div>
-        <p className="text-xs text-slate-500">{label}</p>
-        <p className="mt-0.5 text-sm font-semibold text-slate-900">{caption}</p>
-      </div>
-    </CardLink>
-  );
-}
-
 function StatTile({
   href,
   label,
@@ -294,7 +289,7 @@ function StatTile({
   href: string;
   label: string;
   value: string;
-  caption: string;
+  caption?: string;
   icon: ReactNode;
   iconColor: string;
 }) {
@@ -309,13 +304,13 @@ function StatTile({
       <div>
         <p className="text-xl font-semibold text-slate-900">{label}</p>
         <p className="mt-1 text-xs text-slate-500">{value}</p>
-        <p className="mt-1 text-xs text-slate-400">{caption}</p>
+        {caption && <p className="mt-1 text-xs text-slate-400">{caption}</p>}
       </div>
     </CardLink>
   );
 }
 
-// ホームのStatTile/RingTileで使うアイコン(丸背景)。全ロール共通。
+// ホームのStatTileで使うアイコン(丸背景)。全ロール共通。
 function AnnounceIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -374,30 +369,135 @@ function UsersAdminIcon() {
   );
 }
 
-function teacherRing(announcements: Announcement[], teams: Team[]) {
-  const totalSlots = announcements.length * teams.length;
-  const totalSubmitted = announcements.reduce(
-    (sum, a) => sum + teams.filter((t) => isFullySubmitted(a, t.id)).length,
-    0
+// 先生のホームの「発表の進行」。生徒のホームの ProgressSection(全員に共通する土台)と同じ見出し・開閉・行で、
+// 先生のホームから引かないために置く(SC-02:T が SC-07 へ行く入口は、この欄の「タイムテーブルを見る」)。
+// ProgressSection は手書きの status・isPublished・モックの currentPresentingTeamId を読むので、先生のときは
+// デモ用の時刻・共有状態(useTimetable)で同じ形を描く。機能や仕組みを説明するだけの注記(非公開のプレビューである旨など)は置かない。
+function TeacherProgressSection({ announcement: a }: { announcement: Announcement }) {
+  const [open, setOpen] = useState(false);
+  const { timetable, period } = useTimetable(a.id);
+  return (
+    <section className="mt-8">
+      <ToggleHeading
+        open={open}
+        onToggle={() => setOpen((v) => !v)}
+        controls="home-progress"
+        action={
+          <Link href={`/announcements/${a.id}/timetable`} className="text-sm text-brand-600 hover:underline">
+            タイムテーブルを見る →
+          </Link>
+        }
+      >
+        発表の進行({a.title})
+      </ToggleHeading>
+      {open && (
+        <div id="home-progress">
+          {timetable && period === "終了" ? (
+            <InlineNotice tone="info">この発表会の発表は終了しました。</InlineNotice>
+          ) : (
+            <TimetableRows timetable={timetable && nearbySlots(timetable)} announcementId={a.id} />
+          )}
+        </div>
+      )}
+    </section>
   );
-  const percent = totalSlots === 0 ? 0 : Math.round((totalSubmitted / totalSlots) * 100);
-  const urgent = findNextUrgent(announcements, (a) => teams.every((t) => isFullySubmitted(a, t.id)));
-  const caption = urgent
-    ? `${totalSubmitted}/${totalSlots}完了・${urgent.title}が${
-        new Date() > new Date(urgent.submissionDeadline) ? "締切超過" : "締切間近"
-      }`
-    : `${totalSubmitted}/${totalSlots}完了・すべて提出済み`;
-  return { percent, caption };
 }
 
-function ownTeamRing(announcements: Announcement[], ownTeamId: string) {
-  const doneCount = announcements.filter((a) => isFullySubmitted(a, ownTeamId)).length;
-  const percent = announcements.length === 0 ? 0 : Math.round((doneCount / announcements.length) * 100);
-  const urgent = findNextUrgent(announcements, (a) => isFullySubmitted(a, ownTeamId));
-  const caption = urgent
-    ? `${doneCount}/${announcements.length}回完了・次は${urgent.title}(締切${formatShortDate(urgent.submissionDeadline)})`
-    : `${doneCount}/${announcements.length}回完了・すべて提出済み`;
-  return { percent, caption };
+// 先生のホーム。生徒のホームとは別のコンポーネントにして、デモ用の時刻・先生の共有状態のフックをここで呼ぶ
+// (生徒の分岐 = 動画の区間 B・C の描画は変えない)。手書きの status・モックの currentPresentingTeamId は読まない。
+// 旧 teacherRing(「x/y完了・〇〇発表会が締切間近」→ 押すと一覧へ)は削除した。
+function TeacherHome({
+  year,
+  announcements,
+  teams,
+  archivedYearCount,
+  permissionText,
+}: {
+  year: Year;
+  announcements: Announcement[];
+  teams: Team[];
+  archivedYearCount: number;
+  permissionText: string;
+}) {
+  const focus = useTeacherFocusAnnouncement(announcements);
+  const { currentPresentingTeamId } = useTimetable(focus?.id ?? "");
+  const { teachers } = useTeacherRoster();
+  const presentingTeam = focus && currentPresentingTeamId ? getTeamById(currentPresentingTeamId) : null;
+
+  return (
+    <div className="mx-auto max-w-6xl">
+      <PageHeader eyebrow={year.label} title="ホーム" />
+
+      {focus && presentingTeam && (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-5 py-4">
+          <p className="text-sm font-medium text-rose-700">
+            いま発表中：{presentingTeam.name}(「{focus.title}」)
+          </p>
+          <Link
+            href={`/announcements/${focus.id}/teams/${presentingTeam.id}`}
+            className="text-xs font-semibold text-rose-700 underline underline-offset-2"
+          >
+            発表を見る
+          </Link>
+        </div>
+      )}
+
+      <section className="mt-6">
+        <TeacherNextAction announcements={announcements} />
+      </section>
+
+      {focus && <TeacherProgressSection announcement={focus} />}
+
+      <section className="mt-8">
+        <SectionHeading>YSE Compassでできること</SectionHeading>
+        {/* 進み具合のリングは置かない。特定の発表会の状況と催促は「次にやること」に寄せ、ここはラベルと遷移先が一致する入口だけにする。 */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatTile
+            href="/announcements"
+            label="発表会一覧"
+            value={`${announcements.length}件`}
+            icon={<AnnounceIcon />}
+            iconColor="bg-brand-50 text-brand-600"
+          />
+          <StatTile
+            href="/teams"
+            label="チーム"
+            value={`${teams.length}チーム`}
+            icon={<TeamIcon />}
+            iconColor="bg-violet-50 text-violet-500"
+          />
+          <StatTile
+            href="/archive"
+            label="アーカイブ"
+            value={`${archivedYearCount}年度分`}
+            icon={<ArchiveIcon />}
+            iconColor="bg-slate-100 text-slate-500"
+          />
+          <StatTile
+            href="/admin/years"
+            label="年度管理"
+            value={year.label}
+            icon={<CalendarIcon />}
+            iconColor="bg-brand-50 text-brand-600"
+          />
+          <StatTile
+            href="/admin/publish-permissions"
+            label="公開許可管理"
+            value={permissionText}
+            icon={<PermissionIcon />}
+            iconColor="bg-brand-50 text-brand-600"
+          />
+          <StatTile
+            href="/admin/users"
+            label="先生の登録・解除"
+            value={`先生 ${teachers.length}名`}
+            icon={<UsersAdminIcon />}
+            iconColor="bg-brand-50 text-brand-600"
+          />
+        </div>
+      </section>
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -422,6 +522,18 @@ export default function HomePage() {
 
   const archivedTeams = archivedYears.flatMap((y) => getTeamsByYear(y.id));
   const permissionSetCount = archivedTeams.filter((t) => t.publishPermission !== "未設定").length;
+
+  if (teacher) {
+    return (
+      <TeacherHome
+        year={year}
+        announcements={announcements}
+        teams={teams}
+        archivedYearCount={archivedYears.length}
+        permissionText={`${permissionSetCount}/${archivedTeams.length}件設定済み`}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -449,60 +561,16 @@ export default function HomePage() {
       <section className="mt-8">
         <SectionHeading>YSE Compassでできること</SectionHeading>
 
-        {teacher && (
-          <>
-            <RingTile href="/announcements" label="発表会の提出進捗" {...teacherRing(announcements, teams)} />
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              <StatTile
-                href="/teams"
-                label="チーム"
-                value={`${teams.length}チーム`}
-                caption="メンバー・提出資料を見る"
-                icon={<TeamIcon />}
-                iconColor="bg-violet-50 text-violet-500"
-              />
-              <StatTile
-                href="/archive"
-                label="アーカイブ"
-                value={`${archivedYears.length}年度分`}
-                caption="過去の卒業制作を検索・閲覧"
-                icon={<ArchiveIcon />}
-                iconColor="bg-slate-100 text-slate-500"
-              />
-              <StatTile
-                href="/admin/years"
-                label="年度管理"
-                value={year.label}
-                caption="年度の開始・アーカイブ操作"
-                icon={<CalendarIcon />}
-                iconColor="bg-brand-50 text-brand-600"
-              />
-              <StatTile
-                href="/admin/publish-permissions"
-                label="公開許可管理"
-                value={`${permissionSetCount}/${archivedTeams.length}件設定済み`}
-                caption="卒業生の公開許可を管理"
-                icon={<PermissionIcon />}
-                iconColor="bg-brand-50 text-brand-600"
-              />
-              <StatTile
-                href="/admin/users"
-                label="ユーザー管理"
-                value={`${users.length}アカウント`}
-                caption="ロールの確認・変更"
-                icon={<UsersAdminIcon />}
-                iconColor="bg-brand-50 text-brand-600"
-              />
-            </div>
-          </>
-        )}
-
         {!teacher && ownTeam && (
           <>
-            <RingTile
+            {/* 進捗は上の資料枠の見出しに出すので、ここは自チーム詳細(SC-14)への入口に徹する */}
+            <StatTile
               href={`/teams/${ownTeam.id}`}
-              label={`自チームの提出状況(${ownTeam.name})`}
-              {...ownTeamRing(announcements, ownTeam.id)}
+              label={`自チーム(${ownTeam.name})`}
+              value="発表会ごとの提出状況・メンバー"
+              caption="自チームの詳細を見る"
+              icon={<TeamIcon />}
+              iconColor="bg-brand-50 text-brand-600"
             />
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <StatTile

@@ -12,11 +12,11 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
 };
 
+// ボタンの見た目のクラス。<a> をボタンの見た目で置くとき(別タブで開くリンクなど)にも使う。
+export function buttonClassName(variant: ButtonVariant = "secondary", className = ""): string {
+  return `inline-flex items-center justify-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed ${variantClasses[variant]} ${className}`;
+}
+
 export function Button({ variant = "secondary", className = "", ...props }: ButtonProps) {
-  return (
-    <button
-      className={`inline-flex items-center justify-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed ${variantClasses[variant]} ${className}`}
-      {...props}
-    />
-  );
+  return <button className={buttonClassName(variant, className)} {...props} />;
 }

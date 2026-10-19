@@ -197,13 +197,13 @@ erDiagram
         string slot_type
         timestamp deadline "nullable・H-27未決"
         boolean is_required
-        string template_url "nullable"
+        text template_url "nullable"
     }
     SUBMISSION {
         int id PK
         int team_id FK
         int material_slot_id FK
-        string url
+        text url
         timestamp first_submitted_at
         timestamp last_submitted_at
     }
@@ -428,7 +428,7 @@ erDiagram
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK・UNIQUE(id, event_occasion_id) | — |
-| team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, event_occasion_id) | 発表の粒度＝チーム×発表会 |
+| team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, event_occasion_id) | 発表の粒度＝チーム×発表会（`../glossary.md` §4・2026-07-24） |
 | event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 同上。`UNIQUE(id, event_occasion_id)` は `event_occasions.current_presentation_id` の複合 FK（6-3 `event_occasions`）を成立させるための制約 |
 | display_order | int | NULL | — | UNIQUE(event_occasion_id, display_order) DEFERRABLE INITIALLY DEFERRED | 発表エンティティの整数属性（H-5 決着）。**開始時刻・所要・休憩の列は追加しない（H-20・新規未決）**。**列名は `order` から改名**：`ORDER` は PostgreSQL の予約語で、生 SQL・ビュー・手動マイグレーションで引用符が必要になり事故りやすい |
 
@@ -451,20 +451,20 @@ erDiagram
 | user_id | int | NOT NULL | — | FK → users.id | 実名表示（`../requirements.md` §3-9） |
 | parent_comment_id | int | NULL | — | FK → comments.id | 発表チームの返信をスレッドとして辿る（§3-9） |
 | label | varchar | NULL | — | CHECK（感想／批評／その他の3値） | 感想／批評／その他。絞り込みに使う |
-| body | text | NOT NULL | — | — | — |
-| created_at | timestamp | NOT NULL | now() | — | 新着反映はリアルタイム不要（再取得でよい・§3-9） |
+| body | text | NOT NULL | — | — | コメント本文（`../requirements.md` §3-9「コメントを投稿」） |
+| created_at | timestamp | NOT NULL | now() | — | 投稿日時。コメント一覧の並び順に使う。新着の反映はリアルタイム不要で、再取得でよい（§3-9） |
 
 > **編集・削除列は持たない。** 投稿者自身の編集・削除、先生によるモデレーションの要否は **T-2 未決**。決着まで「投稿は消えない」前提で組む。
 
 ### `presentation_likes`（発表へのいいね）／`comment_likes`（コメントへのいいね）
 
-対応する語彙：`../glossary.md` §4／`../requirements.md` §3-9
+対応する語彙：`../glossary.md` §1（粒度の一覧：コメント・いいね → 発表）・§4 発表／`../requirements.md` §3-9
 
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
-| presentation_id / comment_id | int | NOT NULL | — | FK・UNIQUE(対象, user_id) | 1人1回のいいね |
-| user_id | int | NOT NULL | — | FK → users.id | — |
+| presentation_id / comment_id | int | NOT NULL | — | FK・UNIQUE(対象, user_id) | 1人1回のいいね。**`../requirements.md` §3-9 は「いいねできる」「いいね数が表示される」とだけ書き、1人1回は明記していない。06 の設計判断**（二重押しを防ぐ） |
+| user_id | int | NOT NULL | — | FK → users.id | いいねした人。上の「1人1回」を守るために要る |
 
 > **対象ごとに2テーブルへ分離し、汎用の `likeable_type` は持たない**（2026-09-11 設計判断）。対象の種類が増える見込みは正典に無い（禁則1）。
 

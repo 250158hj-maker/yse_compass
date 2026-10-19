@@ -134,6 +134,8 @@ erDiagram
     COMMENT ||--o{ COMMENT_LIKE : "いいねされる"
     USER ||--o{ PRESENTATION_LIKE : "いいねする"
     USER ||--o{ COMMENT_LIKE : "いいねする"
+    USER |o--o{ WORK : "公開許可を設定する"
+    EVENT_OCCASION |o--o| PRESENTATION : "いま発表中を指す"
 ```
 
 > **「発表」は「チーム×発表会」の安定エンティティ**（`../glossary.md` §4）。コメント・いいね・発表順はここにぶら下がる。
@@ -433,7 +435,7 @@ erDiagram
 | display_order | int | NULL | — | UNIQUE(event_occasion_id, display_order) DEFERRABLE INITIALLY DEFERRED | 発表エンティティの整数属性（H-5 決着）。**開始時刻・所要・休憩の列は追加しない（H-20・新規未決）**。**列名は `order` から改名**：`ORDER` は PostgreSQL の予約語で、生 SQL・ビュー・手動マイグレーションで引用符が必要になり事故りやすい |
 
 > **コメント・いいねのアンカーはこのテーブル**（2026-07-24）。差し替え・リンク変更で対象がずれない安定エンティティ。
-> **一意制約は `DEFERRABLE INITIALLY DEFERRED`**（`../decisions.md` 2026-09-21）：発表順の並び替えは「ほぼ毎回」起きる主要操作（`../hearing.md` §7-1）で、2チームの順番を1トランザクション内で入れ替える際に一時的な重複が生じうる。トランザクション終了時まで制約チェックを遅延させることで、一括更新を1本のUPDATEで書ける。**`display_order` が NULL の行**（発表順がまだ決まっていない）は、タイムテーブル・概要集の並びでは最後尾に置く
+> **一意制約は `DEFERRABLE INITIALLY DEFERRED`**（`../decisions.md` 2026-09-21）：発表順の並び替えは「ほぼ毎回」起きる主要操作（`../hearing.md` §7-1）で、2チームの順番を1トランザクション内で入れ替える際に一時的な重複が生じうる。トランザクション終了時まで制約チェックを遅延させることで、一括更新を1本のUPDATEで書ける。**`display_order` が NULL の行**（発表順がまだ決まっていない）は、タイムテーブル・概要集の並びでは最後尾に置く（この並べ方は 06 の設計判断。出典なし）
 > **行の生成タイミング**：**年度セットアップとチーム登録のどちらが先でも成立する形**で生成する（`../decisions.md` 2026-09-21）。
 > - チーム作成時：そのチームの年度に、既に存在する `event_occasions` があれば、その分だけ `presentations` 行を生成する（`display_order` は NULL）
 > - 年度セットアップ実行時（4発表会を生成する操作）：その年度に既に存在するチームがあれば、新しく生成した各 `event_occasion` に対して不足している `(team, event_occasion)` の `presentations` 行を補って生成する
@@ -456,7 +458,7 @@ erDiagram
 
 > **返信の親は、同じ発表のコメントに限る（アプリ層で守る）。** `parent_comment_id` は `comments.id` への単一列の外部キーなので、別の発表のコメントを親にした返信を DB は受け入れる。`event_occasions.current_presentation_id` のような複合外部キーにはしない（`comments(id, presentation_id)` の一意と schema の変更が要り、コメントを参照する外部キーの動作は T-2 に依存して範囲外のため）。`submissions` の注と同じ扱い。
 
-> **編集・削除列は持たない。** 投稿者自身の編集・削除、先生によるモデレーションの要否は **T-2 未決**。決着まで「投稿は消えない」前提で組む。
+> **編集・削除列は持たない。** 投稿者自身の編集・削除、先生によるモデレーションの要否は **T-2 未決**。決着まで「投稿は消えない」前提で組む。**決着時に変わる箇所**：許す場合は編集日時・削除の印などの列を足す（NULL 可の追加で済む）。削除の形（行ごと消す／「削除されました」と表示して返信を残す）で必要な列と、コメントを参照する外部キー（`parent_comment_id`・`comment_likes.comment_id`）の動作が変わる（6-7）。**未決 ID**：T-2。
 
 ### `presentation_likes`（発表へのいいね）／`comment_likes`（コメントへのいいね）
 
@@ -465,7 +467,7 @@ erDiagram
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
-| presentation_id / comment_id | int | NOT NULL | — | FK・UNIQUE(対象, user_id) | 1人1回のいいね。**`../requirements.md` §3-9 は「いいねできる」「いいね数が表示される」とだけ書き、1人1回は明記していない。06 の設計判断**（二重押しを防ぐ） |
+| presentation_id / comment_id | int | NOT NULL | — | FK → presentations.id（`presentation_likes`）／comments.id（`comment_likes`）・UNIQUE(対象, user_id) | 1人1回のいいね。**`../requirements.md` §3-9 は「いいねできる」「いいね数が表示される」とだけ書き、1人1回は明記していない。06 の設計判断**（二重押しを防ぐ） |
 | user_id | int | NOT NULL | — | FK → users.id | いいねした人。上の「1人1回」を守るために要る |
 
 > **対象ごとに2テーブルへ分離し、汎用の `likeable_type` は持たない**（2026-09-11 設計判断）。対象の種類が増える見込みは正典に無い（禁則1）。

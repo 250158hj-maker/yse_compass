@@ -452,7 +452,7 @@ erDiagram
 | presentation_id | int | NOT NULL | — | FK → presentations.id | アンカーは発表単位（2026-07-24） |
 | user_id | int | NOT NULL | — | FK → users.id | 実名表示（`../requirements.md` §3-9） |
 | parent_comment_id | int | NULL | — | FK → comments.id | 発表チームの返信をスレッドとして辿る（§3-9） |
-| label | varchar | NULL | — | CHECK（感想／批評／その他の3値） | 感想／批評／その他。絞り込みに使う。付けなければ NULL（ラベルなし）で、「その他」とは別の状態 |
+| label | varchar | NULL | — | CHECK（感想／批評／その他の3値） | 感想／批評／その他。絞り込みに使う。付けなければ NULL（ラベルなし）で、「その他」とは別の状態。**`../requirements.md` §3-9 は、ラベルなしのコメントを許すかを明記していない。06 の設計判断**（必須にするか、NULL を「その他」と同じに扱うかは、画面側の答えで変わりうる） |
 | body | text | NOT NULL | — | — | コメント本文（`../requirements.md` §3-9「コメントを投稿」） |
 | created_at | timestamp | NOT NULL | now() | — | 投稿日時。コメント一覧の並び順に使う。新着の反映はリアルタイム不要で、再取得でよい（§3-9） |
 

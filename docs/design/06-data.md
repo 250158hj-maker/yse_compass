@@ -17,11 +17,11 @@
 >   - `material_slots`：`deadline` の NULL 可否（H-27）と型（H-39）
 >   - `submissions`：`url`（Drive 統合の範囲・未決 No.10。リンクの形が変わる）、`first_submitted_at`・`last_submitted_at` の型（H-39）
 >   - `summaries`：`tech_stack` の型（T-3）、`first_submitted_at`・`last_submitted_at` の型（H-39）
->   - `presentations`：時刻枠（開始時刻・所要・休憩）を列として持たない前提（H-20）
->   - `comments`：編集・削除の列を持たない前提（T-2）、`created_at` の型（H-39）
-> - **確定に含めないもの（共通）**：①列の集合の完全さ（確定するのは挙げた列の定義で、挙げていない列が無いことまでは保証しない）　②各テーブルの表の下の注のうち、範囲外の節や未決を指す文　③上流が TODO の根拠：`teams`・`team_members`・`users` の上流（`../requirements.md` §3-8・§3-6）は、できること・受け入れ基準が TODO のまま。この 3 テーブルの根拠は `../glossary.md` と `../decisions.md` に限られ、上流が埋まったとき、確定した列が変わりうる
+>   - `presentations`：時刻枠（開始時刻・所要・休憩）を列として持たない前提（H-20）、表の下の「行の生成タイミング」の注（H-46 の決着で見直す。「クラスに属さないチームを許す」案を採ると、「そのチームの年度に」が `team → class → fiscal_year` で引けなくなる）
+>   - `comments`：編集・削除の列を持たない前提（T-2）、`created_at` の型と既定値 `now()`（H-39。`timestamp` の列に `now()` が入る値は、型を `timestamptz` にするかどうかで変わる）
+> - **確定に含めないもの（共通）**：①列・テーブル・関連の集合の完全さ（確定するのは挙げた列の定義で、挙げていない列・テーブル・関連が無いことまでは保証しない。たとえば H-20 の「タイムテーブルの行」の実体が ER 図に無いことは保証しない）。**ER 図は 6-3 から描いたもので、図に無い制約は 6-3 が正**（複合の UNIQUE、複合外部キーが複合であること〔`teams.leader_member_id`・`event_occasions.current_presentation_id`〕は図に描いていない）　②各テーブルの表の下の注のうち、範囲外の節や未決を指す文　③上流が TODO の根拠：`teams`・`team_members`・`users` の上流（`../requirements.md` §3-8・§3-6）は、できること・受け入れ基準が TODO のまま。この 3 テーブルの根拠は `../glossary.md` と `../decisions.md` に限られ、上流が埋まったとき、確定した列が変わりうる
 > - **範囲外の節**：6-4〜6-7（索引方針の 6-5 を含む）、参照動作（コメントを参照する外部キーの動作が T-2 に依存する）
-> - **レビューする論点**：①各列が `../glossary.md`・`../requirements.md` のどの記述に対応するか（根拠の欄）が足りているか　②外部キーの向きと UNIQUE が、語彙の関係（チーム・メンバー・リーダー、資料枠・提出、発表・コメント・いいね）と合っているか　③NULL 可否が運用（先生がチームを作る・年度セットアップが資料枠を生成する）と合っているか　④型・既定値・CHECK が、正典の記述（`../glossary.md`・`../requirements.md`・`../decisions.md`）と合っているか。このほか、6-2 の論理 ER 図の属性・カーディナリティが 6-3 と一致しているか（#124）
+> - **レビューする論点**：①各列が `../glossary.md`・`../requirements.md` のどの記述に対応するか（根拠の欄）が足りているか　②外部キーの向きと UNIQUE が、語彙の関係（チーム・メンバー・リーダー、資料枠・提出、発表・コメント・いいね）と合っているか　③NULL 可否が運用（先生がチームを作る・年度セットアップが資料枠を生成する）と合っているか　④型・既定値・CHECK が、正典の記述（`../glossary.md`・`../requirements.md`・`../decisions.md`）と合っているか。⑤6-1・6-2 の ER 図が 6-3 と一致し、関連の名前が正典と合っているか（#124。6-1 は属性を持たず、関連の名前とカーディナリティを持つ図なので、6-2 と照らすだけでなく、関連の名前の出典も見る）　⑥未決の先行方針の見直し（#124。H-20・H-26・H-27・H-32・T-2。結論は下の欄に書く）
 > - **結論**：（レビューで埋める。結論が出ていない論点がある間は、確度を上げない）
 
 ## この章が答える問い
@@ -450,7 +450,7 @@ erDiagram
 | presentation_id | int | NOT NULL | — | FK → presentations.id | アンカーは発表単位（2026-07-24） |
 | user_id | int | NOT NULL | — | FK → users.id | 実名表示（`../requirements.md` §3-9） |
 | parent_comment_id | int | NULL | — | FK → comments.id | 発表チームの返信をスレッドとして辿る（§3-9） |
-| label | varchar | NULL | — | CHECK（6-4 の3値） | 感想／批評／その他。絞り込みに使う |
+| label | varchar | NULL | — | CHECK（感想／批評／その他の3値） | 感想／批評／その他。絞り込みに使う |
 | body | text | NOT NULL | — | — | — |
 | created_at | timestamp | NOT NULL | now() | — | 新着反映はリアルタイム不要（再取得でよい・§3-9） |
 

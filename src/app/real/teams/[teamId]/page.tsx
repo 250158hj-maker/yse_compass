@@ -27,8 +27,9 @@ export default async function RealTeamDetailPage({ params }: { params: Promise<{
         meta={
           <>
             <Badge tone="brand">{team.class.name}</Badge>
-            <span>{fiscalYear.year}年度</span>
-            <span>・{team.work?.title ?? "作品名は未入力"}</span>
+            <span>
+              {fiscalYear.year}年度・{team.work?.title ?? "作品名は未入力"}
+            </span>
           </>
         }
       />

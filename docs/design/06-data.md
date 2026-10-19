@@ -450,9 +450,11 @@ erDiagram
 | presentation_id | int | NOT NULL | — | FK → presentations.id | アンカーは発表単位（2026-07-24） |
 | user_id | int | NOT NULL | — | FK → users.id | 実名表示（`../requirements.md` §3-9） |
 | parent_comment_id | int | NULL | — | FK → comments.id | 発表チームの返信をスレッドとして辿る（§3-9） |
-| label | varchar | NULL | — | CHECK（感想／批評／その他の3値） | 感想／批評／その他。絞り込みに使う |
+| label | varchar | NULL | — | CHECK（感想／批評／その他の3値） | 感想／批評／その他。絞り込みに使う。付けなければ NULL（ラベルなし）で、「その他」とは別の状態 |
 | body | text | NOT NULL | — | — | コメント本文（`../requirements.md` §3-9「コメントを投稿」） |
 | created_at | timestamp | NOT NULL | now() | — | 投稿日時。コメント一覧の並び順に使う。新着の反映はリアルタイム不要で、再取得でよい（§3-9） |
+
+> **返信の親は、同じ発表のコメントに限る（アプリ層で守る）。** `parent_comment_id` は `comments.id` への単一列の外部キーなので、別の発表のコメントを親にした返信を DB は受け入れる。`event_occasions.current_presentation_id` のような複合外部キーにはしない（`comments(id, presentation_id)` の一意と schema の変更が要り、コメントを参照する外部キーの動作は T-2 に依存して範囲外のため）。`submissions` の注と同じ扱い。
 
 > **編集・削除列は持たない。** 投稿者自身の編集・削除、先生によるモデレーションの要否は **T-2 未決**。決着まで「投稿は消えない」前提で組む。
 

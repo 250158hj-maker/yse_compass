@@ -9,15 +9,18 @@
 
 > [!note] 確定の範囲（2026-10-19 のレビュー対象）
 > **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
-> - **対象**：6-3 の次の 10 テーブルの列定義（列名・型・NULL・既定値・制約・対応する語彙）— 基盤：`fiscal_years`・`classes`・`teams`・`team_members`・`works`・`users`、背骨：`event_occasions`・`material_slots`・`submissions`・`summaries`
+> - **対象**：6-3 の次の 10 テーブルの列定義（列名・型・NULL・既定値・制約・対応する語彙・根拠）— 基盤：`fiscal_years`・`classes`・`teams`・`team_members`・`works`・`users`、背骨：`event_occasions`・`material_slots`・`submissions`・`summaries`
 > - **上の 10 テーブルの中でも、確定に含めない列・記述**（10/20 に見直す先行方針、または未決に依存するため）：
->   - `users`：先生の事前登録の持ち方とホワイトリストの実体（H-26）、利用者の同一性のキー（H-32）
+>   - `users`：確定に含めるのは `id`・`role` だけ。`email`（利用者の同一性のキー・H-32）と `name`（先生の事前登録とホワイトリストの実体・H-26）は含めない
+>   - `teams`：`class_id` の NULL 可否（H-46。「チームがクラスに属さない状態を許す」案の決着で変わる）
 >   - `team_members`：年度をまたいだ引き換えの扱い（`user_id` の UNIQUE が効く範囲。本文が「本節では決めない」としている部分）
 >   - `event_occasions`：`current_presentation_id`（参照先の `presentations` が範囲外）
->   - `material_slots`：`deadline` の NULL 可否（H-27）
->   - `summaries`：`tech_stack` の型（T-3）
+>   - `material_slots`：`deadline` の NULL 可否（H-27）と型（H-39）
+>   - `submissions`：`url`（Drive 統合の範囲・未決 No.10。リンクの形が変わる）、`first_submitted_at`・`last_submitted_at` の型（H-39）
+>   - `summaries`：`tech_stack` の型（T-3）、`first_submitted_at`・`last_submitted_at` の型（H-39）
+> - **確定に含めないもの（共通）**：①列の集合の完全さ（確定するのは挙げた列の定義で、挙げていない列が無いことまでは保証しない）　②各テーブルの表の下の注のうち、範囲外の節や未決を指す文
 > - **範囲外の節**：6-1・6-2 の ER 図（全テーブルを含む 1 枚なので、一部だけ確定できない。10/20 のレビューで扱う）、6-3 のうち後段の `presentations`・`comments`・いいね 2 テーブル（10/20 のレビュー）、6-4〜6-7（索引方針の 6-5 を含む）、参照動作
-> - **レビューする論点**：①各列が `../glossary.md`・`../requirements.md` のどの記述に対応するか（根拠の欄）が足りているか　②外部キーの向きと UNIQUE が、語彙の関係（チーム・メンバー・リーダー、資料枠・提出）と合っているか　③NULL 可否が運用（先生がチームを作る・年度セットアップが資料枠を生成する）と合っているか
+> - **レビューする論点**：①各列が `../glossary.md`・`../requirements.md` のどの記述に対応するか（根拠の欄）が足りているか　②外部キーの向きと UNIQUE が、語彙の関係（チーム・メンバー・リーダー、資料枠・提出）と合っているか　③NULL 可否が運用（先生がチームを作る・年度セットアップが資料枠を生成する）と合っているか　④型・既定値・CHECK が、正典の記述（`../glossary.md`・`../requirements.md`・`../decisions.md`）と合っているか
 > - **結論**：（レビューで埋める。結論が出ていない論点がある間は、確度を上げない）
 
 ## この章が答える問い
@@ -95,7 +98,7 @@
 
 ## 現在の状態
 
-**初稿。** 正典から直接読めない箇所は、未決 H-20・H-26・H-27 として `../open-questions.md` に起票し、先行方針（同 §7）で組んだ。**全体が確度「暫定」でレビュー未了**（`../../CLAUDE.md` 禁則6）— 他章から「決定」として引用しないこと。
+**初稿。** 正典から直接読めない箇所は、未決 H-20・H-26・H-27 として `../open-questions.md` に起票し、先行方針（同 §7）で組んだ。**冒頭の「確定の範囲」を除いて、確度「暫定」でレビュー未了**（`../../AGENTS.md` 禁則6）— 範囲の外は、他章から「決定」として引用しないこと。
 
 > **2026-09-28 更新：H-29（所属はメンバー行）と `decisions.md` 2026-09-22の行（リーダーの参照先はメンバー行）を ER・テーブル定義へ反映した。** `team_members`（メンバー）テーブルを新設し、`users.team_id` は廃止、`teams.leader_user_id` は `teams.leader_member_id` へ改名して `team_members` を参照する形にした（6-2・6-3）。`09-nfr.md` が文脈判定を「06 待ち」と書いているのはこの箇所で、これで実行主体側の所属の取り方（`team_members.user_id` からの逆引き）が定まった。
 

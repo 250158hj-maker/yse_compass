@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { isId } from "@/lib/ids";
 import { prisma } from "@/lib/prisma";
 import { TeamError, addMember, createTeam, renameMember, setLeader, updateTeam, type Actor, type CreateTeamInput, type TeamErrorCode } from "@/lib/data/teams";
 
@@ -11,7 +12,6 @@ import { TeamError, addMember, createTeam, renameMember, setLeader, updateTeam, 
 // 引数の形だけを確かめる（Server Action は画面の型を通らずに直接呼べるため）。値の範囲や規則はデータ層が確かめる。ロールの判定はここに足さない。
 export type TeamActionResult<T> = { ok: true; data: T } | { ok: false; code: TeamErrorCode | "unauthenticated" };
 
-const isId = (x: unknown): x is number => Number.isInteger(x) && (x as number) > 0;
 const isText = (x: unknown): x is string => typeof x === "string";
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
 const isOptional = (x: unknown, check: (v: unknown) => boolean) => x === undefined || check(x);

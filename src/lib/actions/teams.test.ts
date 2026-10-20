@@ -108,6 +108,8 @@ describeDb("チームの Server Action", () => {
       const bad = { ok: false, code: "invalid_input" };
       // Prisma の演算子オブジェクトなど、型の上では来ないが直接呼べば届く値
       expect(await setLeaderAction(team.id, { increment: 1 } as never)).toEqual(bad);
+      // integer の範囲外の ID は、DB に渡す前に弾く（渡すと例外になり、500 になる）。
+      expect(await setLeaderAction(2147483648, null)).toEqual(bad);
       expect(await setLeaderAction(1.5, memberIds[0])).toEqual(bad);
       expect(await addMemberAction(team.id, 123 as never)).toEqual(bad);
       expect(await renameMemberAction("1" as never, "x")).toEqual(bad);

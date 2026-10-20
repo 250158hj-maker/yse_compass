@@ -1,11 +1,30 @@
 # 06. データ設計
 
 > **位置づけ**：語彙をどうテーブルへ落とすか — ER・テーブル定義・コード定義を答える
-> **確度**：**暫定（レビュー未了）**
+> **確度**：**暫定（レビュー未了）。ただし、下の「確定の範囲」に挙げた部分だけ確定**
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-10-16（水戸）
+> **最終更新**：2026-10-19（蒲山）
+
+> [!note] 確定の範囲（2026-10-19 のレビュー対象）
+> **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
+> - **対象**：6-3 の次の 10 テーブルの列定義（列名・型・NULL・既定値・制約・対応する語彙・根拠）— 基盤：`fiscal_years`・`classes`・`teams`・`team_members`・`works`・`users`、背骨：`event_occasions`・`material_slots`・`submissions`・`summaries`
+> - **上の 10 テーブルの中でも、確定に含めない列・記述**（10/20 に見直す先行方針、または未決に依存するため）：
+>   - `users`：確定に含めるのは `id`・`role` だけ。ただし `id` の型（`serial`）は含めない（H-30 ④。Auth.js の Prisma Adapter を採ると、利用者の id を文字列で渡すため、型が変わりうる。`team_members.user_id`・`works.consent_set_by` の型も連動するので、同じく含めない）。`email`（利用者の同一性のキー・H-32）と `name`（先生の事前登録とホワイトリストの実体・H-26）は含めない
+>   - `works`：`consent_set_by` の型（H-30 ④。`users.id` の型に連動する）。NULL 可・外部キー・CHECK は含める
+>   - `fiscal_years`：未アーカイブの年度を同時に 1 件に限る制約の有無（H-54 の判断①）
+>   - `team_members`・`teams`：`name` の長さの上限（`varchar` の型）と、`team_members.name` の同姓同名を禁じる制約の有無（H-56）
+>   - `teams`：`class_id` の NULL 可否（H-46。「チームがクラスに属さない状態を許す」案の決着で変わる）
+>   - `team_members`：`user_id` の UNIQUE が効く範囲（全年度に効く。年度をまたいだ引き換えの扱い・H-25 (d)(e)。本文が「本節では決めない」としている部分）。`user_id` の NULL 可・外部キーは含める（型は、上の `users` の行のとおり H-30 ④で含めない）
+>   - `event_occasions`：`current_presentation_id`（参照先の `presentations` が範囲外）
+>   - `material_slots`：`deadline` の NULL 可否・既定値（H-27）と型（H-39）
+>   - `submissions`：`url`（Drive 統合の範囲・未決 No.10。リンクの形が変わる）、`first_submitted_at`・`last_submitted_at` の型（H-39）
+>   - `summaries`：`tech_stack` の型（T-3）、`first_submitted_at`・`last_submitted_at` の型（H-39）
+> - **確定に含めないもの（共通）**：①列の集合の完全さ（確定するのは挙げた列の定義で、挙げていない列が無いことまでは保証しない）　②各テーブルの表の下の注のうち、範囲外の節や未決を指す文　③上流が TODO の根拠：`teams`・`team_members`・`users` の上流（`../requirements.md` §3-8・§3-6）は、できること・受け入れ基準が TODO のまま。この 3 テーブルの根拠は `../glossary.md` と `../decisions.md` に限られ、上流が埋まったとき、確定した列が変わりうる。特に `users.role` の 2 値は、先生ロールの親子二層構造（#8。先行方針は「単層で組む」）を採るときに、値を増やすか別の列で持つかが決まっていない
+> - **範囲外の節**：6-1・6-2 の ER 図（全テーブルを含む 1 枚なので、一部だけ確定できない。10/20 のレビューで扱う）、6-3 のうち後段の `presentations`・`comments`・いいね 2 テーブル（10/20 のレビュー）、6-4〜6-7（索引方針の 6-5 を含む）、参照動作
+> - **レビューする論点**：①各列が `../glossary.md`・`../requirements.md` のどの記述に対応するか（根拠の欄）が足りているか　②外部キーの向きと UNIQUE が、語彙の関係（チーム・メンバー・リーダー、資料枠・提出）と合っているか　③NULL 可否が運用（先生がチームを作る・年度セットアップが資料枠を生成する）と合っているか　④型・既定値・CHECK が、正典の記述（`../glossary.md`・`../requirements.md`・`../decisions.md`）と合っているか
+> - **結論**（2026-10-20）：範囲の 10 テーブルについて、論点①〜④とも水戸の確認を終えた（①〜③は各スレッド、④は R-2 のスレッド）。①根拠の欄：出典が無かった列（`fiscal_years.year`・`teams.class_id`・`material_slots.event_occasion_id`・`submissions.team_id`）と、`teams.name` の一意の範囲の根拠を足した。根拠が古い列は無かった。②外部キーの向き：10 テーブルとも語彙の関係と合う。足りなかった一意（`event_occasions` の `UNIQUE(fiscal_year_id, kind)`）と、アプリ層で守る組み合わせは注に書いた。③NULL 可否：`teams.class_id` は H-46 に乗るので確定から外した。ほかは運用と合う。④型・既定値・CHECK：既定値 4 件と CHECK は正典に裏づけがある。H-27・H-39・T-3・#10・H-30 ④ に依存する列は含めない。**列の集合の完全さと、未決の決着は保証しない。**
 
 ## この章が答える問い
 
@@ -82,7 +101,7 @@
 
 ## 現在の状態
 
-**初稿。** 正典から直接読めない箇所は、未決 H-20・H-26・H-27 として `../open-questions.md` に起票し、先行方針（同 §7）で組んだ。**全体が確度「暫定」でレビュー未了**（`../../CLAUDE.md` 禁則6）— 他章から「決定」として引用しないこと。
+**初稿。** 正典から直接読めない箇所は、未決 H-20・H-26・H-27 として `../open-questions.md` に起票し、先行方針（同 §7）で組んだ。**冒頭の「確定の範囲」を除いて、確度「暫定」でレビュー未了**（`../../AGENTS.md` 禁則6）— 範囲の外は、他章から「決定」として引用しないこと。
 
 > **2026-09-28 更新：H-29（所属はメンバー行）と `decisions.md` 2026-09-22の行（リーダーの参照先はメンバー行）を ER・テーブル定義へ反映した。** `team_members`（メンバー）テーブルを新設し、`users.team_id` は廃止、`teams.leader_user_id` は `teams.leader_member_id` へ改名して `team_members` を参照する形にした（6-2・6-3）。`09-nfr.md` が文脈判定を「06 待ち」と書いているのはこの箇所で、これで実行主体側の所属の取り方（`team_members.user_id` からの逆引き）が定まった。
 
@@ -260,7 +279,7 @@ erDiagram
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
-| year | int | NOT NULL | — | UNIQUE | 年度は西暦4桁で一意（例：2026） |
+| year | int | NOT NULL | — | UNIQUE | 年度は西暦4桁（例：2026）。「2026年度卒業制作」のように年度で括る運営の最大単位（`../glossary.md` §2 年度）。**一意（UNIQUE）は設計判断**：同じ年度を 2 つ開始させないため。正典に一意の明記は無い |
 | is_archived | boolean | NOT NULL | false | — | アーカイブは可逆（2026-07-26） |
 
 ### `classes`（クラス）
@@ -280,8 +299,8 @@ erDiagram
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
-| class_id | int | NOT NULL | — | FK → classes.id | チームはクラスに属する |
-| name | varchar | NOT NULL | — | UNIQUE(class_id, name) | チーム名。`../requirements.md` §3-7・`../glossary.md` §6 アーカイブ「検索対象は基本メタデータ（年度・**チーム名**・作品名・資料種別）」／`../hearing.md` §1「タイムテーブル・**チーム名**・作品・メンバーをスプレッドシートで手作業管理」（現行運用に実在） |
+| class_id | int | NOT NULL | — | FK → classes.id | チームはクラスに属する（`../glossary.md` §3 チーム）。NULL 可否は H-46 で未決（確定に含めない） |
+| name | varchar | NOT NULL | — | UNIQUE(class_id, name) | チーム名。`../requirements.md` §3-7・`../glossary.md` §6 アーカイブ「検索対象は基本メタデータ（年度・**チーム名**・作品名・資料種別）」／`../hearing.md` §1「タイムテーブル・**チーム名**・作品・メンバーをスプレッドシートで手作業管理」（現行運用に実在） **一意の範囲（クラスの中）は設計判断**：正典に範囲の根拠は無い。チーム名はクラスの運営の中で区別できれば足りる、とした。**NOT NULL は、チーム作成の時点でチーム名が決まっている前提**（`works.title` を NULL 可にした理由〔作成時点で作品名が決まっている保証が無い〕と対になる設計判断。材料は `../hearing.md` §1 の現行運用〔チーム名をスプレッドシートで管理〕のみ） |
 | leader_member_id | int | NULL | — | FK → team_members.id・複合 FK（後述） | チームの属性としてのリーダー参照。ロールではない（2026-09-04 決着）。**参照先は `team_members`（メンバー行）であって `users`（利用者行）ではない**（`../decisions.md` 2026-09-22 の行で決着） |
 
 > **生徒はチームを作成できない**（#6 決着）。作成主体は先生だが、作成者列は監査要件（G-5・未決）待ちのため持たない。
@@ -349,6 +368,7 @@ erDiagram
 | current_presentation_id | int | NULL | — | 複合 FK（後述） | 「いま発表中のチーム」の手動切替（`../requirements.md` §3-10）。**H-20（時刻枠未定義）とは別の確定済み機能** |
 
 > **回種別の並び順は列を持たず、コード定義の順序（6-4）から導出する**（6-6）。
+> **`UNIQUE(fiscal_year_id, kind)` は張らない**：発表会は年度セットアップだけが作る（`../glossary.md` §2 年度。任意個数・任意種別の作成は持たない）ので、年 4 回・固定 4 種はアプリ層で守る。DB は守らないため、同じ年度に同じ種別の発表会が 2 件あっても拒否しない。必要になれば制約を足す（`schema.prisma` と移行も動く）。
 > **`current_presentation_id` の複合 FK**：`presentations` に `UNIQUE(id, event_occasion_id)` を張り、`event_occasions(current_presentation_id, id)` → `presentations(id, event_occasion_id)` とする。**「いま発表中」は自分自身の発表会に属する発表しか指せない**（単純な単一列 FK では他発表会の発表を指せてしまう。`../decisions.md` 2026-09-21）。
 
 ### `material_slots`（資料枠）
@@ -358,7 +378,7 @@ erDiagram
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
-| event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 発表会が複数持つ |
+| event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 発表会が資料枠を複数持つ（`../glossary.md` §2 資料枠） |
 | slot_type | varchar | NOT NULL | — | — | 定番構成はコード定義（2026-07-24）。**CHECK 制約は張らない**：6-4 の2種類は「初期投入値」であって全集合ではなく、先生は定番に無い種類の資料枠を発表会ごとに追加できる（`../decisions.md` 2026-10-09。`../hearing.md` §7-2 に実在する枠の多くが2種類に含まれていない）。CHECK を張ると `../requirements.md` §3-1「生成後、各発表会の日程・資料枠（種類・締切）は個別に編集できる」（資料枠は運用データ）と矛盾する |
 | deadline | timestamp | NULL | — | — | **ソフトデッドライン**（超過しても提出可・2026-07-26）。**NULL 可（H-27・未決）**：未設定＝締切なし・遅延判定の対象外。年度セットアップは日程未定のまま資料枠を生成する（`../requirements.md` §3-1）ため、NOT NULL・既定値なしでは生成できない |
 | is_required | boolean | NOT NULL | — | — | 必須／任意の2値（2026-08-18）。試作品一式も1枠として2値で扱う（2026-09-30・H-14 決着） |
@@ -375,7 +395,7 @@ erDiagram
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
-| team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, material_slot_id) | 提出の粒度＝チーム×発表会×資料枠 |
+| team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, material_slot_id) | 提出の粒度＝チーム×発表会×資料枠（`../glossary.md` §1 粒度の一覧・2026-07-24） |
 | material_slot_id | int | NOT NULL | — | FK → material_slots.id | 同上。発表会への参照は `material_slots.event_occasion_id` 経由で辿る |
 | url | text | NOT NULL | — | — | 形式検証のみ実施（2026-07-26）。アクセス可否は検証しない |
 | first_submitted_at | timestamp | NOT NULL | — | — | **2026-09-29 決着の2値方式**（初回提出日時。差し替えでも変わらない） |
@@ -383,6 +403,7 @@ erDiagram
 
 > **状態列を持たない。** 「未提出／提出済み」（2値・`../glossary.md` §4）は行の有無で導出する（6-6）。**版履歴は持たない**（2026-07-24）— 上書きは `url`・`last_submitted_at` の UPDATE で表現し、別テーブルへの追記はしない。
 > **年度アーカイブ後は編集不可**（2026-07-26）だが、アプリ層の制御であり列は追加しない（`fiscal_years.is_archived` を経由して判定）。
+> **年度の整合は DB で守らない**：`team_id` と `material_slot_id` を別々に持つので、チームの年度（`team → class → fiscal_year`）と資料枠の年度（`material_slot → event_occasion → fiscal_year`）が違う組み合わせを DB は受け入れる。アプリ層で守る（`../decisions.md` 2026-09-21 が複合外部キーで守ると決めた 2 か所には含まれない）。
 > **`event_occasion_id` の非正規化は採らない**（`../decisions.md` 2026-09-21）。①遅延判定（6-6）が `material_slots.deadline` との結合を既に要求しており、非正規化で削減できる結合が無い ②索引付き結合が p95 ≦ 1 秒の予算に影響するかは未計測（行数の見積りは正典に無い）で、影響が出たら Ph.2 の実測で見直す ③正典に無い要件を先取りしない原則（禁則1）と揃える。
 
 ### `summaries`（概要）
@@ -399,6 +420,7 @@ erDiagram
 | last_submitted_at | timestamp | NOT NULL | — | — | 同上 |
 
 > **入力欄の具体（背景・動機／起・結／1ページ集約に対応する列）はここに含めない。** 現行テンプレの現物が未入手のため（`../open-questions.md` §6 保留）。決着まではアプリ層で構造化データを持たせる場合も本ファイルへの列追加はせず、決着後にまとめて反映する。
+> **年度の整合は DB で守らない**：`team_id` と `event_occasion_id` の年度が違う組み合わせも DB は受け入れる（`submissions` の同名の注と同じ）。アプリ層で守る。
 > **「概要」は資料枠（`material_slots.slot_type = '概要'`）の締切・必須／任意を参照する。** ただし `summaries` は `material_slot_id` を持たない — 概要枠は全発表会に1件ずつ存在する定番枠のため、`event_occasion_id` から一意に引ける（`material_slots` の部分インデックス `WHERE slot_type = '概要'`（6-3 `material_slots`）で整合性を保証する）。
 
 ### `presentations`（発表）

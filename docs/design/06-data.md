@@ -11,9 +11,10 @@
 > **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
 > - **対象**：6-3 の次の 10 テーブルの列定義（列名・型・NULL・既定値・制約・対応する語彙・根拠）— 基盤：`fiscal_years`・`classes`・`teams`・`team_members`・`works`・`users`、背骨：`event_occasions`・`material_slots`・`submissions`・`summaries`
 > - **上の 10 テーブルの中でも、確定に含めない列・記述**（10/20 に見直す先行方針、または未決に依存するため）：
->   - `users`：確定に含めるのは `id`・`role` だけ。ただし `id` の型（`serial`）は含めない（H-30 ④。Auth.js の Prisma Adapter を採ると、利用者の id を文字列で渡すため、型が変わる。`team_members.user_id`・`works.consent_set_by` の型も連動する）。`email`（利用者の同一性のキー・H-32）と `name`（先生の事前登録とホワイトリストの実体・H-26）は含めない
+>   - `users`：確定に含めるのは `id`・`role` だけ。ただし `id` の型（`serial`）は含めない（H-30 ④。Auth.js の Prisma Adapter を採ると、利用者の id を文字列で渡すため、型が変わりうる。`team_members.user_id`・`works.consent_set_by` の型も連動するので、同じく含めない）。`email`（利用者の同一性のキー・H-32）と `name`（先生の事前登録とホワイトリストの実体・H-26）は含めない
+>   - `works`：`consent_set_by` の型（H-30 ④。`users.id` の型に連動する）。NULL 可・外部キー・CHECK は含める
 >   - `teams`：`class_id` の NULL 可否（H-46。「チームがクラスに属さない状態を許す」案の決着で変わる）
->   - `team_members`：`user_id` の UNIQUE が効く範囲（全年度に効く。年度をまたいだ引き換えの扱い・H-25 (d)(e)。本文が「本節では決めない」としている部分）。`user_id` の型・NULL 可・外部キーは含める
+>   - `team_members`：`user_id` の UNIQUE が効く範囲（全年度に効く。年度をまたいだ引き換えの扱い・H-25 (d)(e)。本文が「本節では決めない」としている部分）。`user_id` の NULL 可・外部キーは含める（型は、上の `users` の行のとおり H-30 ④で含めない）
 >   - `event_occasions`：`current_presentation_id`（参照先の `presentations` が範囲外）
 >   - `material_slots`：`deadline` の NULL 可否・既定値（H-27）と型（H-39）
 >   - `submissions`：`url`（Drive 統合の範囲・未決 No.10。リンクの形が変わる）、`first_submitted_at`・`last_submitted_at` の型（H-39）

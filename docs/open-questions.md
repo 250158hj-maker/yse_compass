@@ -314,10 +314,10 @@
 ### H-30. ロール変更（SC-20）がセッションへ反映されるタイミング
 
 - **影響**：中（認可の一次防衛線の正しさに直結）
-- **効く先**：`design/07-interface.md` 7-2／`design/09-nfr.md` 9-3・9-4／`design/04-screen.md` SC-20／`design/06-data.md` 6-3 の `users.id` と、連動する `team_members.user_id`・`works.consent_set_by` の型（判断 ④ を Adapter にした場合）
+- **効く先**：`design/07-interface.md` 7-2／`design/09-nfr.md` 9-3・9-4／`design/04-screen.md` SC-20／`design/06-data.md` 6-3 の `users.id` と、それを参照する外部キーの列（`team_members.user_id`・`works.consent_set_by`・`comments.user_id`・`presentation_likes.user_id`・`comment_likes.user_id`）の型（判断 ④ を Adapter にした場合）
 - **何が起きるか**：ロールは運用中に変わる（SC-20 が先生の登録・解除を持つ・`decisions.md` 2026-09-06 H-11）。一方、`design/09-nfr.md` 9-4 はセッションのロールを一次防衛線の判定材料にする。`src/auth.ts` は Adapter なしの既定（JWT 戦略）で、**トークンに載せたロールは失効まで残る**。したがって**ロールを解除された先生が、ロールが再照会されるまで先生のままデータアクセス層を通りうる**
 - **判断が要る点**：①毎リクエストで `users` を再照会する ②セッションを無効化する（解除の操作に伴って失効させる）③有効期限を短くする ④セッション戦略そのもの（JWT／Prisma Adapter によるデータベースセッション。後者は Auth.js の `User`／`Account`／`Session` テーブルが 06 の ER を縛る）
-- **材料（2026-10-20・蒲山が確かめたもの）**：公式の `@auth/prisma-adapter`（2.11.3）は、`getUser: (id) => p.user.findUnique({ where: { id } })` のように、Auth.js から渡された文字列の id をそのまま Prisma の `where` に渡す。`@auth/core` 0.41.3 の Adapter の型（`AdapterUser.id`・`getUser(id: string)`・`userId: string`）も文字列である。したがって、**06 の `users.id`（`serial`・整数）のままでは、公式の Adapter は使えない。** Adapter を採るなら、`users.id` を文字列にする（連動する外部キーの型も動く）か、整数と文字列を変換する Adapter を自作する（型は変わらない）かのどちらかになる。現行の JWT・Adapter なしの構成（`src/lib/auth/callbacks.ts`）は、トークンに整数の `userId` を持ち、`session.user.id` だけを文字列にしているので、問題ない
+- **材料（2026-10-20・蒲山が確かめたもの。ソースと型定義を読んで確かめた。Adapter をつないでの実行はしていない）**：公式の `@auth/prisma-adapter`（2.11.3）は、`getUser: (id) => p.user.findUnique({ where: { id } })` のように、Auth.js から渡された文字列の id をそのまま Prisma の `where` に渡す。`@auth/core` 0.41.3 の Adapter の型（`AdapterUser.id`・`getUser(id: string)`・`userId: string`）も文字列である。したがって、**06 の `users.id`（`serial`・整数）のままでは、公式の Adapter は使えない。** Adapter を採るなら、`users.id` を文字列にする（連動する外部キーの型も動く）か、整数と文字列を変換する Adapter を自作する（型は変わらない）かのどちらかになる。現行の JWT・Adapter なしの構成（`src/lib/auth/callbacks.ts`）は、トークンに整数の `userId` を持ち、`session.user.id` だけを文字列にしているので、問題ない
 - **先行方針**：**Adapter なし・JWT 戦略（F-04 の構成）で書き、反映タイミングは規定しない。** 決着するまで、解除の即時性は保証しない前提で 07 の 7-2 を読むこと
 - **担当**：蒲山（技術方式）→ 水戸（許容できる遅れの要件）
 - **採番の注**：当初 **H-25** で起票したが、PR #33 の H-25（引き換えを行う画面）が先着だったため **H-30** に振り直した（2026-09-21）。PR #25 の本文・コメントで「H-25」と呼んでいたものは本項のこと

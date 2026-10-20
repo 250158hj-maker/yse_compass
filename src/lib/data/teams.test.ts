@@ -33,8 +33,8 @@ async function inTransaction(fn: (db: Db) => Promise<void>) {
   }
 }
 
-const teacher = { role: "teacher" } as const;
-const student = { role: "student" } as const;
+const teacher = { userId: "teacher-1", role: "teacher" } as const;
+const student = { userId: "student-1", role: "student" } as const;
 
 // 実際の年度と重ならない year で作る。
 async function seedYear(db: Db, year: number, isArchived = false) {
@@ -54,13 +54,59 @@ describeDb("listClassOptions（H-54 の先行方針）", () => {
       const older = await seedYear(db, 9001);
       const newer = await seedYear(db, 9002);
       const archived = await seedYear(db, 9003, true);
-      const { years, defaultFiscalYearId } = await listClassOptions(db);
+      const { years, defaultFiscalYearId } = await listClassOptions(db, student);
       const ids = years.map((y) => y.id);
       expect(ids).toContain(older.id);
       expect(ids).toContain(newer.id);
       expect(ids).not.toContain(archived.id);
       expect(defaultFiscalYearId).toBe(newer.id);
       expect(years.find((y) => y.id === newer.id)?.classes.map((c) => c.name)).toEqual(["AI21", "IG21"]);
+    });
+  });
+});
+
+describeDb("読み取りの認可（H-16・H-45 の先行方針: 生徒は未アーカイブの年度だけ）", () => {
+  async function seedTeams(db: Db) {
+    const current = await seedYear(db, 9001);
+    const old = await seedYear(db, 9002);
+    const a = await createTeam(db, teacher, { classId: current.classes[0].id, name: "当年度", workTitle: "作品A", members: ["水戸"] });
+    const b = await createTeam(db, teacher, { classId: old.classes[0].id, name: "過去", workTitle: "作品B", members: ["蒲山"] });
+    await db.fiscalYear.update({ where: { id: old.id }, data: { isArchived: true } });
+    return { current, old, a, b };
+  }
+
+  it("生徒も当年度（未アーカイブ）のチームと一覧を読める。年度の year・isArchived も返る", async () => {
+    await inTransaction(async (db) => {
+      const { current, a } = await seedTeams(db);
+      const team = await getTeam(db, student, a.id);
+      expect(team?.name).toBe("当年度");
+      expect(team?.class.fiscalYear).toEqual({ year: 9001, isArchived: false });
+      expect((await listTeams(db, student, current.id)).map((x) => x.name)).toEqual(["当年度"]);
+    });
+  });
+
+  it("生徒はアーカイブ済みの年度のチームも一覧も読めない（無いものとして返る）", async () => {
+    await inTransaction(async (db) => {
+      const { old, b } = await seedTeams(db);
+      expect(await getTeam(db, student, b.id)).toBeNull();
+      expect(await listTeams(db, student, old.id)).toEqual([]);
+    });
+  });
+
+  it("先生はアーカイブ済みの年度のチームも一覧も読める", async () => {
+    await inTransaction(async (db) => {
+      const { old, b } = await seedTeams(db);
+      const team = await getTeam(db, teacher, b.id);
+      expect(team?.name).toBe("過去");
+      expect(team?.class.fiscalYear.isArchived).toBe(true);
+      expect((await listTeams(db, teacher, old.id)).map((x) => x.name)).toEqual(["過去"]);
+    });
+  });
+
+  it("存在しないチームは null（権限が無い場合と区別しない）", async () => {
+    await inTransaction(async (db) => {
+      expect(await getTeam(db, teacher, 2147483647)).toBeNull();
+      expect(await getTeam(db, student, 2147483647)).toBeNull();
     });
   });
 });
@@ -76,7 +122,7 @@ describeDb("createTeam", () => {
         members: ["水戸", "蒲山", "鈴木"],
         leaderIndex: 1,
       });
-      const team = await getTeam(db, created.id);
+      const team = await getTeam(db, teacher, created.id);
       expect(team?.name).toBe("チームA");
       expect(team?.class.id).toBe(year.classes[0].id);
       expect(team?.work?.title).toBe("作品A");
@@ -90,7 +136,7 @@ describeDb("createTeam", () => {
     await inTransaction(async (db) => {
       const year = await seedYear(db, 9001);
       const created = await createTeam(db, teacher, { classId: year.classes[0].id, name: "チームA", workTitle: "  ", members: ["水戸"] });
-      const team = await getTeam(db, created.id);
+      const team = await getTeam(db, teacher, created.id);
       expect(team?.leaderMemberId).toBeNull();
       expect(team?.work?.title).toBeNull();
     });
@@ -100,7 +146,7 @@ describeDb("createTeam", () => {
     await inTransaction(async (db) => {
       const year = await seedYear(db, 9001);
       const created = await createTeam(db, teacher, { classId: year.classes[0].id, name: "チームA", members: [" 山田 太郎", "山田 太郎 "], leaderIndex: 1 });
-      const team = await getTeam(db, created.id);
+      const team = await getTeam(db, teacher, created.id);
       expect(team?.members.map((m) => m.name)).toEqual(["山田 太郎", "山田 太郎"]);
       expect(team?.leaderMemberId).toBe(team?.members[1].id);
     });
@@ -110,7 +156,7 @@ describeDb("createTeam", () => {
     await inTransaction(async (db) => {
       const year = await seedYear(db, 9001);
       await expectError(createTeam(db, student, { classId: year.classes[0].id, name: "チームA", members: ["水戸"] }), "forbidden");
-      expect(await listTeams(db, year.id)).toEqual([]);
+      expect(await listTeams(db, teacher, year.id)).toEqual([]);
     });
   });
 
@@ -135,7 +181,7 @@ describeDb("createTeam", () => {
       await expectError(createTeam(db, teacher, { classId, name: "A", members: ["水戸", ""] }), "invalid_input");
       await expectError(createTeam(db, teacher, { classId, name: "A", members: ["水戸"], leaderIndex: 1 }), "invalid_input");
       await expectError(createTeam(db, teacher, { classId, name: "A", members: ["水戸"], leaderIndex: -1 }), "invalid_input");
-      expect(await listTeams(db, year.id)).toEqual([]);
+      expect(await listTeams(db, teacher, year.id)).toEqual([]);
     });
   });
 
@@ -161,7 +207,7 @@ describeDb("編集（H-55: 年度の状態で塞がない）", () => {
       await renameMember(db, teacher, created.members[0].id, "水戸 太郎");
       await addMember(db, teacher, created.id, "蒲山");
 
-      const team = await getTeam(db, created.id);
+      const team = await getTeam(db, teacher, created.id);
       expect(team?.name).toBe("チームB");
       expect(team?.work?.title).toBe("作品B");
       expect(team?.members.map((m) => m.name)).toEqual(["水戸 太郎", "蒲山"]);
@@ -173,9 +219,9 @@ describeDb("編集（H-55: 年度の状態で塞がない）", () => {
       const year = await seedYear(db, 9001);
       const created = await createTeam(db, teacher, { classId: year.classes[0].id, name: "チームA", workTitle: "作品A", members: ["水戸"] });
       await updateTeam(db, teacher, created.id, { name: "チームB" });
-      expect((await getTeam(db, created.id))?.work?.title).toBe("作品A");
+      expect((await getTeam(db, teacher, created.id))?.work?.title).toBe("作品A");
       await updateTeam(db, teacher, created.id, { workTitle: null });
-      expect((await getTeam(db, created.id))?.work?.title).toBeNull();
+      expect((await getTeam(db, teacher, created.id))?.work?.title).toBeNull();
     });
   });
 
@@ -188,9 +234,19 @@ describeDb("編集（H-55: 年度の状態で塞がない）", () => {
       await expectError(addMember(db, student, created.id, "X"), "forbidden");
       await expectError(renameMember(db, student, memberId, "X"), "forbidden");
       await expectError(setLeader(db, student, created.id, memberId), "forbidden");
-      const team = await getTeam(db, created.id);
+      const team = await getTeam(db, teacher, created.id);
       expect(team?.name).toBe("チームA");
       expect(team?.members.map((m) => m.name)).toEqual(["水戸"]);
+    });
+  });
+
+  it("メンバーの氏名が空なら入力エラー（追加・名前の変更）", async () => {
+    await inTransaction(async (db) => {
+      const year = await seedYear(db, 9001);
+      const created = await createTeam(db, teacher, { classId: year.classes[0].id, name: "チームA", members: ["水戸"] });
+      await expectError(addMember(db, teacher, created.id, "  "), "invalid_input");
+      await expectError(renameMember(db, teacher, created.members[0].id, ""), "invalid_input");
+      expect((await getTeam(db, teacher, created.id))?.members.map((m) => m.name)).toEqual(["水戸"]);
     });
   });
 
@@ -223,11 +279,11 @@ describeDb("setLeader（decisions.md 2026-09-22・複合外部キー）", () => 
       const year = await seedYear(db, 9001);
       const created = await createTeam(db, teacher, { classId: year.classes[0].id, name: "チームA", members: ["水戸", "蒲山"] });
       await setLeader(db, teacher, created.id, created.members[0].id);
-      expect((await getTeam(db, created.id))?.leaderMemberId).toBe(created.members[0].id);
+      expect((await getTeam(db, teacher, created.id))?.leaderMemberId).toBe(created.members[0].id);
       await setLeader(db, teacher, created.id, created.members[1].id);
-      expect((await getTeam(db, created.id))?.leaderMemberId).toBe(created.members[1].id);
+      expect((await getTeam(db, teacher, created.id))?.leaderMemberId).toBe(created.members[1].id);
       await setLeader(db, teacher, created.id, null);
-      expect((await getTeam(db, created.id))?.leaderMemberId).toBeNull();
+      expect((await getTeam(db, teacher, created.id))?.leaderMemberId).toBeNull();
     });
   });
 

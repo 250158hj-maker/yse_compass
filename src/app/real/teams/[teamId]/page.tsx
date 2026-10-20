@@ -15,9 +15,9 @@ export default async function RealTeamDetailPage({ params }: { params: Promise<{
   const { teamId } = await params;
   const user = await requireSessionUser(`/real/teams/${teamId}`);
   const id = Number(teamId);
-  const team = Number.isInteger(id) ? await getTeam(prisma, id) : null;
+  const team = Number.isInteger(id) ? await getTeam(prisma, { userId: user.id, role: user.role }, id) : null;
   if (!team) notFound();
-  const fiscalYear = await prisma.fiscalYear.findUniqueOrThrow({ where: { id: team.class.fiscalYearId }, select: { year: true, isArchived: true } });
+  const { fiscalYear } = team.class;
 
   return (
     <div>

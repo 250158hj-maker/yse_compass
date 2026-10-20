@@ -14,9 +14,10 @@ import { CreateTeamForm } from "./CreateTeamForm";
 export default async function RealTeamsPage({ searchParams }: { searchParams: Promise<{ year?: string }> }) {
   const user = await requireSessionUser("/real/teams");
   const { year } = await searchParams;
-  const { years, defaultFiscalYearId } = await listClassOptions(prisma);
+  const actor = { userId: user.id, role: user.role };
+  const { years, defaultFiscalYearId } = await listClassOptions(prisma, actor);
   const selected = years.find((y) => String(y.id) === year) ?? years.find((y) => y.id === defaultFiscalYearId);
-  const teams = selected ? await listTeams(prisma, selected.id) : [];
+  const teams = selected ? await listTeams(prisma, actor, selected.id) : [];
 
   return (
     <div>

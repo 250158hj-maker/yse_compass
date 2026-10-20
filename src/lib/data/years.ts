@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import type { UserRole } from "@/lib/auth/callbacks";
 
 // 対応: docs/requirements.md §3-1（年度一括セットアップが「作成」の正規入口）・design/04-screen.md SC-19。
 // 先行方針で組んでいる（06 の列は現行のまま。決着したら変わる箇所は、各項の先行方針に書かれた範囲）:
@@ -10,7 +11,9 @@ import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 
 type Db = Pick<PrismaClient, "fiscalYear">;
 
-export type Actor = { role: "teacher" | "student" };
+// 実行主体。#125（lib/data/teams.ts）の Actor と同じ形（userId は users.id を文字列にした値・H-30 に備えて別名にしている）。
+export type ActorUserId = string;
+export type Actor = { userId: ActorUserId; role: UserRole };
 
 export type YearErrorCode = "forbidden" | "invalid_input" | "duplicate_year";
 
@@ -22,7 +25,8 @@ export class YearError extends Error {
 }
 
 // 回種別は固定 4 種・順序つき（design/06-data.md 6-4）。この並びで作るので、id の昇順が種別の順序になる。
-const EVENT_KINDS = ["企画", "設計", "試作", "最終"] as const;
+// 並びの唯一の源として export する（id の昇順に頼らず、この並びで比べる）。
+export const EVENT_KINDS = ["企画", "設計", "試作", "最終"] as const;
 
 // 定番の資料枠（requirements.md §3-1。decisions.md 2026-10-09）。4 発表会すべてに概要とプレゼン資料の 2 枠で、既定はどちらも必須。
 // deadline・template_url は未設定で生成する（H-27）。
@@ -39,7 +43,9 @@ function assertTeacher(actor: Actor) {
 
 // クラス名の初期値は、コードに持たず前年度のクラスから引く（decisions.md 2026-09-04 の H-3「コードに焼き込むと来年度の変更にコード修正が要る」）。
 // 前年度は、すでにある年度のうち year が最大のもの。無ければ空（初年度は先生が入力する）。
-export async function listClassNameDefaults(db: Db): Promise<string[]> {
+// 使う画面の SC-19 は先生専用（04-screen.md §4-4 で T だけ）なので、行の絞り込みではなくロールで止める。
+export async function listClassNameDefaults(db: Db, actor: Actor): Promise<string[]> {
+  assertTeacher(actor);
   const previous = await db.fiscalYear.findFirst({
     orderBy: { year: "desc" },
     select: { classes: { select: { name: true }, orderBy: { name: "asc" } } },
@@ -60,7 +66,8 @@ export async function setupFiscalYear(db: Db, actor: Actor, input: SetupYearInpu
   if (!Number.isInteger(input.year) || input.year < 1000 || input.year > 9999) throw new YearError("invalid_input");
   const classNames = input.classNames.map((n) => n.trim());
   // クラスが 0 件のときは確定させない（H-57）。空の名前と、同じ名前の重複は、DB の UNIQUE(fiscal_year_id, name) に任せず入力の誤りとして先に返す（year の重複と区別するため）。
-  if (classNames.length === 0 || classNames.some((n) => n === "") || new Set(classNames).size !== classNames.length) throw new YearError("invalid_input");
+  // NUL 文字（\0）は PostgreSQL が拒み、YearError ではない例外（P2039）になるので、ここで入力の誤りにする。
+  if (classNames.length === 0 || classNames.some((n) => n === "" || n.includes("\0")) || new Set(classNames).size !== classNames.length) throw new YearError("invalid_input");
 
   try {
     return await db.fiscalYear.create({

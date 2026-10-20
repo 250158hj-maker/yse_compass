@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
-import { listClassNameDefaults, setupFiscalYear, YearError } from "@/lib/data/years";
+import { EVENT_KINDS, listClassNameDefaults, setupFiscalYear, YearError, type Actor } from "@/lib/data/years";
 
 // DB を使うテスト。流儀は auth/callbacks.test.ts と同じ（各テストはトランザクションの中で動かし、最後に取り消す）。
 // DB が失敗すると PostgreSQL はそのトランザクションを中止するので、DB のエラーを期待する検証は各テストの最後に置く。
@@ -33,8 +33,8 @@ async function inTransaction(fn: (db: Db & Pick<PrismaClient, "eventOccasion" | 
   }
 }
 
-const teacher = { role: "teacher" } as const;
-const student = { role: "student" } as const;
+const teacher: Actor = { userId: "1", role: "teacher" };
+const student: Actor = { userId: "2", role: "student" };
 const classNames = ["AI21", "BD21", "GS21", "IG21", "IG22"];
 
 async function expectError(promise: Promise<unknown>, code: string) {
@@ -59,8 +59,10 @@ describeDb("setupFiscalYear（requirements.md §3-1・H-57 の先行方針）", 
   it("発表会は企画→設計→試作→最終の順で 4 件。日程は未設定・非公開・いま発表中は無し", async () => {
     await inTransaction(async (db) => {
       const { id } = await setupFiscalYear(db, teacher, { year: 9002, classNames });
-      const occasions = await db.eventOccasion.findMany({ where: { fiscalYearId: id }, orderBy: { id: "asc" } });
-      expect(occasions.map((o) => o.kind)).toEqual(["企画", "設計", "試作", "最終"]);
+      const occasions = await db.eventOccasion.findMany({ where: { fiscalYearId: id } });
+      // 並びは id の昇順に頼らず、種別の並び（EVENT_KINDS）で比べる。
+      const kinds = occasions.map((o) => o.kind).sort((a, b) => EVENT_KINDS.indexOf(a as never) - EVENT_KINDS.indexOf(b as never));
+      expect(kinds).toEqual([...EVENT_KINDS]);
       for (const o of occasions) {
         expect(o.eventDate).toBeNull();
         expect(o.isPublished).toBe(false);
@@ -129,6 +131,7 @@ describeDb("setupFiscalYear（requirements.md §3-1・H-57 の先行方針）", 
     await inTransaction(async (db) => {
       await expectError(setupFiscalYear(db, teacher, { year: 9008, classNames: ["IG21", "  "] }), "invalid_input");
       await expectError(setupFiscalYear(db, teacher, { year: 9008, classNames: ["IG21", "IG21 "] }), "invalid_input");
+      await expectError(setupFiscalYear(db, teacher, { year: 9008, classNames: ["IG\u00002"] }), "invalid_input");
       expect(await db.fiscalYear.count({ where: { year: 9008 } })).toBe(0);
     });
   });
@@ -146,7 +149,14 @@ describeDb("listClassNameDefaults（H-57：前年度のクラスを初期値に�
     await inTransaction(async (db) => {
       await setupFiscalYear(db, teacher, { year: 9101, classNames: ["IG21"] });
       await setupFiscalYear(db, teacher, { year: 9102, classNames: ["IG22", "AI21"] });
-      expect(await listClassNameDefaults(db)).toEqual(["AI21", "IG22"]);
+      expect(await listClassNameDefaults(db, teacher)).toEqual(["AI21", "IG22"]);
+    });
+  });
+
+  it("生徒には返さない（先生専用・SC-19）", async () => {
+    await inTransaction(async (db) => {
+      await setupFiscalYear(db, teacher, { year: 9103, classNames: ["IG21"] });
+      await expect(listClassNameDefaults(db, student)).rejects.toMatchObject({ name: "YearError", code: "forbidden" });
     });
   });
 });
@@ -154,7 +164,7 @@ describeDb("listClassNameDefaults（H-57：前年度のクラスを初期値に�
 describe("listClassNameDefaults（前年度が無い）", () => {
   it("年度が 1 件も無ければ空を返す（初年度は先生が入力する）", async () => {
     const db = { fiscalYear: { findFirst: async () => null } } as unknown as Parameters<typeof listClassNameDefaults>[0];
-    expect(await listClassNameDefaults(db)).toEqual([]);
+    expect(await listClassNameDefaults(db, teacher)).toEqual([]);
   });
 });
 

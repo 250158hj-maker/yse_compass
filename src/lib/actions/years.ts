@@ -18,7 +18,7 @@ async function run<T>(valid: boolean, fn: (actor: Actor) => Promise<T>): Promise
   if (!session?.user) return { ok: false, code: "unauthenticated" };
   if (!valid) return { ok: false, code: "invalid_input" };
   try {
-    return { ok: true, data: await fn({ role: session.user.role }) };
+    return { ok: true, data: await fn({ userId: session.user.id, role: session.user.role }) };
   } catch (e) {
     if (e instanceof YearError) return { ok: false, code: e.code };
     throw e;

@@ -12,7 +12,7 @@ import { useTeamAction } from "./use-team-action";
 type YearOption = { id: number; year: number; classes: { id: number; name: string }[] };
 type MemberRow = { key: number; name: string; autoFocus?: boolean };
 
-// 先生がチームを作る（#6）。名簿は 1 人ずつ入力（H-40）。リーダーはこのフォームでは指定を必須にする（SC-13 の確定注記「作成時に指定」）。
+// 先生がチームを作る（#6）。名簿は 1 人ずつ入力（H-40）。リーダーはこのフォームでは指定を必須にする（SC-14 の確定〔2026-09-04〕と `requirements.md` §3-8 の確定〔2026-09-04〕「チーム作成時に先生が指定し、以後変更できる」を読んだ。データ層は省略できる。どちらを採るかは H-40 の問い）。
 // どの年度のクラスに作るかが見えるように、年度を先頭に置く（H-54 の先行方針に対する水戸さんの条件）。
 export function CreateTeamForm({ years, initialYearId }: { years: YearOption[]; initialYearId: number }) {
   const router = useRouter();

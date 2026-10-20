@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -74,6 +74,7 @@ function TeamInfoForm({ team }: { team: Team }) {
 function MemberRow({ member, teamId, isLeader }: { member: { id: number; name: string }; teamId: number; isLeader: boolean }) {
   const { run, pending, error } = useTeamAction();
   const [name, setName] = useState(member.name);
+  const nameRef = useRef<HTMLInputElement>(null);
   const unsaved = name.trim() !== member.name;
   // 氏名の欄は form にして、Enter でも保存できるようにする。書き換えて保存していない間は「未保存」の印を出す。
   return (
@@ -82,10 +83,12 @@ function MemberRow({ member, teamId, isLeader }: { member: { id: number; name: s
         className="flex flex-wrap items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          if (unsaved) run(() => renameMemberAction(member.id, name));
+          // 押したボタンは処理中と成功のあとに無効になり、フォーカスが body に落ちるので、成功したら氏名欄へ戻す。
+          if (unsaved) run(() => renameMemberAction(member.id, name), () => nameRef.current?.focus());
         }}
       >
         <input
+          ref={nameRef}
           aria-label={`${member.name} の氏名`}
           className={`${fieldClassName} max-w-xs`}
           value={name}
@@ -98,7 +101,7 @@ function MemberRow({ member, teamId, isLeader }: { member: { id: number; name: s
         {isLeader ? (
           <Badge tone="amber">リーダー</Badge>
         ) : (
-          <Button type="button" className="whitespace-nowrap" disabled={pending} onClick={() => run(() => setLeaderAction(teamId, member.id))}>
+          <Button type="button" className="whitespace-nowrap" disabled={pending} onClick={() => run(() => setLeaderAction(teamId, member.id), () => nameRef.current?.focus())}>
             リーダーにする
           </Button>
         )}
@@ -111,17 +114,22 @@ function MemberRow({ member, teamId, isLeader }: { member: { id: number; name: s
 function AddMemberForm({ teamId }: { teamId: number }) {
   const { run, pending, error } = useTeamAction();
   const [name, setName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   return (
     <form
       className="mt-4 border-t border-slate-200 pt-4"
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => addMemberAction(teamId, name), () => setName(""));
+        // 続けて次の人を入れられるように、成功したら入力欄へフォーカスを戻す（押した「足す」は空の欄で無効になる）。
+        run(() => addMemberAction(teamId, name), () => {
+          setName("");
+          inputRef.current?.focus();
+        });
       }}
     >
       <FormField label="メンバーを足す" htmlFor="new-member" hint="名簿の足し忘れを直すときに使います。削除と、他チームへの移動はできません。">
         <div className="flex gap-2">
-          <input id="new-member" className={fieldClassName} value={name} onChange={(e) => setName(e.target.value)} />
+          <input id="new-member" ref={inputRef} className={fieldClassName} value={name} onChange={(e) => setName(e.target.value)} />
           <Button type="submit" className="shrink-0 whitespace-nowrap" disabled={pending || name.trim() === ""}>
             足す
           </Button>

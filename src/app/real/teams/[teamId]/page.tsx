@@ -6,6 +6,7 @@ import { InlineNotice } from "@/components/ui/InlineNotice";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireSessionUser } from "@/lib/auth/session";
 import { getTeam } from "@/lib/data/teams";
+import { parseId } from "@/lib/ids";
 import { prisma } from "@/lib/prisma";
 import { TeamEditor } from "./TeamEditor";
 
@@ -14,8 +15,9 @@ import { TeamEditor } from "./TeamEditor";
 export default async function RealTeamDetailPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = await params;
   const user = await requireSessionUser(`/real/teams/${teamId}`);
-  const id = Number(teamId);
-  const team = Number.isInteger(id) ? await getTeam(prisma, { userId: user.id, role: user.role }, id) : null;
+  // URL の ID は、形と integer の範囲を確かめてから DB に渡す（範囲外を渡すと Prisma が例外を投げ、500 になる）。
+  const id = parseId(teamId);
+  const team = id !== null ? await getTeam(prisma, { userId: user.id, role: user.role }, id) : null;
   if (!team) notFound();
   const { fiscalYear } = team.class;
 

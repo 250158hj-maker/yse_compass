@@ -1,21 +1,25 @@
 // 開発用 DB に、画面の確認に要る最小のデータを入れる（何度流しても同じ結果になる）。
 // 実行: node --env-file=.env scripts/seed-dev.mjs   （または pnpm db:seed）
+// すでにサインイン済みの人を先生にした場合、ロールはサインイン時にだけトークンに載るので、流したあとにサインインし直す。
 //
 // 入れるもの:
-//   - 年度 2026（進行中）と、そのクラス 5 つ（AI21・BD21・GS21・IG21・IG22。ヒヤリング 2026-08-18 の回答）
-//   - 年度 2025（アーカイブ済み）とクラス 1 つ。「アーカイブ済みの年度には作成できない」(H-55) の確認用
+//   - 年度 2026（進行中）と、そのクラス 5 つ（AI21・BD21・GS21・IG21・IG22。`requirements.md` §3-8／`glossary.md` §3）
+//   - 年度 2025（アーカイブ済み）とクラス 1 つ。「アーカイブ済みの年度には作成できない」（H-55 の先行方針）の確認用
 //   - 先生ロールの利用者 1 人: DEV_TEACHER_EMAIL のアドレス（Google のサインインが返す表記と大文字小文字まで一致させる）
 // 先生は運用開始時に DB へ直接投入する行（decisions.md 2026-09-06 H-11）。ここではその開発用の代わり。
 // email は公開リポジトリに書けないので、自分の .env（コミットしない）に DEV_TEACHER_EMAIL として置く。
 //
 // 年度セットアップ（発表会・資料枠・発表の生成。3.2.1）はここでは入れない。
 // ローカルの DB 以外には流さない（先生ロールを書き込むため）。
+//
+// pg を直接使うのは、生成済みの Prisma Client（TypeScript）を .mjs から読めないため。decisions.md 2026-09-05 の「pg の直接使用は
+// DB 疎通確認に限る暫定」は、アプリの実装の話で、DB に開発用のデータを入れるこの開発用スクリプトは対象外と読む（アプリのデータアクセス層には入らない）。
 
 import pg from "pg";
 
 const databaseUrl = process.env.DATABASE_URL;
 const teacherEmail = process.env.DEV_TEACHER_EMAIL;
-const teacherName = process.env.DEV_TEACHER_NAME ?? "開発用の先生";
+const teacherName = process.env.DEV_TEACHER_NAME || "開発用の先生";
 
 if (!databaseUrl) {
   console.error("DATABASE_URL が無い（.env を確認）");
@@ -25,9 +29,11 @@ if (!teacherEmail) {
   console.error("DEV_TEACHER_EMAIL が無い。先生としてサインインするアドレスを .env に書く");
   process.exit(1);
 }
-const { hostname } = new URL(databaseUrl);
-if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-  console.error(`接続先が localhost ではない（${hostname}）。開発用のデータは、ローカルの DB にだけ入れる`);
+
+// 接続先は、pg が実際に使うホストで判定する。URL のホスト部分だけを見ると、?host= で上書きされたときに抜ける（pg は query の host を優先する）。
+const client = new pg.Client({ connectionString: databaseUrl });
+if (client.host !== "localhost" && client.host !== "127.0.0.1") {
+  console.error(`接続先が localhost ではない（${client.host}）。開発用のデータは、ローカルの DB にだけ入れる`);
   process.exit(1);
 }
 
@@ -36,7 +42,6 @@ const years = [
   { year: 2025, isArchived: true, classes: ["IG21"] },
 ];
 
-const client = new pg.Client({ connectionString: databaseUrl });
 await client.connect();
 try {
   await client.query("BEGIN");

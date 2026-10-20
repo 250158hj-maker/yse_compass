@@ -74,26 +74,35 @@ function TeamInfoForm({ team }: { team: Team }) {
 function MemberRow({ member, teamId, isLeader }: { member: { id: number; name: string }; teamId: number; isLeader: boolean }) {
   const { run, pending, error } = useTeamAction();
   const [name, setName] = useState(member.name);
+  const unsaved = name.trim() !== member.name;
+  // 氏名の欄は form にして、Enter でも保存できるようにする。書き換えて保存していない間は「未保存」の印を出す。
   return (
     <li>
-      <div className="flex flex-wrap items-center gap-2">
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (unsaved) run(() => renameMemberAction(member.id, name));
+        }}
+      >
         <input
           aria-label={`${member.name} の氏名`}
           className={`${fieldClassName} max-w-xs`}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <Button className="whitespace-nowrap" disabled={pending || name.trim() === member.name} onClick={() => run(() => renameMemberAction(member.id, name))}>
+        <Button type="submit" className="whitespace-nowrap" disabled={pending || !unsaved}>
           氏名を直す
         </Button>
+        {unsaved && <span className="text-xs text-amber-700">未保存</span>}
         {isLeader ? (
           <Badge tone="amber">リーダー</Badge>
         ) : (
-          <Button className="whitespace-nowrap" disabled={pending} onClick={() => run(() => setLeaderAction(teamId, member.id))}>
+          <Button type="button" className="whitespace-nowrap" disabled={pending} onClick={() => run(() => setLeaderAction(teamId, member.id))}>
             リーダーにする
           </Button>
         )}
-      </div>
+      </form>
       {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
     </li>
   );

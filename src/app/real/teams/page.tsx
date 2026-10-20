@@ -45,10 +45,8 @@ export default async function RealTeamsPage({ searchParams }: { searchParams: Pr
         )}
 
         {user.role === "teacher" && selected && (
-          <CreateTeamForm
-            years={years}
-            initialYearId={selected.id}
-          />
+          // 一覧の年度を切り替えたら、フォームも作り直す（年度とクラスの選択肢を、一覧に追随させる）。
+          <CreateTeamForm key={selected.id} years={years} initialYearId={selected.id} />
         )}
 
         {selected &&
@@ -67,7 +65,11 @@ export default async function RealTeamsPage({ searchParams }: { searchParams: Pr
                     {team.members.map((m) => (
                       <span key={m.id} className="rounded bg-slate-100 px-2 py-0.5">
                         {m.name}
-                        {m.id === team.leaderMemberId && "（リーダー）"}
+                        {m.id === team.leaderMemberId && (
+                          <span className="ml-1.5">
+                            <Badge tone="amber">リーダー</Badge>
+                          </span>
+                        )}
                       </span>
                     ))}
                   </p>

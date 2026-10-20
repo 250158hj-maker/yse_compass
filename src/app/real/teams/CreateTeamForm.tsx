@@ -10,7 +10,7 @@ import { createTeamAction } from "@/lib/actions/teams";
 import { useTeamAction } from "./use-team-action";
 
 type YearOption = { id: number; year: number; classes: { id: number; name: string }[] };
-type MemberRow = { key: number; name: string };
+type MemberRow = { key: number; name: string; autoFocus?: boolean };
 
 // 先生がチームを作る（#6）。名簿は 1 人ずつ入力（H-40）。リーダーはこのフォームでは指定を必須にする（SC-13 の確定注記「作成時に指定」）。
 // どの年度のクラスに作るかが見えるように、年度を先頭に置く（H-54 の先行方針に対する水戸さんの条件）。
@@ -30,6 +30,19 @@ export function CreateTeamForm({ years, initialYearId }: { years: YearOption[]; 
   function changeYear(id: number) {
     setYearId(id);
     setClassId(years.find((y) => y.id === id)?.classes[0]?.id ?? null);
+  }
+
+  // 氏名欄の Enter は、送信せず次の行へ移る（最後の行なら行を足して移る）。日本語入力の変換を確定する Enter は、そのままにする。
+  function nextRowOnEnter(e: React.KeyboardEvent<HTMLInputElement>, index: number) {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    if (index < members.length - 1) {
+      document.getElementById(`member-name-${members[index + 1].key}`)?.focus();
+      return;
+    }
+    if (members[index].name.trim() === "") return;
+    setMembers([...members, { key: nextKey, name: "", autoFocus: true }]);
+    setNextKey(nextKey + 1);
   }
 
   function submit(e: React.FormEvent) {
@@ -96,9 +109,12 @@ export function CreateTeamForm({ years, initialYearId }: { years: YearOption[]; 
             {members.map((m, i) => (
               <div key={m.key} className="flex items-center gap-2">
                 <input
+                  id={`member-name-${m.key}`}
                   aria-label={`メンバー ${i + 1} の氏名`}
                   className={fieldClassName}
                   value={m.name}
+                  autoFocus={m.autoFocus}
+                  onKeyDown={(e) => nextRowOnEnter(e, i)}
                   onChange={(e) => setMembers(members.map((x) => (x.key === m.key ? { ...x, name: e.target.value } : x)))}
                 />
                 <label className="flex shrink-0 items-center gap-1 text-sm text-slate-600">
@@ -109,9 +125,10 @@ export function CreateTeamForm({ years, initialYearId }: { years: YearOption[]; 
                   type="button"
                   className="shrink-0 whitespace-nowrap"
                   disabled={members.length === 1}
+                  aria-label={`メンバー ${i + 1} の行を消す`}
                   onClick={() => setMembers(members.filter((x) => x.key !== m.key))}
                 >
-                  削除
+                  この行を消す
                 </Button>
               </div>
             ))}

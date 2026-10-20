@@ -8,13 +8,20 @@ import { TeamError, addMember, createTeam, renameMember, setLeader, updateTeam, 
 // 取り出して渡し、TeamError を画面が扱える結果に直すだけの薄い層。
 // ロールはサインイン時にトークンへ載せた値で、解除の即時性は保証しない（H-30）。
 
+// 引数の形だけを確かめる（Server Action は画面の型を通らずに直接呼べるため）。値の範囲や規則はデータ層が確かめる。ロールの判定はここに足さない。
 export type TeamActionResult<T> = { ok: true; data: T } | { ok: false; code: TeamErrorCode | "unauthenticated" };
 
-async function run<T>(fn: (actor: Actor) => Promise<T>): Promise<TeamActionResult<T>> {
+const isId = (x: unknown): x is number => Number.isInteger(x) && (x as number) > 0;
+const isText = (x: unknown): x is string => typeof x === "string";
+const isObject = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
+const isOptional = (x: unknown, check: (v: unknown) => boolean) => x === undefined || check(x);
+
+async function run<T>(valid: boolean, fn: (actor: Actor) => Promise<T>): Promise<TeamActionResult<T>> {
   const session = await auth();
   if (!session?.user) return { ok: false, code: "unauthenticated" };
+  if (!valid) return { ok: false, code: "invalid_input" };
   try {
-    return { ok: true, data: await fn({ role: session.user.role }) };
+    return { ok: true, data: await fn({ userId: session.user.id, role: session.user.role }) };
   } catch (e) {
     if (e instanceof TeamError) return { ok: false, code: e.code };
     throw e;
@@ -22,21 +29,30 @@ async function run<T>(fn: (actor: Actor) => Promise<T>): Promise<TeamActionResul
 }
 
 export async function createTeamAction(input: CreateTeamInput) {
-  return run((actor) => createTeam(prisma, actor, input));
+  const valid =
+    isObject(input) &&
+    isId(input.classId) &&
+    isText(input.name) &&
+    isOptional(input.workTitle, (v) => v === null || isText(v)) &&
+    Array.isArray(input.members) &&
+    input.members.every(isText) &&
+    isOptional(input.leaderIndex, Number.isInteger);
+  return run(valid, (actor) => createTeam(prisma, actor, input));
 }
 
 export async function updateTeamAction(teamId: number, input: { name?: string; workTitle?: string | null }) {
-  return run((actor) => updateTeam(prisma, actor, teamId, input));
+  const valid = isId(teamId) && isObject(input) && isOptional(input.name, isText) && isOptional(input.workTitle, (v) => v === null || isText(v));
+  return run(valid, (actor) => updateTeam(prisma, actor, teamId, input));
 }
 
 export async function addMemberAction(teamId: number, name: string) {
-  return run((actor) => addMember(prisma, actor, teamId, name));
+  return run(isId(teamId) && isText(name), (actor) => addMember(prisma, actor, teamId, name));
 }
 
 export async function renameMemberAction(memberId: number, name: string) {
-  return run((actor) => renameMember(prisma, actor, memberId, name));
+  return run(isId(memberId) && isText(name), (actor) => renameMember(prisma, actor, memberId, name));
 }
 
 export async function setLeaderAction(teamId: number, memberId: number | null) {
-  return run((actor) => setLeader(prisma, actor, teamId, memberId));
+  return run(isId(teamId) && (memberId === null || isId(memberId)), (actor) => setLeader(prisma, actor, teamId, memberId));
 }

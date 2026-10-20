@@ -8,7 +8,7 @@ import type { UserRole } from "@/lib/auth/callbacks";
 //   H-54 「当年度」は未アーカイブの年度のうち year が最大のもの／H-55 編集は年度の状態で塞がない（作成だけ未アーカイブの年度に限る）／
 //   H-56 同姓同名を禁じず、長さの上限を置かない（リーダーは氏名でなくメンバー行で指す）。
 // 認可の一次防衛線はここに置く（画面や Server Action が先に弾いても、ここでも必ず確かめる）。読み取りも同じ（decisions.md 2026-09-06・H-16）。
-//   読み取りの先行方針（H-45・Stage 1・安全側）: 先生は全年度、生徒は未アーカイブの年度だけ読める。決着したら変わるのは readableBy だけ。
+//   読み取りの先行方針（H-60・Stage 1・安全側）: 先生は全年度、生徒は未アーカイブの年度だけ読める。決着したら変わるのは readableBy だけ。
 
 // $transaction があるのは素の PrismaClient のとき。トランザクションの中（テスト、呼び出し側のまとまり）では無い。
 type Db = Pick<PrismaClient, "team" | "teamMember" | "schoolClass" | "fiscalYear"> & Partial<Pick<PrismaClient, "$transaction">>;

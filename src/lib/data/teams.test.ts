@@ -65,7 +65,7 @@ describeDb("listClassOptions（H-54 の先行方針）", () => {
   });
 });
 
-describeDb("読み取りの認可（H-16・H-45 の先行方針: 生徒は未アーカイブの年度だけ）", () => {
+describeDb("読み取りの認可（H-16・H-60 の先行方針: 生徒は未アーカイブの年度だけ）", () => {
   async function seedTeams(db: Db) {
     const current = await seedYear(db, 9001);
     const old = await seedYear(db, 9002);

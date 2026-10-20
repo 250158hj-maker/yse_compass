@@ -5,26 +5,29 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-10-19（蒲山）
+> **最終更新**：2026-10-20（蒲山）
 
-> [!note] 確定の範囲（2026-10-19 のレビュー対象）
+> [!note] 確定の範囲（2026-10-19・10-20 のレビュー対象）
 > **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
-> - **対象**：6-3 の次の 10 テーブルの列定義（列名・型・NULL・既定値・制約・対応する語彙・根拠）— 基盤：`fiscal_years`・`classes`・`teams`・`team_members`・`works`・`users`、背骨：`event_occasions`・`material_slots`・`submissions`・`summaries`
-> - **上の 10 テーブルの中でも、確定に含めない列・記述**（10/20 に見直す先行方針、または未決に依存するため）：
->   - `users`：確定に含めるのは `id`・`role` だけ。ただし `id` の型（`serial`）は含めない（H-30 ④。Auth.js の Prisma Adapter を採ると、利用者の id を文字列で渡すため、型が変わりうる。`team_members.user_id`・`works.consent_set_by` の型も連動するので、同じく含めない）。`email`（利用者の同一性のキー・H-32）と `name`（先生の事前登録とホワイトリストの実体・H-26）は含めない
+> - **対象**：6-3 の全 14 テーブルの列定義（列名・型・NULL・既定値・制約・対応する語彙・根拠、表の下の注。ただし注のうち、共通②で外れる文を除く）と、6-1・6-2 の ER 図。10/19 に基盤・背骨の 10 テーブル（`fiscal_years`・`classes`・`teams`・`team_members`・`works`・`users`・`event_occasions`・`material_slots`・`submissions`・`summaries`）、10/20 に後段の 4 テーブル（`presentations`・`comments`・`presentation_likes`・`comment_likes`）と ER 図
+> - **対象の中でも、確定に含めない列・記述**（未決に依存するため。ER 図は、下の列に当たる属性と、その列が表す関連のカーディナリティ〔6-1・6-2 の `SCHOOL_CLASS`–`TEAM` のクラス側＝`teams.class_id` の NOT NULL、`USER`–`TEAM_MEMBER` のメンバー行の側＝`team_members.user_id` の UNIQUE が全年度に効く形〕を、同じ列に付いた未決の注記とあわせて確定に含めない）：
+>   - `users`：確定に含めるのは `id`・`role` だけ。ただし `id` の型（`serial`）は含めない（H-30 ④。Auth.js の Prisma Adapter を採ると、利用者の id を文字列で渡すため、型が変わりうる。`users.id` を参照する外部キーの列〔`team_members.user_id`・`works.consent_set_by`・`comments.user_id`・`presentation_likes.user_id`・`comment_likes.user_id`〕の型も連動するので、同じく含めない）。`email`（利用者の同一性のキー・H-32）と `name`（先生の事前登録とホワイトリストの実体・H-26）は含めない
 >   - `works`：`consent_set_by` の型（H-30 ④。`users.id` の型に連動する）。NULL 可・外部キー・CHECK は含める
 >   - `fiscal_years`：未アーカイブの年度を同時に 1 件に限る制約の有無（H-54 の判断①）
 >   - `team_members`・`teams`：`name` の長さの上限（`varchar` の型）と、`team_members.name` の同姓同名を禁じる制約の有無（H-56）
 >   - `teams`：`class_id` の NULL 可否（H-46。「チームがクラスに属さない状態を許す」案の決着で変わる）
 >   - `team_members`：`user_id` の UNIQUE が効く範囲（全年度に効く。年度をまたいだ引き換えの扱い・H-25 (d)(e)。本文が「本節では決めない」としている部分）。`user_id` の NULL 可・外部キーは含める（型は、上の `users` の行のとおり H-30 ④で含めない）
->   - `event_occasions`：`current_presentation_id`（参照先の `presentations` が範囲外）
 >   - `material_slots`：`deadline` の NULL 可否・既定値（H-27）と型（H-39）
 >   - `submissions`：`url`（Drive 統合の範囲・未決 No.10。リンクの形が変わる）、`first_submitted_at`・`last_submitted_at` の型（H-39）
 >   - `summaries`：`tech_stack` の型（T-3）、`first_submitted_at`・`last_submitted_at` の型（H-39）
-> - **確定に含めないもの（共通）**：①列の集合の完全さ（確定するのは挙げた列の定義で、挙げていない列が無いことまでは保証しない）　②各テーブルの表の下の注のうち、範囲外の節や未決を指す文　③上流が TODO の根拠：`teams`・`team_members`・`users` の上流（`../requirements.md` §3-8・§3-6）は、できること・受け入れ基準が TODO のまま。この 3 テーブルの根拠は `../glossary.md` と `../decisions.md` に限られ、上流が埋まったとき、確定した列が変わりうる。特に `users.role` の 2 値は、先生ロールの親子二層構造（#8。先行方針は「単層で組む」）を採るときに、値を増やすか別の列で持つかが決まっていない
-> - **範囲外の節**：6-1・6-2 の ER 図（全テーブルを含む 1 枚なので、一部だけ確定できない。10/20 のレビューで扱う）、6-3 のうち後段の `presentations`・`comments`・いいね 2 テーブル（10/20 のレビュー）、6-4〜6-7（索引方針の 6-5 を含む）、参照動作
-> - **レビューする論点**：①各列が `../glossary.md`・`../requirements.md` のどの記述に対応するか（根拠の欄）が足りているか　②外部キーの向きと UNIQUE が、語彙の関係（チーム・メンバー・リーダー、資料枠・提出）と合っているか　③NULL 可否が運用（先生がチームを作る・年度セットアップが資料枠を生成する）と合っているか　④型・既定値・CHECK が、正典の記述（`../glossary.md`・`../requirements.md`・`../decisions.md`）と合っているか
-> - **結論**（2026-10-20）：範囲の 10 テーブルについて、論点①〜④とも水戸の確認を終えた（①〜③は各スレッド、④は R-2 のスレッド）。①根拠の欄：出典が無かった列（`fiscal_years.year`・`teams.class_id`・`material_slots.event_occasion_id`・`submissions.team_id`）と、`teams.name` の一意の範囲の根拠を足した。根拠が古い列は無かった。②外部キーの向き：10 テーブルとも語彙の関係と合う。足りなかった一意（`event_occasions` の `UNIQUE(fiscal_year_id, kind)`）と、アプリ層で守る組み合わせは注に書いた。③NULL 可否：`teams.class_id` は H-46 に乗るので確定から外した。ほかは運用と合う。④型・既定値・CHECK：既定値 4 件と CHECK は正典に裏づけがある。H-27・H-39・T-3・#10・H-30 ④ に依存する列は含めない。**列の集合の完全さと、未決の決着は保証しない。**
+>   - `presentations`：時刻枠（開始時刻・所要・休憩）を列として持たない前提（H-20）、表の下の「行の生成タイミング」の注（H-46 の決着で見直す。「クラスに属さないチームを許す」案を採ると、「そのチームの年度に」が `team → class → fiscal_year` で引けなくなる）
+>   - `comments`：編集・削除の列を持たない前提（T-2）、`created_at` の型と既定値 `now()`（H-39。`timestamp` の列に `now()` が入る値は、型を `timestamptz` にするかどうかで変わる）
+> - **確定に含めないもの（共通）**：①列・テーブル・関連の集合の完全さ（確定するのは挙げた列の定義で、挙げていない列・テーブル・関連が無いことまでは保証しない。たとえば H-20 の「タイムテーブルの行」の実体が ER 図に無いことは保証しない）。**ER 図は 6-3 から描いたもので、図に無い制約は 6-3 が正**（複合の UNIQUE、複合外部キーが複合であること〔`teams.leader_member_id`・`event_occasions.current_presentation_id`〕は図に描いていない）　②各テーブルの表の下の注のうち、範囲外の節や未決を指す文　③上流が TODO の根拠：`teams`・`team_members`・`users` の上流（`../requirements.md` §3-8・§3-6）は、できること・受け入れ基準が TODO のまま。この 3 テーブルの根拠は `../glossary.md` と `../decisions.md` に限られ、上流が埋まったとき、確定した列が変わりうる。特に `users.role` の 2 値は、先生ロールの親子二層構造（#8。先行方針は「単層で組む」）を採るときに、値を増やすか別の列で持つかが決まっていない
+> - **範囲外の節**：6-4〜6-7（索引方針の 6-5 を含む）、参照動作（コメントを参照する外部キーの動作が T-2 に依存する）
+> - **レビューする論点**：①各列が `../glossary.md`・`../requirements.md` のどの記述に対応するか（根拠の欄）が足りているか　②外部キーの向きと UNIQUE が、語彙の関係（チーム・メンバー・リーダー、資料枠・提出、発表・コメント・いいね）と合っているか　③NULL 可否が運用（先生がチームを作る・年度セットアップが資料枠を生成する）と合っているか　④型・既定値・CHECK が、正典の記述（`../glossary.md`・`../requirements.md`・`../decisions.md`）と合っているか。⑤6-1・6-2 の ER 図が 6-3 と一致し、関連の名前が正典と合っているか（#124。6-1 は属性を持たず、関連の名前とカーディナリティを持つ図なので、6-2 と照らすだけでなく、関連の名前の出典も見る）　⑥未決の先行方針の見直し（#124。H-20・H-26・H-27・H-32・T-2。結論は下の欄に書く）
+> - **結論**
+>   - **10/19 分**（2026-10-20）：範囲の 10 テーブルについて、論点①〜④とも水戸の確認を終えた（①〜③は各スレッド、④は R-2 のスレッド）。①根拠の欄：出典が無かった列（`fiscal_years.year`・`teams.class_id`・`material_slots.event_occasion_id`・`submissions.team_id`）と、`teams.name` の一意の範囲の根拠を足した。根拠が古い列は無かった。②外部キーの向き：10 テーブルとも語彙の関係と合う。`event_occasions` の `UNIQUE(fiscal_year_id, kind)` を張らない理由と、アプリ層で守る組み合わせは、注に書いた。③NULL 可否：`teams.class_id` は H-46 に乗るので確定から外した。ほかは運用と合う。④型・既定値・CHECK：既定値 4 件と CHECK は正典に裏づけがある。未決に依存する列は、上の「確定に含めない列・記述」のとおり含めない。**列の集合の完全さと、未決の決着は保証しない。**
+>   - **10/20 分**（2026-10-20）：後段の 4 テーブル（`presentations`・`comments`・`presentation_likes`・`comment_likes`）と 6-1・6-2 の ER 図について、論点①〜⑥とも水戸の確認を終えた（①〜③・⑤・⑥は各スレッド、④は #124 の R-1 のスレッド）。鈴木は①〜③、⑤のうち後段 4 テーブルの 6-2 と 6-3 の一致、⑥を見た。①根拠の欄：`comments.body`・`created_at`、いいねの `user_id` の根拠と、いいねの対応する語彙を足した。②外部キーの向きと UNIQUE：語彙の関係と合う。いいねの 1 人 1 回は「06 の設計判断」と明記し、返信の親が同じ発表に属することはアプリ層で守る（注に書いた）。③NULL 可否：`display_order`・`parent_comment_id` が NULL 可なのは運用と合う。`comments.label` のラベルなしを許す点は「06 の設計判断」と明記した。④型・既定値・CHECK：`label` の 3 値の CHECK は `../requirements.md` §3-9 と合う。⑤6-1・6-2 の ER 図：関連は 23 本ずつで線ごとに対応し、関連の名前も正典に裏づけがある。6-2 の属性・主キー・外部キー・カーディナリティは 6-3 と一致し、型の表記をそろえた。ただし、13 行で外した 2 か所を除く。アプリ層の規則で成り立つ線は、6-3 の注が正。⑥H-20・H-26・H-27・H-32・T-2 の 5 件とも決着を待ち、確定に含めない（先行方針で実装を進めることはできる）。H-46 は、上の一覧のとおり外したまま。**列・テーブル・関連の集合の完全さと、未決の決着は保証しない。**
 
 ## この章が答える問い
 
@@ -80,6 +83,7 @@
 | **H-20**（新規・2026-09-11 起票） | 当日タイムテーブルの「時刻枠」の中身（開始時刻・所要・休憩）が未定義 | 発表エンティティは発表順（整数）のみを持つ。時刻枠の列は追加しない |
 | **H-26**（新規・2026-09-21 起票） | 先生の事前登録をメールのみで許すか、初回サインイン後の昇格のみか（`users.name NOT NULL` との関係） | `users` は現行の定義のまま、初回サインイン後の昇格のみが成立する形で組む |
 | **H-27**（新規・2026-09-21 起票） | 年度セットアップ時点で資料枠の締切が決まっているか（`material_slots.deadline` の NULL 可否） | NULL 可で組む。未設定の枠は遅延判定の対象外 |
+| **H-30**（2026-09-21 起票） | セッション戦略（JWT／Prisma Adapter）。Adapter を採ると、公式の Adapter は文字列の id を `where` に渡すので、整数の `users.id` のままでは使えない。`users.id` と、それを参照する外部キーの列の型、または Auth.js の `User`／`Account`／`Session` テーブルが ER に影響する（`../open-questions.md` H-30） | Adapter なし・JWT 戦略で組む。`users.id` は整数のまま |
 
 > **H-6 は 2026-09-29 に決着した**（`../decisions.md`）。
 
@@ -136,6 +140,8 @@ erDiagram
     COMMENT ||--o{ COMMENT_LIKE : "いいねされる"
     USER ||--o{ PRESENTATION_LIKE : "いいねする"
     USER ||--o{ COMMENT_LIKE : "いいねする"
+    USER |o--o{ WORK : "公開許可を設定する"
+    EVENT_OCCASION |o--o| PRESENTATION : "いま発表中を指す"
 ```
 
 > **「発表」は「チーム×発表会」の安定エンティティ**（`../glossary.md` §4）。コメント・いいね・発表順はここにぶら下がる。
@@ -199,13 +205,13 @@ erDiagram
         string slot_type
         timestamp deadline "nullable・H-27未決"
         boolean is_required
-        string template_url "nullable"
+        text template_url "nullable"
     }
     SUBMISSION {
         int id PK
         int team_id FK
         int material_slot_id FK
-        string url
+        text url
         timestamp first_submitted_at
         timestamp last_submitted_at
     }
@@ -333,7 +339,7 @@ erDiagram
 | team_id | int | NOT NULL | — | FK → teams.id・UNIQUE | 作品はチームが1つ持つ（`../glossary.md` §3） |
 | title | varchar | NULL | — | — | アーカイブ導線「年度→**作品名**」（`../requirements.md` §3-7）から正典化（2026-09-11）。**NULL 可**：チーム作成時点（先生が担任として作成・#6 決着）で作品名が決まっている保証は正典に無い。行はチーム作成と同時に生成し、名称は後から編集する |
 | publication_consent | varchar | NOT NULL | 'unset' | CHECK (publication_consent IN ('unset','approved','rejected')) | 公開許可の状態（H-22 決着・2026-09-11）。既定＝`'unset'`＝非表示（2026-07-26）。`'unset'` と `'rejected'` は表示上は同じ非表示だが、先生の代理設定（`../requirements.md` §3-7）の対象を判別するために区別が要る |
-| consent_set_by | int | NULL | — | FK → users.id・CHECK ((publication_consent = 'unset') = (consent_set_by IS NULL)) | 公開許可を最後に設定した人（H-22 決着・2026-09-11・**正典からの帰結ではなく設計判断**）。代理設定が正典（`../requirements.md` §3-7）にある以上「本人の設定」と「先生の代理設定」が実在し、記録しなければ後から復元できない。訂正履歴は持たない（ログ要件は G-5 で一括して決める） |
+| consent_set_by | int | NULL | — | FK → users.id・CHECK ((publication_consent = 'unset') = (consent_set_by IS NULL)) | 公開許可を最後に設定した人（H-22 決着・2026-09-11・**正典からの帰結ではなく設計判断**）。代理設定が正典（`../requirements.md` §3-7）にある以上「本人の設定」と「先生の代理設定」が実在し、記録しなければ後から復元できない。訂正履歴を持つかは G-5（未決）で一括して決めるので、確定に含めない |
 
 > **作品の年度は `team → class → fiscal_year` で導出できるため、独立した列を持たない**（6-6）。
 > **行の生成タイミング**：チーム作成（先生の操作・#6 決着）と同時に1行生成する。`title` は空で作成でき、後から編集できる。
@@ -362,7 +368,7 @@ erDiagram
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
 | fiscal_year_id | int | NOT NULL | — | FK → fiscal_years.id | 年度に4回（2026-07-24） |
-| kind | varchar | NOT NULL | — | CHECK（6-4 の4値） | 固定4種・順序つきの列挙（2026-07-24） |
+| kind | varchar | NOT NULL | — | CHECK（企画／設計／試作／最終の4値。6-4） | 固定4種・順序つきの列挙（2026-07-24） |
 | event_date | date | NULL | — | — | 「日程は個別編集できる」（`../requirements.md` §3-1） |
 | is_published | boolean | NOT NULL | false | — | 公開は発表会単位の先生の明示操作（2026-07-26） |
 | current_presentation_id | int | NULL | — | 複合 FK（後述） | 「いま発表中のチーム」の手動切替（`../requirements.md` §3-10）。**H-20（時刻枠未定義）とは別の確定済み機能** |
@@ -430,12 +436,12 @@ erDiagram
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK・UNIQUE(id, event_occasion_id) | — |
-| team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, event_occasion_id) | 発表の粒度＝チーム×発表会 |
+| team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, event_occasion_id) | 発表の粒度＝チーム×発表会（`../glossary.md` §4・2026-07-24） |
 | event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 同上。`UNIQUE(id, event_occasion_id)` は `event_occasions.current_presentation_id` の複合 FK（6-3 `event_occasions`）を成立させるための制約 |
 | display_order | int | NULL | — | UNIQUE(event_occasion_id, display_order) DEFERRABLE INITIALLY DEFERRED | 発表エンティティの整数属性（H-5 決着）。**開始時刻・所要・休憩の列は追加しない（H-20・新規未決）**。**列名は `order` から改名**：`ORDER` は PostgreSQL の予約語で、生 SQL・ビュー・手動マイグレーションで引用符が必要になり事故りやすい |
 
 > **コメント・いいねのアンカーはこのテーブル**（2026-07-24）。差し替え・リンク変更で対象がずれない安定エンティティ。
-> **一意制約は `DEFERRABLE INITIALLY DEFERRED`**（`../decisions.md` 2026-09-21）：発表順の並び替えは「ほぼ毎回」起きる主要操作（`../hearing.md` §7-1）で、2チームの順番を1トランザクション内で入れ替える際に一時的な重複が生じうる。トランザクション終了時まで制約チェックを遅延させることで、一括更新を1本のUPDATEで書ける。**`display_order` が NULL の行**（発表順がまだ決まっていない）は、タイムテーブル・概要集の並びでは最後尾に置く
+> **一意制約は `DEFERRABLE INITIALLY DEFERRED`**（`../decisions.md` 2026-09-21）：発表順の並び替えは「ほぼ毎回」起きる主要操作（`../hearing.md` §7-1）で、2チームの順番を1トランザクション内で入れ替える際に一時的な重複が生じうる。トランザクション終了時まで制約チェックを遅延させることで、一括更新を1本のUPDATEで書ける。**`display_order` が NULL の行**（発表順がまだ決まっていない）は、タイムテーブル・概要集の並びでは最後尾に置く（この並べ方は 06 の設計判断。出典なし）
 > **行の生成タイミング**：**年度セットアップとチーム登録のどちらが先でも成立する形**で生成する（`../decisions.md` 2026-09-21）。
 > - チーム作成時：そのチームの年度に、既に存在する `event_occasions` があれば、その分だけ `presentations` 行を生成する（`display_order` は NULL）
 > - 年度セットアップ実行時（4発表会を生成する操作）：その年度に既に存在するチームがあれば、新しく生成した各 `event_occasion` に対して不足している `(team, event_occasion)` の `presentations` 行を補って生成する
@@ -452,21 +458,23 @@ erDiagram
 | presentation_id | int | NOT NULL | — | FK → presentations.id | アンカーは発表単位（2026-07-24） |
 | user_id | int | NOT NULL | — | FK → users.id | 実名表示（`../requirements.md` §3-9） |
 | parent_comment_id | int | NULL | — | FK → comments.id | 発表チームの返信をスレッドとして辿る（§3-9） |
-| label | varchar | NULL | — | CHECK（6-4 の3値） | 感想／批評／その他。絞り込みに使う |
-| body | text | NOT NULL | — | — | — |
-| created_at | timestamp | NOT NULL | now() | — | 新着反映はリアルタイム不要（再取得でよい・§3-9） |
+| label | varchar | NULL | — | CHECK（感想／批評／その他の3値） | 感想／批評／その他。絞り込みに使う。付けなければ NULL（ラベルなし）で、「その他」とは別の状態。**`../requirements.md` §3-9 は、ラベルなしのコメントを許すかを明記していない。06 の設計判断**（ラベルなしの行を絞り込みでどう扱うかは画面側で決める。列の定義は変わらない） |
+| body | text | NOT NULL | — | — | コメント本文（`../requirements.md` §3-9「コメントを投稿」） |
+| created_at | timestamp | NOT NULL | now() | — | 投稿日時。コメント一覧の並び順に使う。新着の反映はリアルタイム不要で、再取得でよい（§3-9） |
 
-> **編集・削除列は持たない。** 投稿者自身の編集・削除、先生によるモデレーションの要否は **T-2 未決**。決着まで「投稿は消えない」前提で組む。
+> **返信の親は、同じ発表のコメントに限る（アプリ層で守る）。** `parent_comment_id` は `comments.id` への単一列の外部キーなので、別の発表のコメントを親にした返信を DB は受け入れる。`event_occasions.current_presentation_id` のような複合外部キーにはしない（`comments(id, presentation_id)` の一意と schema の変更が要り、コメントを参照する外部キーの動作は T-2 に依存して範囲外のため）。`submissions` の注と同じ扱い。
+
+> **編集・削除列は持たない。** 投稿者自身の編集・削除、先生によるモデレーションの要否は **T-2 未決**。決着まで「投稿は消えない」前提で組む。**決着時に変わる箇所**：許す場合は編集日時・削除の印などの列を足す（NULL 可の追加で済む）。削除の形（行ごと消す／「削除されました」と表示して返信を残す）で必要な列と、コメントを参照する外部キー（`parent_comment_id`・`comment_likes.comment_id`）の動作が変わる（6-7）。**未決 ID**：T-2。
 
 ### `presentation_likes`（発表へのいいね）／`comment_likes`（コメントへのいいね）
 
-対応する語彙：`../glossary.md` §4／`../requirements.md` §3-9
+対応する語彙：`../glossary.md` §1（粒度の一覧：コメント・いいね → 発表）・§4 発表／`../requirements.md` §3-9
 
 | 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
 | --- | --- | --- | --- | --- | --- |
 | id | serial | NOT NULL | — | PK | — |
-| presentation_id / comment_id | int | NOT NULL | — | FK・UNIQUE(対象, user_id) | 1人1回のいいね |
-| user_id | int | NOT NULL | — | FK → users.id | — |
+| presentation_id / comment_id | int | NOT NULL | — | FK → presentations.id（`presentation_likes`）／comments.id（`comment_likes`）・UNIQUE(対象, user_id) | 1人1回のいいね。**`../requirements.md` §3-9 は「いいねできる」「いいね数が表示される」とだけ書き、1人1回は明記していない。06 の設計判断**（二重押しを防ぐ） |
+| user_id | int | NOT NULL | — | FK → users.id | いいねした人。上の「1人1回」を守るために要る |
 
 > **対象ごとに2テーブルへ分離し、汎用の `likeable_type` は持たない**（2026-09-11 設計判断）。対象の種類が増える見込みは正典に無い（禁則1）。
 

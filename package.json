@@ -9,6 +9,7 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
+    "db:seed": "node --env-file=.env scripts/seed-dev.mjs",
     "lint": "eslint",
     "test": "vitest run"
   },

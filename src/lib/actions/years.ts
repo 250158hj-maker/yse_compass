@@ -10,9 +10,13 @@ import { YearError, setupFiscalYear, type Actor, type SetupYearInput, type YearE
 
 export type YearActionResult<T> = { ok: true; data: T } | { ok: false; code: YearErrorCode | "unauthenticated" };
 
-async function run<T>(fn: (actor: Actor) => Promise<T>): Promise<YearActionResult<T>> {
+// 引数の形だけを確かめる（Server Action は画面の型を通らずに直接呼べるため）。値の規則はデータ層が確かめる。ロールの判定はここに足さない。
+const isObject = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
+
+async function run<T>(valid: boolean, fn: (actor: Actor) => Promise<T>): Promise<YearActionResult<T>> {
   const session = await auth();
   if (!session?.user) return { ok: false, code: "unauthenticated" };
+  if (!valid) return { ok: false, code: "invalid_input" };
   try {
     return { ok: true, data: await fn({ role: session.user.role }) };
   } catch (e) {
@@ -22,5 +26,6 @@ async function run<T>(fn: (actor: Actor) => Promise<T>): Promise<YearActionResul
 }
 
 export async function setupYearAction(input: SetupYearInput) {
-  return run((actor) => setupFiscalYear(prisma, actor, input));
+  const valid = isObject(input) && Number.isInteger(input.year) && Array.isArray(input.classNames) && input.classNames.every((n) => typeof n === "string");
+  return run(valid, (actor) => setupFiscalYear(prisma, actor, input));
 }

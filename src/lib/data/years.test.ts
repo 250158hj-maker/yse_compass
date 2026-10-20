@@ -114,10 +114,13 @@ describeDb("setupFiscalYear（requirements.md §3-1・H-57 の先行方針）", 
     });
   });
 
-  it("年度が整数でない・0 以下は、入力の誤りとして返す", async () => {
+  it("年度が整数でない・西暦 4 桁でないものは、入力の誤りとして返す", async () => {
     await inTransaction(async (db) => {
       await expectError(setupFiscalYear(db, teacher, { year: 2026.5, classNames }), "invalid_input");
       await expectError(setupFiscalYear(db, teacher, { year: 0, classNames }), "invalid_input");
+      await expectError(setupFiscalYear(db, teacher, { year: 999, classNames }), "invalid_input");
+      await expectError(setupFiscalYear(db, teacher, { year: 10000, classNames }), "invalid_input");
+      await expectError(setupFiscalYear(db, teacher, { year: 3_000_000_000, classNames }), "invalid_input");
       await expectError(setupFiscalYear(db, teacher, { year: Number.NaN, classNames }), "invalid_input");
     });
   });

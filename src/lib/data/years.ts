@@ -56,7 +56,8 @@ function hasCode(e: unknown, code: string): boolean {
 // チームは作らない（H-9）。発表（presentations）も作らない：チームがまだ無く、チーム作成時に既存の発表会の分を作る（decisions.md 2026-09-21）。
 export async function setupFiscalYear(db: Db, actor: Actor, input: SetupYearInput) {
   assertTeacher(actor);
-  if (!Number.isInteger(input.year) || input.year <= 0) throw new YearError("invalid_input");
+  // 年度は西暦 4 桁（design/06-data.md 6-3 の fiscal_years.year）。範囲外の値は DB に渡さない（integer の範囲を超えると Prisma が例外を投げる）。
+  if (!Number.isInteger(input.year) || input.year < 1000 || input.year > 9999) throw new YearError("invalid_input");
   const classNames = input.classNames.map((n) => n.trim());
   // クラスが 0 件のときは確定させない（H-57）。空の名前と、同じ名前の重複は、DB の UNIQUE(fiscal_year_id, name) に任せず入力の誤りとして先に返す（year の重複と区別するため）。
   if (classNames.length === 0 || classNames.some((n) => n === "") || new Set(classNames).size !== classNames.length) throw new YearError("invalid_input");

@@ -2,7 +2,8 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { YearError, setupFiscalYear, type Actor, type SetupYearInput, type YearErrorCode } from "@/lib/data/years";
+import { isId } from "@/lib/ids";
+import { YearError, setYearArchived, setupFiscalYear, type Actor, type SetupYearInput, type YearErrorCode } from "@/lib/data/years";
 
 // 対応: docs/requirements.md §3-1。規則と認可の本体は lib/data/years.ts にある（一次防衛線）。ここは、サインイン済みのロールを
 // 取り出して渡し、YearError を画面が扱える結果に直すだけの薄い層。
@@ -28,4 +29,8 @@ async function run<T>(valid: boolean, fn: (actor: Actor) => Promise<T>): Promise
 export async function setupYearAction(input: SetupYearInput) {
   const valid = isObject(input) && Number.isInteger(input.year) && Array.isArray(input.classNames) && input.classNames.every((n) => typeof n === "string");
   return run(valid, (actor) => setupFiscalYear(prisma, actor, input));
+}
+
+export async function setYearArchivedAction(fiscalYearId: number, isArchived: boolean) {
+  return run(isId(fiscalYearId) && typeof isArchived === "boolean", (actor) => setYearArchived(prisma, actor, fiscalYearId, isArchived));
 }

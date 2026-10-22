@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
-import { addMember, createTeam, getTeam, listClassOptions, listTeams, renameMember, setLeader, TeamError, updateTeam } from "@/lib/data/teams";
+import { addMember, createTeam, getTeam, listClassOptions, listTeams, renameMember, setLeader, TeamError, updateTeam, type Actor } from "@/lib/data/teams";
 
 // DB を使うテスト。流儀は auth/callbacks.test.ts と同じ（各テストはトランザクションの中で動かし、最後に取り消す）。
 // DB が失敗すると PostgreSQL はそのトランザクションを中止するので、DB のエラーを期待する検証は各テストの最後に置く。
@@ -100,6 +100,18 @@ describeDb("読み取りの認可（H-16・H-60 の先行方針: 生徒は未ア
       expect(team?.name).toBe("過去");
       expect(team?.class.fiscalYear.isArchived).toBe(true);
       expect((await listTeams(db, teacher, old.id)).map((x) => x.name)).toEqual(["過去"]);
+    });
+  });
+
+  it("ロールが先生でも生徒でもない主体には、3 つの読み取りとも返さない（forbidden）", async () => {
+    await inTransaction(async (db) => {
+      const { current, a } = await seedTeams(db);
+      for (const role of [undefined, "", "admin", null]) {
+        const nobody = { userId: "", role } as unknown as Actor;
+        await expectError(listClassOptions(db, nobody), "forbidden");
+        await expectError(listTeams(db, nobody, current.id), "forbidden");
+        await expectError(getTeam(db, nobody, a.id), "forbidden");
+      }
     });
   });
 

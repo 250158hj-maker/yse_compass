@@ -13,6 +13,13 @@ export default async function RealLayout({ children }: { children: React.ReactNo
             YSE Compass 実装版（仮）
           </Link>
           　— 開発中の画面です。モックの画面とは別の URL にあります。
+          {session?.user?.role === "teacher" && (
+            <>
+              　<Link href="/real/years" className="underline">
+                年度管理
+              </Link>
+            </>
+          )}
         </span>
         {session?.user && (
           <form

@@ -3,9 +3,7 @@ import "./globals.css";
 import { SessionProvider } from "@/context/SessionContext";
 import { DemoClockProvider } from "@/context/DemoClockContext";
 import { TeacherDemoProvider } from "@/context/TeacherDemoContext";
-import { AuthGuard } from "@/components/session/AuthGuard";
-import { Header } from "@/components/layout/Header";
-import { DemoClockBar } from "@/components/demo/DemoClockBar";
+import { MockChrome } from "@/components/session/MockChrome";
 
 export const metadata: Metadata = {
   title: "YSE Compass",
@@ -24,11 +22,7 @@ export default function RootLayout({
           {/* デモ用の時刻と、先生の画面が共有する状態(デモ動画の区間 A)。生徒の画面には何も描かない。 */}
           <DemoClockProvider>
             <TeacherDemoProvider>
-              <AuthGuard>
-                <Header />
-                <DemoClockBar />
-                <main className="flex-1 px-6 py-8">{children}</main>
-              </AuthGuard>
+              <MockChrome>{children}</MockChrome>
             </TeacherDemoProvider>
           </DemoClockProvider>
         </SessionProvider>

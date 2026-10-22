@@ -94,6 +94,17 @@ describeDb("getCurrentYearOccasions（SC-03・H-54 の先行方針）", () => {
   });
 });
 
+describeDb("getCurrentYearOccasions の認可（H-16：読み取りでもロールを確かめる）", () => {
+  it("ロールが先生でも生徒でもない主体には返さない（forbidden）", async () => {
+    await inTransaction(async (db) => {
+      await setupFiscalYear(db, teacher, { year: 9508, classNames: ["IG21"] });
+      for (const role of [undefined, "", "admin", null]) {
+        await expect(getCurrentYearOccasions(db, { userId: "", role } as unknown as Actor)).rejects.toMatchObject({ name: "YearError", code: "forbidden" });
+      }
+    });
+  });
+});
+
 describe("getCurrentYearOccasions（未アーカイブの年度が無い）", () => {
   it("null を返す（年度セットアップの前・全年度のアーカイブ後）", async () => {
     const db = { fiscalYear: { findFirst: async () => null } } as unknown as Db;

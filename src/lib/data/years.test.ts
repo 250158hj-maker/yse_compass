@@ -1,11 +1,11 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
-import { EVENT_KINDS, listClassNameDefaults, setupFiscalYear, YearError, type Actor } from "@/lib/data/years";
+import { EVENT_KINDS, listClassNameDefaults, listFiscalYears, setupFiscalYear, setYearArchived, YearError, type Actor } from "@/lib/data/years";
+import { describeDb } from "@/test/describe-db";
 
 // DB を使うテスト。流儀は auth/callbacks.test.ts と同じ（各テストはトランザクションの中で動かし、最後に取り消す）。
 // DB が失敗すると PostgreSQL はそのトランザクションを中止するので、DB のエラーを期待する検証は各テストの最後に置く。
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 type Db = Parameters<typeof setupFiscalYear>[0];
 
@@ -165,6 +165,75 @@ describe("listClassNameDefaults（前年度が無い）", () => {
   it("年度が 1 件も無ければ空を返す（初年度は先生が入力する）", async () => {
     const db = { fiscalYear: { findFirst: async () => null } } as unknown as Parameters<typeof listClassNameDefaults>[0];
     expect(await listClassNameDefaults(db, teacher)).toEqual([]);
+  });
+});
+
+describeDb("listFiscalYears（SC-19：年度の一覧と状態）", () => {
+  it("year の新しい順に、年度と状態を返す", async () => {
+    await inTransaction(async (db) => {
+      const older = await setupFiscalYear(db, teacher, { year: 9401, classNames: ["IG21"] });
+      const newer = await setupFiscalYear(db, teacher, { year: 9402, classNames: ["IG21"] });
+      await setYearArchived(db, teacher, older.id, true);
+      const mine = (await listFiscalYears(db, teacher)).filter((y) => y.year >= 9401 && y.year <= 9402);
+      expect(mine).toEqual([
+        { id: newer.id, year: 9402, isArchived: false },
+        { id: older.id, year: 9401, isArchived: true },
+      ]);
+    });
+  });
+
+  it("生徒には返さない（先生専用・SC-19）", async () => {
+    await inTransaction(async (db) => {
+      await expectError(listFiscalYears(db, student), "forbidden");
+    });
+  });
+});
+
+describeDb("setYearArchived（§3-7：アーカイブと解除。可逆）", () => {
+  it("アーカイブして、解除で元に戻る", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9403, classNames: ["IG21"] });
+      expect(await setYearArchived(db, teacher, id, true)).toEqual({ id, year: 9403, isArchived: true });
+      expect((await db.fiscalYear.findUniqueOrThrow({ where: { id } })).isArchived).toBe(true);
+      expect(await setYearArchived(db, teacher, id, false)).toEqual({ id, year: 9403, isArchived: false });
+      expect((await db.fiscalYear.findUniqueOrThrow({ where: { id } })).isArchived).toBe(false);
+    });
+  });
+
+  it("すでにその状態でも成功する（再送で失敗させない）", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9404, classNames: ["IG21"] });
+      expect(await setYearArchived(db, teacher, id, false)).toMatchObject({ isArchived: false });
+      await setYearArchived(db, teacher, id, true);
+      expect(await setYearArchived(db, teacher, id, true)).toMatchObject({ isArchived: true });
+    });
+  });
+
+  it("アーカイブしても、年度の中身（クラス・発表会）は消えない", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9405, classNames: ["IG21"] });
+      await setYearArchived(db, teacher, id, true);
+      expect(await db.schoolClass.count({ where: { fiscalYearId: id } })).toBe(1);
+      expect(await db.eventOccasion.count({ where: { fiscalYearId: id } })).toBe(EVENT_KINDS.length);
+    });
+  });
+
+  it("生徒は forbidden。状態は変わらない", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9406, classNames: ["IG21"] });
+      await expectError(setYearArchived(db, student, id, true), "forbidden");
+      expect((await db.fiscalYear.findUniqueOrThrow({ where: { id } })).isArchived).toBe(false);
+    });
+  });
+
+  it("ID の形が不正なら invalid_input、無い年度なら year_not_found（DB のエラーなので最後）", async () => {
+    await inTransaction(async (db) => {
+      await expectError(setYearArchived(db, teacher, 0, true), "invalid_input");
+      await expectError(setYearArchived(db, teacher, 1.5, true), "invalid_input");
+      await expectError(setYearArchived(db, teacher, 3_000_000_000, true), "invalid_input");
+      await expectError(setYearArchived(db, teacher, 1, "yes" as never), "invalid_input");
+      await expectError(setYearArchived(db, teacher, 2_147_483_647, true), "year_not_found");
+    });
   });
 });
 

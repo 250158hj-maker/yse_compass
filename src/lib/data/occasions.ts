@@ -2,10 +2,10 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { isId } from "@/lib/ids";
 import { EVENT_KINDS, YearError, type Actor } from "@/lib/data/years";
 
-// 対応: docs/requirements.md §3-1・§3-7・design/04-screen.md SC-03（当年度の 4 発表会を種別の順序で）。
+// 対応: docs/requirements.md §3-1・§3-7・design/04-screen.md SC-03（当年度の 4 発表会を種別の順序で）・SC-04（getOccasion・発表会 1 件の概要）。
 // 先行方針で組んでいる:
 //   H-54 「当年度」は未アーカイブの年度のうち year が最大のもの。
-// アーカイブ済みの年度は、先生にも生徒にも返さない（確定の規則：requirements.md §3-7 受け入れ基準「発表会一覧から外れる。解除で元に戻る」・SC-03 の「できないこと」の過年度の表示）。H-60 がどう決着しても変わらない。
+// getCurrentYearOccasions（SC-03）は、アーカイブ済みの年度を先生にも生徒にも返さない（確定の規則：requirements.md §3-7 受け入れ基準「発表会一覧から外れる。解除で元に戻る」・SC-03 の「できないこと」の過年度の表示）。H-60 がどう決着しても変わらない。
 // 返さないもの（正典に定義が無いので、足さない）: SC-03 の「締切」（資料枠ごとの締切を発表会の締切にどうまとめるか）と「提出状況サマリ」（何をどう数えるか）。
 // 資料枠の一覧は SC-04 の T 専用（生徒には出さない）で、ここには含めない。
 

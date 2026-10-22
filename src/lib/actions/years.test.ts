@@ -1,8 +1,9 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { PrismaClient } from "@/generated/prisma/client";
-import { setupYearAction } from "@/lib/actions/years";
+import { setYearArchivedAction, setupYearAction } from "@/lib/actions/years";
+import { describeDb } from "@/test/describe-db";
 
 // Server Action の薄い層だけを確かめる（規則は lib/data/years.test.ts）。
 // auth() は差し替える（本物は Google のサインインが要る）。prisma は、各テストのトランザクションに差し替えて、最後に取り消す。
@@ -11,7 +12,6 @@ const holder = vi.hoisted(() => ({ db: null as unknown as Record<string, unknown
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({ prisma: new Proxy({}, { get: (_, key) => holder.db[key as string] }) }));
 
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 class Rollback extends Error {}
 
@@ -86,6 +86,45 @@ describeDb("年度セットアップの Server Action", () => {
       signInAs("teacher");
       expect(await setupYearAction({ year: 9304, classNames: ["IG21"] })).toMatchObject({ ok: true });
       expect(await setupYearAction({ year: 9304, classNames: ["IG21"] })).toEqual({ ok: false, code: "duplicate_year" });
+    });
+  });
+});
+
+describeDb("年度のアーカイブの Server Action", () => {
+  it("先生はアーカイブと解除ができる", async () => {
+    await inTransaction(async (db) => {
+      signInAs("teacher");
+      const created = await setupYearAction({ year: 9601, classNames: ["IG21"] });
+      if (!created.ok) throw new Error("setup failed");
+      const id = created.data.id;
+      expect(await setYearArchivedAction(id, true)).toMatchObject({ ok: true, data: { id, isArchived: true } });
+      expect((await db.fiscalYear.findUniqueOrThrow({ where: { id } })).isArchived).toBe(true);
+      expect(await setYearArchivedAction(id, false)).toMatchObject({ ok: true, data: { isArchived: false } });
+    });
+  });
+
+  it("未サインインは unauthenticated、生徒は forbidden。状態は変わらない", async () => {
+    await inTransaction(async (db) => {
+      signInAs("teacher");
+      const created = await setupYearAction({ year: 9602, classNames: ["IG21"] });
+      if (!created.ok) throw new Error("setup failed");
+      const id = created.data.id;
+      signInAs(null);
+      expect(await setYearArchivedAction(id, true)).toEqual({ ok: false, code: "unauthenticated" });
+      signInAs("student");
+      expect(await setYearArchivedAction(id, true)).toEqual({ ok: false, code: "forbidden" });
+      expect((await db.fiscalYear.findUniqueOrThrow({ where: { id } })).isArchived).toBe(false);
+    });
+  });
+
+  it("引数の形が不正なら invalid_input、無い年度なら year_not_found", async () => {
+    await inTransaction(async () => {
+      signInAs("teacher");
+      const bad = { ok: false, code: "invalid_input" };
+      expect(await setYearArchivedAction("1" as never, true)).toEqual(bad);
+      expect(await setYearArchivedAction(0, true)).toEqual(bad);
+      expect(await setYearArchivedAction(1, "true" as never)).toEqual(bad);
+      expect(await setYearArchivedAction(2_147_483_647, true)).toEqual({ ok: false, code: "year_not_found" });
     });
   });
 });

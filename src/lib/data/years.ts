@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import type { UserRole } from "@/lib/auth/callbacks";
+import { isId } from "@/lib/ids";
 
 // 対応: docs/requirements.md §3-1（年度一括セットアップが「作成」の正規入口）・design/04-screen.md SC-19。
 // 先行方針で組んでいる（06 の列は現行のまま。決着したら変わる箇所は、各項の先行方針に書かれた範囲）:
@@ -15,7 +16,7 @@ type Db = Pick<PrismaClient, "fiscalYear">;
 export type ActorUserId = string;
 export type Actor = { userId: ActorUserId; role: UserRole };
 
-export type YearErrorCode = "forbidden" | "invalid_input" | "duplicate_year";
+export type YearErrorCode = "forbidden" | "invalid_input" | "duplicate_year" | "year_not_found";
 
 export class YearError extends Error {
   constructor(readonly code: YearErrorCode) {
@@ -53,7 +54,27 @@ export async function listClassNameDefaults(db: Db, actor: Actor): Promise<strin
   return previous?.classes.map((c) => c.name) ?? [];
 }
 
-// Prisma のエラーコード: P2002 一意制約違反。
+// SC-19「年度の一覧と状態（進行中／アーカイブ済み）」。新しい年度が先。SC-19 は先生専用なので、ロールで止める。
+export async function listFiscalYears(db: Db, actor: Actor) {
+  assertTeacher(actor);
+  return db.fiscalYear.findMany({ orderBy: { year: "desc" }, select: { id: true, year: true, isArchived: true } });
+}
+
+// 年度のアーカイブ／解除（requirements.md §3-7・SC-19）。先生の明示操作で、時刻や条件による自動遷移は持たない（設計原則）。
+// すでにその状態の年度への設定は、そのまま成功にする（同じ操作の再送で失敗させない）。
+// 他のアーカイブ済みの規則（提出・チーム作成を塞ぐ範囲）はここで足さない：読み取りと作成の側が isArchived を見る（H-54・H-55・H-60）。
+export async function setYearArchived(db: Db, actor: Actor, fiscalYearId: number, isArchived: boolean) {
+  assertTeacher(actor);
+  if (!isId(fiscalYearId) || typeof isArchived !== "boolean") throw new YearError("invalid_input");
+  try {
+    return await db.fiscalYear.update({ where: { id: fiscalYearId }, data: { isArchived }, select: { id: true, year: true, isArchived: true } });
+  } catch (e) {
+    if (hasCode(e, "P2025")) throw new YearError("year_not_found");
+    throw e;
+  }
+}
+
+// Prisma のエラーコード: P2002 一意制約違反／P2025 対象の行が無い。
 function hasCode(e: unknown, code: string): boolean {
   return e instanceof Prisma.PrismaClientKnownRequestError && e.code === code;
 }

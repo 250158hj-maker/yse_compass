@@ -10,7 +10,7 @@ import { parseId } from "@/lib/ids";
 import { prisma } from "@/lib/prisma";
 import { TeamEditor } from "./TeamEditor";
 
-// 対応: docs/design/04-screen.md SC-14（チーム詳細）の、チーム情報と先生の編集（メンバー編集・リーダー指定）だけ。
+// 対応: docs/design/04-screen.md SC-14（チーム詳細）の、チーム情報と先生の編集（チーム名・作品名の編集・メンバー編集・リーダー指定）だけ。
 // 含めない: 引き換えの判別と解除（H-25・H-42）、4 発表会分の提出状況、公開許可の設定パネル。
 export default async function RealTeamDetailPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = await params;

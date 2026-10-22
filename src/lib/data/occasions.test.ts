@@ -2,10 +2,10 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { getCurrentYearOccasions } from "@/lib/data/occasions";
+import { describeDb } from "@/test/describe-db";
 import { EVENT_KINDS, setupFiscalYear, setYearArchived, type Actor } from "@/lib/data/years";
 
 // DB を使うテスト。流儀は years.test.ts と同じ（各テストはトランザクションの中で動かし、最後に取り消す）。
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 type Db = Parameters<typeof getCurrentYearOccasions>[0];
 

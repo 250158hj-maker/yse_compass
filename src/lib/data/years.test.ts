@@ -2,10 +2,10 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { EVENT_KINDS, listClassNameDefaults, setupFiscalYear, YearError, type Actor } from "@/lib/data/years";
+import { describeDb } from "@/test/describe-db";
 
 // DB を使うテスト。流儀は auth/callbacks.test.ts と同じ（各テストはトランザクションの中で動かし、最後に取り消す）。
 // DB が失敗すると PostgreSQL はそのトランザクションを中止するので、DB のエラーを期待する検証は各テストの最後に置く。
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 type Db = Parameters<typeof setupFiscalYear>[0];
 

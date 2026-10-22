@@ -1,8 +1,9 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { PrismaClient } from "@/generated/prisma/client";
 import { setupYearAction } from "@/lib/actions/years";
+import { describeDb } from "@/test/describe-db";
 
 // Server Action の薄い層だけを確かめる（規則は lib/data/years.test.ts）。
 // auth() は差し替える（本物は Google のサインインが要る）。prisma は、各テストのトランザクションに差し替えて、最後に取り消す。
@@ -11,7 +12,6 @@ const holder = vi.hoisted(() => ({ db: null as unknown as Record<string, unknown
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({ prisma: new Proxy({}, { get: (_, key) => holder.db[key as string] }) }));
 
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 class Rollback extends Error {}
 

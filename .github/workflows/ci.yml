@@ -37,7 +37,7 @@ jobs:
           SCHOOL_WORKSPACE_DOMAIN: example.invalid
 
   # 単体テスト（Vitest）。日時の整形のタイムゾーンは vitest.config.mts が日本時間に固定している。
-  # DB を使うテスト（src/lib/auth/callbacks.test.ts）のため、Postgres を立ててマイグレーションを適用する。
+  # DB を使うテスト（describeDb を使うファイル。src/test/describe-db.ts）のため、Postgres を立ててマイグレーションを適用する。
   # 下の DATABASE_URL が無いと、DB を使うテストは飛ばされずに落ちる（src/test/describe-db.ts）。
   # ジョブ ID（test）と、ジョブ直下の name は変えない（必須チェックの名前になるため。変えると保護が待つチェックが来なくなる）。
   test:

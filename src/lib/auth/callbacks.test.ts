@@ -1,12 +1,11 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { createCallbacks, findOrCreateUser } from "@/lib/auth/callbacks";
+import { describeDb } from "@/test/describe-db";
 
-// DB を使うテスト。接続先は DATABASE_URL（ローカルは .env・CI は test ジョブの Postgres）。
+// DB を使うテスト。接続先と、DB が無いときの扱い（ローカルは飛ばす・CI は落とす）は describeDb を参照。
 // 各テストはトランザクションの中で動かし、最後に取り消すので、DB にデータは残らない（並行のテストだけは実際の行を作り、接頭辞で後始末する）。
-// DATABASE_URL が無い環境（DB を立てていないローカル）では飛ばす。CI は DATABASE_URL を必ず渡す。
-const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 const domain = "example.invalid";
 type Db = Parameters<typeof findOrCreateUser>[0];

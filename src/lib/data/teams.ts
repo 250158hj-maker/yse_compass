@@ -44,6 +44,12 @@ function readableBy(actor: Actor): Prisma.TeamWhereInput {
   return actor.role === "teacher" ? {} : { class: { fiscalYear: { isArchived: false } } };
 }
 
+// 読み取りも、先生と生徒だけに返す（decisions.md 2026-09-06・H-16）。session のロールは型の主張だけで実行時の検査が無く、
+// readableBy は「先生でなければ生徒」として絞るので、ロールの無い主体が生徒として読めてしまう。ここで先に弾く。
+function assertReader(actor: Actor) {
+  if (actor.role !== "teacher" && actor.role !== "student") throw new TeamError("forbidden");
+}
+
 // 渡されたのがトランザクションならそのまま使い、素のクライアントなら $transaction で包む。
 function inTransaction<T>(db: Db, fn: (tx: Db) => Promise<T>): Promise<T> {
   return db.$transaction ? db.$transaction((tx) => fn(tx)) : fn(db);
@@ -68,9 +74,9 @@ function hasCode(e: unknown, code: string): boolean {
 }
 
 // 先行方針（H-54）: 未アーカイブの年度のうち year が最大のものを既定にし、フォームで別の未アーカイブの年度に切り替えられる。
-// 返すのは未アーカイブの年度だけなので、生徒にも先生にも同じ結果。actor は規約（読み取りも主体を取る）のために受け取る。
+// 返すのは未アーカイブの年度だけなので、生徒にも先生にも同じ結果。ロールが先生でも生徒でもない主体には返さない。
 export async function listClassOptions(db: Db, actor: Actor) {
-  void actor;
+  assertReader(actor);
   const years = await db.fiscalYear.findMany({
     where: { isArchived: false },
     orderBy: { year: "desc" },
@@ -88,7 +94,8 @@ const teamSelect = {
   members: { select: { id: true, name: true, userId: true }, orderBy: { id: "asc" } },
 } satisfies Prisma.TeamSelect;
 
-export function listTeams(db: Db, actor: Actor, fiscalYearId: number) {
+export async function listTeams(db: Db, actor: Actor, fiscalYearId: number) {
+  assertReader(actor);
   return db.team.findMany({
     where: { AND: [{ class: { fiscalYearId } }, readableBy(actor)] },
     orderBy: [{ class: { name: "asc" } }, { name: "asc" }],
@@ -96,7 +103,8 @@ export function listTeams(db: Db, actor: Actor, fiscalYearId: number) {
   });
 }
 
-export function getTeam(db: Db, actor: Actor, teamId: number) {
+export async function getTeam(db: Db, actor: Actor, teamId: number) {
+  assertReader(actor);
   return db.team.findFirst({ where: { AND: [{ id: teamId }, readableBy(actor)] }, select: teamSelect });
 }
 

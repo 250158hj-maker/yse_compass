@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
-import { getCurrentYearOccasions } from "@/lib/data/occasions";
+import { getCurrentYearOccasions, getOccasion } from "@/lib/data/occasions";
 import { describeDb } from "@/test/describe-db";
 import { EVENT_KINDS, setupFiscalYear, setYearArchived, type Actor } from "@/lib/data/years";
 
@@ -100,6 +100,58 @@ describeDb("getCurrentYearOccasions の認可（H-16：読み取りでもロー�
       await setupFiscalYear(db, teacher, { year: 9508, classNames: ["IG21"] });
       for (const role of [undefined, "", "admin", null]) {
         await expect(getCurrentYearOccasions(db, { userId: "", role } as unknown as Actor)).rejects.toMatchObject({ name: "YearError", code: "forbidden" });
+      }
+    });
+  });
+});
+
+describeDb("getOccasion（SC-04 の概要・H-60 の先行方針と同じ線引き）", () => {
+  async function seed(db: Parameters<typeof setupFiscalYear>[0] & Parameters<typeof getOccasion>[0]) {
+    const open = await setupFiscalYear(db, teacher, { year: 9511, classNames: ["IG21"] });
+    const closed = await setupFiscalYear(db, teacher, { year: 9510, classNames: ["IG21"] });
+    await setYearArchived(db, teacher, closed.id, true);
+    const openOccasion = await db.eventOccasion.findFirstOrThrow({ where: { fiscalYearId: open.id, kind: "設計" } });
+    const closedOccasion = await db.eventOccasion.findFirstOrThrow({ where: { fiscalYearId: closed.id, kind: "設計" } });
+    return { openOccasion, closedOccasion };
+  }
+
+  it("先生にも生徒にも、未アーカイブの年度の発表会の概要を返す。年度の状態つき", async () => {
+    await inTransaction(async (db) => {
+      const { openOccasion } = await seed(db);
+      for (const actor of [teacher, student]) {
+        expect(await getOccasion(db, actor, openOccasion.id)).toEqual({
+          id: openOccasion.id,
+          kind: "設計",
+          eventDate: null,
+          isPublished: false,
+          fiscalYear: { id: openOccasion.fiscalYearId, year: 9511, isArchived: false },
+        });
+      }
+    });
+  });
+
+  it("アーカイブ済みの年度の発表会は、先生には返し、生徒には返さない（無いものとして null）", async () => {
+    await inTransaction(async (db) => {
+      const { closedOccasion } = await seed(db);
+      expect((await getOccasion(db, teacher, closedOccasion.id))?.fiscalYear).toMatchObject({ year: 9510, isArchived: true });
+      expect(await getOccasion(db, student, closedOccasion.id)).toBeNull();
+    });
+  });
+
+  it("無い ID・範囲外の ID は null（権限が無い場合と区別しない）", async () => {
+    await inTransaction(async (db) => {
+      for (const id of [2_147_483_647, 0, -1, 1.5, Number.NaN, 3_000_000_000]) {
+        expect(await getOccasion(db, teacher, id)).toBeNull();
+        expect(await getOccasion(db, student, id)).toBeNull();
+      }
+    });
+  });
+
+  it("ロールが先生でも生徒でもない主体には返さない（forbidden）", async () => {
+    await inTransaction(async (db) => {
+      const { openOccasion } = await seed(db);
+      for (const role of [undefined, "", "admin", null]) {
+        await expect(getOccasion(db, { userId: "", role } as unknown as Actor, openOccasion.id)).rejects.toMatchObject({ name: "YearError", code: "forbidden" });
       }
     });
   });

@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { PrismaClient } from "@/generated/prisma/client";
-import { listTeamSubmissionsAction, submitMaterialAction } from "@/lib/actions/submissions";
+import { getSubmissionMatrixAction, listTeamSubmissionsAction, submitMaterialAction } from "@/lib/actions/submissions";
 import { createTeam } from "@/lib/data/teams";
 import { setupFiscalYear } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
@@ -108,6 +108,22 @@ describeDb("提出の Server Action", () => {
       expect(await submitMaterialAction(s.teamId, s.slotId, "javascript:alert(1)")).toEqual({ ok: false, code: "invalid_input" });
       const summary = await db.materialSlot.findFirstOrThrow({ where: { eventOccasionId: s.occasionId, slotType: "概要" } });
       expect(await submitMaterialAction(s.teamId, summary.id, "https://example.invalid/a")).toEqual({ ok: false, code: "summary_slot" });
+    });
+  });
+
+  it("提出状況一覧は先生だけが読める。生徒・未サインイン・不正な引数は拒む", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9925);
+      signInAs({ id: s.studentId, role: "student" });
+      await submitMaterialAction(s.teamId, s.slotId, "https://example.invalid/a");
+      expect(await getSubmissionMatrixAction(s.occasionId)).toEqual({ ok: false, code: "forbidden" });
+      signInAs(null);
+      expect(await getSubmissionMatrixAction(s.occasionId)).toEqual({ ok: false, code: "unauthenticated" });
+      signInAs({ id: "1", role: "teacher" });
+      expect(await getSubmissionMatrixAction("1" as never)).toEqual({ ok: false, code: "invalid_input" });
+      const matrix = await getSubmissionMatrixAction(s.occasionId);
+      if (!matrix.ok) throw new Error("matrix failed");
+      expect(matrix.data.rows[0].cells.find((c) => c.slotId === s.slotId)).toMatchObject({ status: "submitted", url: "https://example.invalid/a" });
     });
   });
 });

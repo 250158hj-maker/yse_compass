@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { isId } from "@/lib/ids";
 import { prisma } from "@/lib/prisma";
+import { getSubmissionMatrix } from "@/lib/data/submission-matrix";
 import { SubmissionError, listTeamSubmissions, submitMaterial, type SubmissionErrorCode } from "@/lib/data/submissions";
 import type { Actor } from "@/lib/data/years";
 
@@ -31,4 +32,8 @@ export async function submitMaterialAction(teamId: number, slotId: number, url: 
 
 export async function listTeamSubmissionsAction(teamId: number, occasionId: number) {
   return run(isId(teamId) && isId(occasionId), (actor) => listTeamSubmissions(prisma, actor, teamId, occasionId));
+}
+
+export async function getSubmissionMatrixAction(occasionId: number) {
+  return run(isId(occasionId), (actor) => getSubmissionMatrix(prisma, actor, occasionId));
 }

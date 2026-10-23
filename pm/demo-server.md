@@ -14,10 +14,10 @@
 - **対象は、12/18 の試作版発表会のデモ環境だけ。** 本番（段階①・段階②）は扱わない。
 - **手順は、当面「教室の LAN に公開する」ところまで。** 根拠は `../docs/decisions.md` 2026-10-20 のデモ環境の行（ここには書き写さない）。
 - **別の PC からの Google サインインは、`../docs/open-questions.md` H-38 が決まるまで扱わない。**
-- この手順書の再現性は、サーバーの持ち主（案ではインフラ担当：§2）が自分のアカウントで初めから立て直すことで検証する。**その立て直しが、この手順の最初の通しの実測になる。** **手順どおりに通らなかった箇所・出力が違った箇所・手順に無い操作をした箇所は、この文書を直す PR（または Issue #98）に書く。**
-- 実測の条件：本書の「実測」は、**2026-10-23、教室の PC（Windows 11 Pro・WSL 3.0.3・Ubuntu 26.04.1・Docker Engine 29.9.1・Node 24.22.0・pnpm 11.17.0）で、リーダーが自分の Windows アカウントで行ったこと**を指す。行ったのは、**すでに入っていたもの（Ubuntu・Docker・nvm と Node・既存の clone と `.env`）の確認**と、**既存のリポジトリでの操作**（`git pull`・リモートの HTTPS への切り替え・`prisma migrate`・`prisma generate`・seed・`pnpm build`・`pnpm start`）だけ。**新しく入れる手順は、まだ通していない。** **この PC では Google の ID・シークレットが空のまま**だったので、Google サインインは試していない。
+- この手順書の再現性は、サーバーの持ち主（案ではインフラ担当：§2）が自分のアカウントで初めから立て直すことで検証する。**その立て直しが、この手順の最初の通しの実測になる。** **2026-10-23 の 2 回目の実測（インフラ担当）が、その立て直しに当たる。この PC は、試験ではなく、そのままデモ用サーバーとして使う**（ポート転送とファイアウォールの許可も入れたまま。持ち主の案の了承は、§2 のとおり未了）。 **手順どおりに通らなかった箇所・出力が違った箇所・手順に無い操作をした箇所は、この文書を直す PR（または Issue #98）に書く。**
+- 実測の条件：**1 回目の実測**は、**2026-10-23、教室の PC（Windows 11 Pro・WSL 3.0.3・Ubuntu 26.04.1・Docker Engine 29.9.1・Node 24.22.0・pnpm 11.17.0）で、リーダーが自分の Windows アカウントで行ったこと**を指す。行ったのは、**すでに入っていたもの（Ubuntu・Docker・nvm と Node・既存の clone と `.env`）の確認**と、**既存のリポジトリでの操作**（`git pull`・リモートの HTTPS への切り替え・`prisma migrate`・`prisma generate`・seed・`pnpm build`・`pnpm start`）だけ。**新しく入れる手順は、1 回目では通していない（2 回目は下の表）。** **この PC では Google の ID・シークレットが空のまま**だったので、Google サインインは試していない。本書で「10/23 は…」と書いた箇所は、断りが無ければ 1 回目を指す。
 
-| ステップ | 内容 | 10/23 の状態 | 未実測の手順 |
+| ステップ | 内容 | 1 回目（リーダー）の状態 | 1 回目に未実測の手順 |
 | --- | --- | --- | --- |
 | 0 | 事前の確認 | 手順を通して実測 | 外への到達の確認先のうち、あとから足した 5 か所 |
 | 1 | WSL・Ubuntu | 確認のみ（導入手順は未実測） | Ubuntu の導入（1-1）・systemd の設定（1-3） |
@@ -31,9 +31,9 @@
 
 | ステップ | 2 回目の状態 |
 | --- | --- |
-| 1 | Ubuntu は**すでに登録済み**だった（`wsl --install` が `ERROR_ALREADY_EXISTS`）。確認だけで通った |
+| 1 | Ubuntu は**すでに登録済み**だった（`wsl --install` が `ERROR_ALREADY_EXISTS`。1-1 の導入は、2 回目も通していない）。`.wslconfig` は**無かった**（NAT 方式）。systemd・`wsl.conf` は確認だけで通った |
 | 2 | **導入の手順が、そのまま通った** |
-| 3 | `nvm install 24` と `corepack enable` が通った。nvm の導入は行っていない |
+| 3 | `nvm install 24` と `corepack enable` が通った。nvm の導入そのものは、記録に残っていない（`nvm install 24` からそのまま通った） |
 | 4 | HTTPS の clone・`.env` の作成が通った。**手順どおりでなかった点がある**（ステップ 4 末尾） |
 | 5 | 1 回目に未実測だった本書の形（ログに出して終了コードを見る）で、ビルドが `exit=0` で通った |
 | 6 | 別の PC から届いた |
@@ -125,7 +125,7 @@ wsl -l -v
 wsl --install -d Ubuntu
 ```
 
-- **この手順は未実測**（10/23 は、すでに入っていた Ubuntu を使った）。出る Ubuntu のバージョンが 26.04 とは限らない。違ったら記録する。
+- **この手順は、1・2 回目とも未実測**（どちらも、すでに入っていた Ubuntu を使った。2 回目は `wsl --install` が `ERROR_ALREADY_EXISTS`）。出る Ubuntu のバージョンが 26.04 とは限らない。違ったら記録する。
 - 初回の起動で、Ubuntu のユーザーを作る。
 
 ### 1-2. `.wslconfig` の確認
@@ -179,7 +179,7 @@ wsl --shutdown
 
 ## ステップ 2. Docker Engine
 
-**入れ方のコマンドの出どころは、`../docs/design/08-architecture.md` 8-6「Docker の用意」**（Docker Desktop が入っている場合の注意もそこにある。本書には書き写さない）。**08 は暫定なので、根拠ではなく、コマンドの出どころとして指している。** **導入の手順は未実測**（10/23 は、すでに入っていた Docker Engine を確かめただけ）。
+**入れ方のコマンドの出どころは、`../docs/design/08-architecture.md` 8-6「Docker の用意」**（Docker Desktop が入っている場合の注意もそこにある。本書には書き写さない）。**08 は暫定なので、根拠ではなく、コマンドの出どころとして指している。** **導入の手順は、1 回目は未実測**（すでに入っていた Docker Engine を確かめただけ）。**2 回目で、そのまま通った**（Docker Engine 29.9.2・Compose v5.6.1）。
 
 入れたら、Ubuntu の端末で確認する。
 
@@ -208,7 +208,7 @@ corepack enable
 corepack --version
 ```
 
-- `nvm` が無ければ、nvm の公式の手順で入れる（https://github.com/nvm-sh/nvm の Installing and Updating）。nvm を入れたら、Ubuntu の端末を開き直す（`nvm` コマンドが効くようにするため）。**nvm の導入・`nvm install 24`・`corepack enable` は未実測**（10/23 は、すでに入っていた nvm・Node・corepack を確かめただけ）。
+- `nvm` が無ければ、nvm の公式の手順で入れる（https://github.com/nvm-sh/nvm の Installing and Updating）。nvm を入れたら、Ubuntu の端末を開き直す（`nvm` コマンドが効くようにするため）。**1 回目は、nvm の導入・`nvm install 24`・`corepack enable` を未実測**（すでに入っていた nvm・Node・corepack を確かめただけ）。**2 回目で、`nvm install 24`（v24.22.1）と `corepack enable` は通った。nvm の導入そのものは未実測のまま**（記録に残っていない）。
 - **合格の基準**：`node -v` が `v24.x`（10/23 は v24.22.0）。Node のバージョンの根拠は、リポジトリの `.nvmrc`（`24`）。
 - **pnpm の確認は、ステップ 4 でリポジトリに入ってから行う**（`pnpm -v` が `package.json` の `packageManager` と同じ版であること）。
 - **リポジトリの外で `pnpm -v` を打つと、別の版が出る**（10/23 は 12.15.0。corepack が「ダウンロードしてよいか」と聞いたので `y` で進めた）。**問題ではない。** `packageManager` の指定はリポジトリの中でだけ効く。
@@ -228,13 +228,13 @@ git log --oneline -1
 pnpm -v
 ```
 
-- **HTTPS での clone は未実測**（10/23 は、既存の clone のリモートを HTTPS に切り替えて `git pull` した）。
-- **リポジトリの中で初めて `pnpm -v` を打つと、corepack が「ダウンロードしてよいか」と聞くことがある（見込み。未実測）**（10/23 の記録では、リポジトリの外で同じ確認が出た：ステップ 3）。`y` で進める。
+- **HTTPS での clone は、1 回目は未実測**（既存の clone のリモートを HTTPS に切り替えて `git pull` した）。**2 回目で通った。**
+- **リポジトリの中で初めて `pnpm -v` を打つと、corepack が「ダウンロードしてよいか」と聞くことがある**（2 回目で、リポジトリの中でも出た。1 回目の記録では、リポジトリの外で同じ確認が出た：ステップ 3）。`y` で進める。
 - **合格の基準**：clone が通り、`pnpm -v` が `package.json` の `packageManager`（`grep packageManager package.json`）と同じ版（10/23 は 11.17.0）。
 
 ### 4-2. `.env` を作る
 
-**この節の手順（`cp`・`AUTH_SECRET` の生成）は未実測**（10/23 は、既存の `.env` を使った）。
+**この節の手順（`cp`・`AUTH_SECRET` の生成）は、1 回目は未実測**（既存の `.env` を使った）。**2 回目で通った**（つまずいた点は、この節の末尾）。
 
 ```bash
 # [Ubuntu] ~/workspace/yse_compass で
@@ -290,10 +290,10 @@ awk -F= '/^[A-Z_]+=/{print $1, ($2=="" ? "(空)" : "(値あり)")}' .env
   - **`DATABASE_URL` のパスワードを直し忘れた。** `POSTGRES_PASSWORD` だけを変えて、`DATABASE_URL` の中が既定のままだった。値を出さずに確かめるには、次を打つ。`password 不一致` と出たら直す。
     ```bash
     # [Ubuntu]
-    set -a; . ./.env; set +a; case "$DATABASE_URL" in *"$POSTGRES_PASSWORD"*) echo "password 一致";; *) echo "password 不一致";; esac
+    u=$(grep '^DATABASE_URL=' .env | cut -d= -f2-); p=$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-); case "$u" in *"$p"*) echo "password 一致";; *) echo "password 不一致";; esac
     ```
   - **パスワードは `openssl rand -hex 24` で作った。** `DATABASE_URL` に入れるので、`/` `+` `=` を含む `base64` は避けた。
-  - **`POSTGRES_USER` は、既定のままにした**（パスワードだけを変えた。手順書の「既定から変える」とは違う。判断の理由は、5432 番を転送しないこと）。
+  - **`POSTGRES_USER` は、既定のままにした**（パスワードだけを変えた。手順書の「既定から変える」とは違う）。**この PC は、そのままデモ用サーバーとして使う**ので、DB のボリュームを作り直して変えるか、既定のままでよいとするかは、リーダーの判断待ち（#164 の review thread）。この PC は NAT 方式（`.wslconfig` 無し）で、5432 番は転送していないが、別の PC から 5432 番に届かないことは、確かめていない。
   - **`AUTH_TRUST_HOST=true` は、`echo 'AUTH_TRUST_HOST=true' >> .env` で足した。** 足す前に、最終行が改行で終わっているかを `tail -c 1 .env | xxd -p`（`0a` なら終わっている）で確かめた。
   - **エディタは、vim ではなく nano を使った。**
 
@@ -328,8 +328,8 @@ pnpm db:seed
 pnpm build > ~/yse-build.log 2>&1; echo "build exit=$?"
 ```
 
-- **1 は未実測**（10/23 は、10/23 より前に作られていた DB のコンテナが、すでに `(healthy)` で動いていた）。`--wait` が使えない版のときは、`docker compose up -d db` のあと、`docker compose ps` の `db` が `(healthy)` になるまで繰り返す。
-- **2 で依存を実際に取得する初回は未実測**（10/23 は `Already up to date`）。
+- **1 は、1 回目は未実測**（10/23 より前に作られていた DB のコンテナが、すでに `(healthy)` で動いていた）。**2 回目は実行した**（出力は記録していない）。`--wait` が使えない版のときは、`docker compose up -d db` のあと、`docker compose ps` の `db` が `(healthy)` になるまで繰り返す。
+- **2 で依存を実際に取得する初回は、1 回目は未実測**（`Already up to date`）。**2 回目は実行した**（出力は記録していない）。
 - **7 で `exit=0` になるまで、8 へ進まない。** 0 以外なら `tail -n 40 ~/yse-build.log` で原因を見る。
 
 ```bash
@@ -376,7 +376,7 @@ ip -4 addr show eth0 | grep inet
 ```
 
 - **`hostname -I` は使わない。** Docker の内部ネットワーク（`docker0`）のアドレスも並び、取り違えやすい。
-- 実測では、`eth0` は `192.168.` で始まる値だった（NAT 方式の WSL が 172 系とは限らない）。
+- 実測では、`eth0` は 172 系ではなかった（NAT 方式の WSL が 172 系とは限らない）。
 
 ```powershell
 # [PowerShell] Windows の IP（Wi-Fi の場合。インターフェース名は環境による）と、ネットワークの種類
@@ -449,6 +449,8 @@ Remove-NetFirewallRule -DisplayName "yse-compass demo 3000"
   - 止め方：`pnpm start` の端末で Ctrl-C。続けて、Ubuntu の端末で、リポジトリのディレクトリ（`~/workspace/yse_compass`）に入って `docker compose down`（データは残る。`-v` は付けない）。
 - **仮置きの側の Ubuntu そのものを消すかは、あとで決める。** 消すと、中身は戻せない。
 - 立ち上がったかの判断は、新しい持ち主の側で、ステップ 5 の 9 が `{"status":"ok"}` を返すこと。
+- **2026-10-23 の 2 回目の側（インフラ担当のアカウント）は、この判断を満たした**（ステップ 5 の 9 が `{"status":"ok"}`）。リーダーの仮置きを止めるかどうかは、リーダーの判断。
+- **12/18 のあとは、ステップ 6-5 の「元に戻す」で、ポート転送とファイアウォールの許可を外す。** 残すと、使わない転送と許可が残る。
 
 ## 関連
 

@@ -1,14 +1,15 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { isId } from "@/lib/ids";
 import { EVENT_KINDS, YearError, type Actor } from "@/lib/data/years";
 
-// 対応: docs/requirements.md §3-1・§3-7・design/04-screen.md SC-03（当年度の 4 発表会を種別の順序で）。
+// 対応: docs/requirements.md §3-1・§3-7・design/04-screen.md SC-03（当年度の 4 発表会を種別の順序で）・SC-04（getOccasion・発表会 1 件の概要）。
 // 先行方針で組んでいる:
 //   H-54 「当年度」は未アーカイブの年度のうち year が最大のもの。
-// アーカイブ済みの年度は、先生にも生徒にも返さない（確定の規則：requirements.md §3-7 受け入れ基準「発表会一覧から外れる。解除で元に戻る」・SC-03 の「できないこと」の過年度の表示）。H-60 がどう決着しても変わらない。
+// getCurrentYearOccasions（SC-03）は、アーカイブ済みの年度を先生にも生徒にも返さない（確定の規則：requirements.md §3-7 受け入れ基準「発表会一覧から外れる。解除で元に戻る」・SC-03 の「できないこと」の過年度の表示）。H-60 がどう決着しても変わらない。
 // 返さないもの（正典に定義が無いので、足さない）: SC-03 の「締切」（資料枠ごとの締切を発表会の締切にどうまとめるか）と「提出状況サマリ」（何をどう数えるか）。
 // 資料枠の一覧は SC-04 の T 専用（生徒には出さない）で、ここには含めない。
 
-type Db = Pick<PrismaClient, "fiscalYear">;
+type Db = Pick<PrismaClient, "fiscalYear" | "eventOccasion">;
 
 // 当年度とその発表会。未アーカイブの年度が 1 つも無ければ null（年度セットアップの前・全年度のアーカイブ後）。
 // 発表会は id の昇順に頼らず、種別の並び（EVENT_KINDS）で返す。
@@ -28,4 +29,17 @@ export async function getCurrentYearOccasions(db: Db, actor: Actor) {
   if (!year) return null;
   const order = (kind: string) => EVENT_KINDS.indexOf(kind as (typeof EVENT_KINDS)[number]);
   return { fiscalYear: { id: year.id, year: year.year }, occasions: year.eventOccasions.toSorted((a, b) => order(a.kind) - order(b.kind)) };
+}
+
+// SC-04 の「発表会の概要」（種別・日程・公開状態。全員が見る）。1 件の発表会を、年度の状態つきで返す。
+// 先生は全年度を読める。生徒は未アーカイブの年度の発表会だけ読める：アーカイブ済みの年度は運営の画面（発表会一覧）から外れる（§3-7）ので、
+// 直接 URL を開いても生徒には出さない。外れた行は「無い」と同じ（null）で返し、存在を漏らさない（H-60 の先行方針と同じ線引き。決着したら変わるのはここだけ）。
+// 資料枠は含めない：SC-04 の資料枠の一覧は先生専用で、lib/data/slots.ts の listMaterialSlots が持つ。「締切」は H-61 が決着するまで返さない。
+export async function getOccasion(db: Db, actor: Actor, occasionId: number) {
+  assertRole(actor);
+  if (!isId(occasionId)) return null;
+  return db.eventOccasion.findFirst({
+    where: { id: occasionId, ...(actor.role === "teacher" ? {} : { fiscalYear: { isArchived: false } }) },
+    select: { id: true, kind: true, eventDate: true, isPublished: true, fiscalYear: { select: { id: true, year: true, isArchived: true } } },
+  });
 }

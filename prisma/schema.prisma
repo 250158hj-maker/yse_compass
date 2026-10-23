@@ -148,7 +148,7 @@ model MaterialSlot {
   id              Int       @id @default(autoincrement())
   eventOccasionId Int       @map("event_occasion_id")
   slotType        String    @map("slot_type") @db.VarChar
-  deadline        DateTime?
+  deadline        DateTime? @db.Timestamptz(3)
   isRequired      Boolean   @map("is_required")
   templateUrl     String?   @map("template_url") @db.Text
 
@@ -166,8 +166,8 @@ model Submission {
   teamId           Int      @map("team_id")
   materialSlotId   Int      @map("material_slot_id")
   url              String   @db.Text
-  firstSubmittedAt DateTime @map("first_submitted_at")
-  lastSubmittedAt  DateTime @map("last_submitted_at")
+  firstSubmittedAt DateTime @map("first_submitted_at") @db.Timestamptz(3)
+  lastSubmittedAt  DateTime @map("last_submitted_at") @db.Timestamptz(3)
 
   team         Team         @relation(fields: [teamId], references: [id])
   materialSlot MaterialSlot @relation(fields: [materialSlotId], references: [id])
@@ -185,8 +185,8 @@ model Summary {
   teamId           Int      @map("team_id")
   eventOccasionId  Int      @map("event_occasion_id")
   techStack        String?  @map("tech_stack") @db.Text
-  firstSubmittedAt DateTime @map("first_submitted_at")
-  lastSubmittedAt  DateTime @map("last_submitted_at")
+  firstSubmittedAt DateTime @map("first_submitted_at") @db.Timestamptz(3)
+  lastSubmittedAt  DateTime @map("last_submitted_at") @db.Timestamptz(3)
 
   team          Team          @relation(fields: [teamId], references: [id])
   eventOccasion EventOccasion @relation(fields: [eventOccasionId], references: [id])
@@ -232,7 +232,7 @@ model Comment {
   parentCommentId Int?     @map("parent_comment_id")
   label           String?  @db.VarChar
   body            String   @db.Text
-  createdAt       DateTime @default(now()) @map("created_at")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   presentation Presentation  @relation(fields: [presentationId], references: [id])
   user         User          @relation(fields: [userId], references: [id])

@@ -249,13 +249,14 @@ openssl rand -base64 33
 ```
 
 
-`POSTGRES_USER`・`POSTGRES_PASSWORD`・`POSTGRES_DB`・`DATABASE_URL` は、`.env.example` のままでも動く。**`DATABASE_URL` のホストは `localhost` のままにする**（アプリは WSL の中で直接動かし、DB だけを docker compose で動かすため：`.env.example` のコメント）。
+`POSTGRES_DB` は、`.env.example` のままでも動く。`POSTGRES_USER`・`POSTGRES_PASSWORD` は、下の「DB の 5432 番について」のとおり既定から変える。**`DATABASE_URL` のホストは `localhost` のままにする**（アプリは WSL の中で直接動かし、DB だけを docker compose で動かすため：`.env.example` のコメント）。
 
 **DB の 5432 番について**
 
 - **事実**：`docker-compose.yml` は、DB を 5432 番で、すべてのインターフェースで待ち受ける（`ports` の `"5432:5432"`）。NAT 方式で Windows 側のポート転送をしない限り、LAN からは届かない見込み（`../docs/findings.md` F-13 が転送したのは 3000 番で、5432 番は転送していない）。
 - **歯止め**：**ステップ 6 でも、5432 番は転送しない。**
-- **期限**：DB の認証情報（`POSTGRES_USER`・`POSTGRES_PASSWORD`）を既定から変えるかどうかは、**ステップ 5 に入る前（最初の `docker compose up` の前）に決める。** DB のボリュームができたあとは変えにくい。変えるなら、`DATABASE_URL` の中の値も合わせる。
+- **DB の認証情報**：`POSTGRES_PASSWORD` を中心に、`POSTGRES_USER` も、`.env.example` の既定から**変える**。`DATABASE_URL` の中の値も合わせる。実際の値は GitHub に書かず、サーバーの持ち主の `.env` にだけ置く。
+- **期限**：**ステップ 5 の最初の `docker compose up` の前に `.env` を直す。** DB のボリュームができたあとは変えにくい。
 
 **注意（4 つ）**
 
@@ -277,7 +278,7 @@ awk -F= '/^[A-Z_]+=/{print $1, ($2=="" ? "(空)" : "(値あり)")}' .env
 
 **コマンドの出力を、`| tail` などのパイプに通さない。** 終了コードが失われ、失敗に気づけない。10/23 に `pnpm build` を `| tail` に通したため失敗を見逃し、`pnpm start` が「production build が無い」で止まった。**ビルドは、ログに出して終了コードを見る。**
 
-**DB の認証情報を既定から変えるかは、1 を打つ前に決めておく**（ステップ 4-2「DB の 5432 番について」）。
+**DB の認証情報は、1 を打つ前に既定から変えておく**（ステップ 4-2「DB の 5432 番について」）。
 
 ```bash
 # [Ubuntu] ~/workspace/yse_compass で、上から順に。1 つずつ結果を見てから次へ

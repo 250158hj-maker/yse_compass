@@ -293,7 +293,7 @@ awk -F= '/^[A-Z_]+=/{print $1, ($2=="" ? "(空)" : "(値あり)")}' .env
     u=$(grep '^DATABASE_URL=' .env | cut -d= -f2-); p=$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2-); case "$u" in *"$p"*) echo "password 一致";; *) echo "password 不一致";; esac
     ```
   - **パスワードは `openssl rand -hex 24` で作った。** `DATABASE_URL` に入れるので、`/` `+` `=` を含む `base64` は避けた。
-  - **`POSTGRES_USER` は、既定のままにした**（パスワードだけを変えた。手順書の「既定から変える」とは違う）。**この PC は、そのままデモ用サーバーとして使う**ので、DB のボリュームを作り直して変えるか、既定のままでよいとするかは、リーダーの判断待ち（#164 の review thread）。この PC は NAT 方式（`.wslconfig` 無し）で、5432 番は転送していないが、別の PC から 5432 番に届かないことは、確かめていない。
+  - **`POSTGRES_USER` は、既定のままにした**（パスワードだけを変えた。手順書の「既定から変える」とは違う）。**この PC は、そのままデモ用サーバーとして使う**ので、DB のボリュームを作り直して変えるか、既定のままでよいとするかは、リーダーの判断待ち（#164 の review thread）。この PC は NAT 方式（`.wslconfig` 無し）で、5432 番は転送していないが、別の PC から 5432 番に届かないことは、6-4 で確かめた（届かなかった）。
   - **`AUTH_TRUST_HOST=true` は、`echo 'AUTH_TRUST_HOST=true' >> .env` で足した。** 足す前に、最終行が改行で終わっているかを `tail -c 1 .env | xxd -p`（`0a` なら終わっている）で確かめた。
   - **エディタは、vim ではなく nano を使った。**
 
@@ -423,6 +423,7 @@ Get-NetFirewallRule -DisplayName "yse-compass demo 3000" | Select-Object Display
 1. サーバーにした PC の Windows のブラウザで、`http://<Windows の IP>:3000/api/health/db`（`pnpm start` を動かしたまま）。転送が効いているかの確認。
 2. **同じ教室の別の PC のブラウザで、同じ URL。** `{"status":"ok"}` が返れば合格。
 
+- **DB（5432 番）が LAN に出ていないことの確認**：別の PC の PowerShell で `Test-NetConnection <Windows の IP> -Port 5432` を打つ。**合格の基準は、`TCP connect … failed`（`TcpTestSucceeded` が `False`）。** 2 回目の実測で、別の PC から `False` だった（同じ教室の 1 台・1 回）。同時に出る `Ping … TimedOut` は、Windows が既定で ICMP を通さないためで、ホストの停止を意味しない（3000 番には届いている）。`True` なら、5432 番が出ているので、転送（6-2）を確かめる。
 - **サーバーにした PC の Windows のブラウザから、`http://<WSL の IP>:3000/` へ直接は届かなかった**（2 回目の実測。原因は未確認。転送は通っているので、公開には影響しない。ブラウザのプロキシ設定などが見込み）。
 - 別の PC から繋がらないときの見立て（実測していない）：タイムアウトなら、ファイアウォールの許可のプロファイルか、Wi-Fi の端末分離。接続拒否なら、ポート転送（`iphlpsvc` が動いているか：`Get-Service iphlpsvc`）。
 

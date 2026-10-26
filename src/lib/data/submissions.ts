@@ -35,7 +35,7 @@ export function isLate(firstSubmittedAt: Date, deadline: Date | null): boolean {
   return deadline !== null && firstSubmittedAt.getTime() > deadline.getTime();
 }
 
-// 締切後に差し替えがあった（最終更新日時を添える）: 最終更新が締切より後で、初回提出日時とは別。締切が無い枠は対象外（06 6-7）。
+// 締切後に差し替えがあった（最終更新日時を添える）: 最終更新が締切より後で、初回提出日時とは別。締切が無い枠は対象外（06 6-6）。
 export function isReplacedAfterDeadline(firstSubmittedAt: Date, lastSubmittedAt: Date, deadline: Date | null): boolean {
   return deadline !== null && lastSubmittedAt.getTime() > deadline.getTime() && lastSubmittedAt.getTime() !== firstSubmittedAt.getTime();
 }

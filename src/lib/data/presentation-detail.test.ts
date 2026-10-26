@@ -130,4 +130,15 @@ describeDb("getPresentationDetail", () => {
       expect(link).toMatchObject({ url: URL_B, firstSubmittedAt: early, lastUpdatedAt: late });
     });
   });
+
+  it("アーカイブ済みの年度は、生徒には occasion_not_found（公開済みでも、自チームでも）。先生には返す", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9938);
+      await db.eventOccasion.update({ where: { id: s.occasionId }, data: { isPublished: true } });
+      await db.fiscalYear.update({ where: { year: 9938 }, data: { isArchived: true } });
+      await expectError(getPresentationDetail(db, s.other.actor, s.own.teamId, s.occasionId), "occasion_not_found");
+      await expectError(getPresentationDetail(db, s.own.actor, s.own.teamId, s.occasionId), "occasion_not_found");
+      expect(await getPresentationDetail(db, teacher, s.own.teamId, s.occasionId)).toMatchObject({ team: { id: s.own.teamId } });
+    });
+  });
 });

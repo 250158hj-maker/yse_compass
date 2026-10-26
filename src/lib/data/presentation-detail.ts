@@ -6,6 +6,7 @@ import type { Actor } from "@/lib/data/years";
 
 // 対応: docs/requirements.md §3-5（発表資料閲覧）・design/04-screen.md SC-12（チーム × 発表会）。
 // 公開前の発表会の資料（概要を含む）は、先生と自チームの生徒にだけ返し、聴く生徒には返さない（decisions.md 2026-10-20 の H-45 の行の①）。
+// 先生は全年度を読める。生徒は未アーカイブの年度だけで、外れたときは「無い」と同じ occasion_not_found にする（open-questions.md H-60 の先行方針。決着したら変わるのはここだけ）。
 // 公開か否かは event_occasions.is_published で判定する（列は足さない）。聴く生徒に返さないときは forbidden（正典に返し方の定めは無い）。
 // 概要の本文は 06 でまだ列が無い（H-37）ので、いまある使用技術と日時だけを返す。作品の説明は出さない（H-49 の先行方針）。
 // エラーは submissions.ts の SubmissionError を使う（この層で出すのは forbidden・invalid_input・occasion_not_found）。
@@ -21,9 +22,11 @@ export async function getPresentationDetail(db: Db, actor: Actor, teamId: number
     where: { id: teamId },
     select: { id: true, name: true, class: { select: { fiscalYearId: true } }, work: { select: { title: true } }, members: { orderBy: { id: "asc" }, select: { name: true } } },
   });
-  const occasion = await db.eventOccasion.findUnique({ where: { id: occasionId }, select: { fiscalYearId: true, isPublished: true } });
+  const occasion = await db.eventOccasion.findUnique({ where: { id: occasionId }, select: { fiscalYearId: true, isPublished: true, fiscalYear: { select: { isArchived: true } } } });
   // 発表会やチームが無い、または年度が違う組み合わせは、無いのと同じ結果にする。
   if (!team || !occasion || occasion.fiscalYearId !== team.class.fiscalYearId) throw new SubmissionError("occasion_not_found");
+  // 生徒はアーカイブ済みの年度を読めない。公開許可のない作品の内容が、ID の差し替えで取れてしまうため（H-60 の先行方針と同じ線引き。getOccasion と同じ）。
+  if (actor.role === "student" && occasion.fiscalYear.isArchived) throw new SubmissionError("occasion_not_found");
   if (!occasion.isPublished && actor.role === "student" && !(await isMemberOf(db, actor, teamId))) throw new SubmissionError("forbidden");
 
   const submissions = await db.submission.findMany({

@@ -53,7 +53,7 @@ async function isMemberOf(db: Db, actor: Actor, teamId: number): Promise<boolean
   return (await db.teamMember.count({ where: { teamId, userId } })) > 0;
 }
 
-// 提出する URL は、生徒の画面でリンクとして開かれる。javascript: などを入れさせないよう、http(s) の URL だけを受ける。
+// 提出する URL は、生徒の画面でリンクとして開かれる。javascript: などを入れさせないよう、https の URL だけを受ける。
 function requiredUrl(value: unknown): string {
   if (typeof value !== "string") throw new SubmissionError("invalid_input");
   const text = value.trim();

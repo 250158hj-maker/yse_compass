@@ -84,7 +84,7 @@ describeDb("提出の Server Action", () => {
       expect(await listTeamSubmissionsAction(s.teamId, s.occasionId)).toEqual({ ok: false, code: "unauthenticated" });
       signInAs({ id: "1", role: "teacher" });
       expect(await submitMaterialAction(s.teamId, s.slotId, "https://example.invalid/a")).toEqual({ ok: false, code: "forbidden" });
-      expect(await db.submission.count()).toBe(0);
+      expect(await db.submission.count({ where: { teamId: s.teamId } })).toBe(0);
     });
   });
 
@@ -97,7 +97,7 @@ describeDb("提出の Server Action", () => {
       expect(await submitMaterialAction(s.teamId, 0, "https://example.invalid/a")).toEqual(bad);
       expect(await submitMaterialAction(s.teamId, s.slotId, null as never)).toEqual(bad);
       expect(await listTeamSubmissionsAction(1.5, s.occasionId)).toEqual(bad);
-      expect(await db.submission.count()).toBe(0);
+      expect(await db.submission.count({ where: { teamId: s.teamId } })).toBe(0);
     });
   });
 

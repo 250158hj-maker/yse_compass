@@ -64,7 +64,7 @@ export function SubmitFormClient({ announcement: a, team }: { announcement: Anno
   function submitMaterial(materialId: string) {
     const url = drafts[materialId]?.trim() ?? "";
     if (!isValidUrl(url)) {
-      setErrors((prev) => ({ ...prev, [materialId]: "http:// または https:// で始まる正しいURLを入力してください。" }));
+      setErrors((prev) => ({ ...prev, [materialId]: "https:// で始まる正しいURLを入力してください。" }));
       return;
     }
     setErrors((prev) => {

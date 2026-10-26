@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { addMaterialSlot, SUMMARY_SLOT_TYPE } from "@/lib/data/slots";
-import { isLate, listTeamSubmissions, submitMaterial, SubmissionError } from "@/lib/data/submissions";
+import { isLate, isReplacedAfterDeadline, listTeamSubmissions, submitMaterial, SubmissionError } from "@/lib/data/submissions";
 import { createTeam } from "@/lib/data/teams";
 import { setupFiscalYear, type Actor } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
@@ -72,6 +72,22 @@ describe("isLate", () => {
   });
 });
 
+describe("isReplacedAfterDeadline", () => {
+  const deadline = new Date("2026-11-05T14:59:00Z");
+  const before = new Date("2026-11-05T14:00:00Z");
+  const after = new Date("2026-11-05T15:30:00Z");
+  it("締切後に最終更新があり、初回とは別なら true", () => {
+    expect(isReplacedAfterDeadline(before, after, deadline)).toBe(true);
+    expect(isReplacedAfterDeadline(after, new Date("2026-11-05T16:00:00Z"), deadline)).toBe(true);
+  });
+  it("最終更新が締切ちょうど・前、締切後の初回提出のまま（2 つの日時が同じ）、締切なしは false", () => {
+    expect(isReplacedAfterDeadline(before, deadline, deadline)).toBe(false);
+    expect(isReplacedAfterDeadline(before, new Date("2026-11-05T14:30:00Z"), deadline)).toBe(false);
+    expect(isReplacedAfterDeadline(after, after, deadline)).toBe(false);
+    expect(isReplacedAfterDeadline(before, after, null)).toBe(false);
+  });
+});
+
 describeDb("submitMaterial", () => {
   it("初回の提出で行ができ、初回・最終更新とも同じ時刻になる", async () => {
     await inTransaction(async (db) => {
@@ -120,19 +136,19 @@ describeDb("submitMaterial", () => {
       await expectError(submitMaterial(db, { userId: "", role: "student" }, s.own.teamId, s.slotId, URL_A), "forbidden");
       await expectError(submitMaterial(db, { userId: "abc", role: "student" }, s.own.teamId, s.slotId, URL_A), "forbidden");
       await expectError(submitMaterial(db, { userId: s.own.actor.userId, role: "other" as never }, s.own.teamId, s.slotId, URL_A), "forbidden");
-      expect(await db.submission.count()).toBe(0);
+      expect(await db.submission.count({ where: { teamId: { in: [s.own.teamId, s.other.teamId] } } })).toBe(0);
     });
   });
 
-  it("URL は http(s) の形式だけ受ける。空・javascript:・NUL・文字列でないものは invalid_input", async () => {
+  it("URL は https の形式だけ受ける。空・http・javascript:・NUL・文字列でないものは invalid_input", async () => {
     await inTransaction(async (db) => {
       const s = await setup(db, 9906);
-      for (const bad of ["", "   ", "javascript:alert(1)", "ftp://example.invalid/a", "not a url", "https://example.invalid/\0", 1 as never, null as never]) {
+      for (const bad of ["", "   ", "http://example.invalid/a", "javascript:alert(1)", "ftp://example.invalid/a", "not a url", "https://example.invalid/\0", 1 as never, null as never]) {
         await expectError(submitMaterial(db, s.own.actor, s.own.teamId, s.slotId, bad), "invalid_input");
       }
       await expectError(submitMaterial(db, s.own.actor, 0, s.slotId, URL_A), "invalid_input");
       await expectError(submitMaterial(db, s.own.actor, s.own.teamId, 2 ** 31, URL_A), "invalid_input");
-      expect(await db.submission.count()).toBe(0);
+      expect(await db.submission.count({ where: { teamId: { in: [s.own.teamId, s.other.teamId] } } })).toBe(0);
     });
   });
 
@@ -141,7 +157,7 @@ describeDb("submitMaterial", () => {
       const s = await setup(db, 9907);
       await expectError(submitMaterial(db, s.own.actor, s.own.teamId, s.summarySlotId, URL_A), "summary_slot");
       await expectError(submitMaterial(db, s.own.actor, s.own.teamId, 2_000_000_000, URL_A), "slot_not_found");
-      expect(await db.submission.count()).toBe(0);
+      expect(await db.submission.count({ where: { teamId: { in: [s.own.teamId, s.other.teamId] } } })).toBe(0);
     });
   });
 
@@ -150,7 +166,7 @@ describeDb("submitMaterial", () => {
       const s = await setup(db, 9908);
       const elsewhere = await setup(db, 9909);
       await expectError(submitMaterial(db, s.own.actor, s.own.teamId, elsewhere.slotId, URL_A), "slot_not_found");
-      expect(await db.submission.count()).toBe(0);
+      expect(await db.submission.count({ where: { teamId: { in: [s.own.teamId, s.other.teamId] } } })).toBe(0);
     });
   });
 

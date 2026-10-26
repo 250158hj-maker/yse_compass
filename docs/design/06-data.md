@@ -5,7 +5,7 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-10-23（水戸）
+> **最終更新**：2026-10-26（蒲山）
 
 > [!note] 確定の範囲（2026-10-19・10-20 のレビュー対象）
 > **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
@@ -17,11 +17,11 @@
 >   - `team_members`・`teams`：`name` の長さの上限（`varchar` の型）と、`team_members.name` の同姓同名を禁じる制約の有無（H-56）
 >   - `teams`：`class_id` の NULL 可否（H-46。「チームがクラスに属さない状態を許す」案の決着で変わる）
 >   - `team_members`：`user_id` の UNIQUE が効く範囲（全年度に効く。年度をまたいだ引き換えの扱い・H-25 (d)(e)。本文が「本節では決めない」としている部分）。`user_id` の NULL 可・外部キーは含める（型は、上の `users` の行のとおり H-30 ④で含めない）
->   - `material_slots`：`deadline` の NULL 可否・既定値（H-27）。型 `timestamptz` は H-39 の決着（`../decisions.md` 2026-10-20）に従うが、確定の範囲を広げる判断はこの変更では行わない（レビューを経る）
->   - `submissions`：`url`（Drive 統合の範囲・未決 No.10。リンクの形が変わる）。`first_submitted_at`・`last_submitted_at` の型 `timestamptz` は H-39 の決着に従うが、範囲は広げない（同上）
->   - `summaries`：`tech_stack` の型（T-3）。`first_submitted_at`・`last_submitted_at` の型 `timestamptz` は H-39 の決着に従うが、範囲は広げない（同上）
+>   - `material_slots`：`deadline` の NULL 可否・既定値（H-27）。型 `timestamptz` は H-39 の決着（`../decisions.md` 2026-10-20）で決まったが、確定の範囲にはまだ入れていない（広げるにはレビューを経る）
+>   - `submissions`：`url`（Drive 統合の範囲・未決 No.10。リンクの形が変わる）。`first_submitted_at`・`last_submitted_at` の型 `timestamptz` は H-39 の決着で決まったが、確定の範囲にはまだ入れていない
+>   - `summaries`：`tech_stack` の型（T-3 は決着〔`../decisions.md` 2026-10-22〕したが、型は決まっていない）。`first_submitted_at`・`last_submitted_at` の型 `timestamptz` は H-39 の決着で決まったが、確定の範囲にはまだ入れていない
 >   - `presentations`：時刻枠（開始時刻・所要・休憩）を列として持たない前提（H-20）、表の下の「行の生成タイミング」の注（H-46 の決着で見直す。「クラスに属さないチームを許す」案を採ると、「そのチームの年度に」が `team → class → fiscal_year` で引けなくなる）
->   - `comments`：編集・削除の列を持たない前提（T-2）。`created_at` の型 `timestamptz` と既定値 `now()` は H-39 の決着に従うが、範囲は広げない（同上）
+>   - `comments`：編集・削除の列を持たない前提（T-2）。`created_at` の型 `timestamptz` と既定値 `now()` は H-39 の決着で決まったが、確定の範囲にはまだ入れていない
 > - **確定に含めないもの（共通）**：①列・テーブル・関連の集合の完全さ（確定するのは挙げた列の定義で、挙げていない列・テーブル・関連が無いことまでは保証しない。たとえば H-20 の「タイムテーブルの行」の実体が ER 図に無いことは保証しない）。**ER 図は 6-3 から描いたもので、図に無い制約は 6-3 が正**（複合の UNIQUE、複合外部キーが複合であること〔`teams.leader_member_id`・`event_occasions.current_presentation_id`〕は図に描いていない）　②各テーブルの表の下の注のうち、範囲外の節や未決を指す文　③上流が TODO の根拠：`teams`・`team_members`・`users` の上流（`../requirements.md` §3-8・§3-6）は、できること・受け入れ基準が TODO のまま。この 3 テーブルの根拠は `../glossary.md` と `../decisions.md` に限られ、上流が埋まったとき、確定した列が変わりうる。特に `users.role` の 2 値は、先生ロールの親子二層構造（#8。先行方針は「単層で組む」）を採るときに、値を増やすか別の列で持つかが決まっていない
 > - **範囲外の節**：6-4〜6-7（索引方針の 6-5 を含む）、参照動作（コメントを参照する外部キーの動作が T-2 に依存する）
 > - **レビューする論点**：①各列が `../glossary.md`・`../requirements.md` のどの記述に対応するか（根拠の欄）が足りているか　②外部キーの向きと UNIQUE が、語彙の関係（チーム・メンバー・リーダー、資料枠・提出、発表・コメント・いいね）と合っているか　③NULL 可否が運用（先生がチームを作る・年度セットアップが資料枠を生成する）と合っているか　④型・既定値・CHECK が、正典の記述（`../glossary.md`・`../requirements.md`・`../decisions.md`）と合っているか。⑤6-1・6-2 の ER 図が 6-3 と一致し、関連の名前が正典と合っているか（#124。6-1 は属性を持たず、関連の名前とカーディナリティを持つ図なので、6-2 と照らすだけでなく、関連の名前の出典も見る）　⑥未決の先行方針の見直し（#124。H-20・H-26・H-27・H-32・T-2。結論は下の欄に書く）
@@ -79,7 +79,6 @@
 | **#7** | テンプレートの扱い | — |
 | **#8** | 先生ロールの親子二層構造の要否 | 単層で組む |
 | **#10** | Drive 統合の範囲（提出のリンク列の形が変わる） | Stage 1＝リンク登録 |
-| **T-3** | 使用技術欄の表記ゆれ（自由記述か統制語彙か） | — |
 | **H-20**（新規・2026-09-11 起票） | 当日タイムテーブルの「時刻枠」の中身（開始時刻・所要・休憩）が未定義 | 発表エンティティは発表順（整数）のみを持つ。時刻枠の列は追加しない |
 | **H-26**（新規・2026-09-21 起票） | 先生の事前登録をメールのみで許すか、初回サインイン後の昇格のみか（`users.name NOT NULL` との関係） | `users` は現行の定義のまま、初回サインイン後の昇格のみが成立する形で組む |
 | **H-27**（新規・2026-09-21 起票） | 年度セットアップ時点で資料枠の締切が決まっているか（`material_slots.deadline` の NULL 可否） | NULL 可で組む。未設定の枠は遅延判定の対象外 |
@@ -219,7 +218,7 @@ erDiagram
         int id PK
         int team_id FK
         int event_occasion_id FK
-        text tech_stack "nullable・T-3未決"
+        text tech_stack "nullable"
         timestamptz first_submitted_at
         timestamptz last_submitted_at
     }
@@ -421,7 +420,7 @@ erDiagram
 | id | serial | NOT NULL | — | PK | — |
 | team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, event_occasion_id) | 1チーム×1発表会（年4件・A-3 決着） |
 | event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 同上 |
-| tech_stack | text | NULL | — | — | **使用技術欄**。アーカイブ検索の対象（2026-07-26）。**自由記述かどうかは T-3 未決 — 暫定で自由記述（text）とする** |
+| tech_stack | text | NULL | — | — | **使用技術欄**。アーカイブ検索の対象（2026-07-26）。**入力は一覧選択＋その他（`../decisions.md` 2026-10-22・T-3 の決着）。型は未定で、いまは text** |
 | first_submitted_at | timestamptz | NOT NULL | — | — | 2026-09-29 決着の2値方式を提出と同じ形で適用。**`submissions` と NULL 可否を揃えた**：行の存在＝提出済みという 6-6 の導出規則を保つため、行は初回提出時にしか作らない |
 | last_submitted_at | timestamptz | NOT NULL | — | — | 同上 |
 
@@ -553,7 +552,7 @@ erDiagram
 | 部分インデックス | 2 | 概要枠の部分ユニーク（`material_slots (event_occasion_id) WHERE slot_type = '概要'`）／`works` の `WHERE publication_consent = 'approved'`（6-5） | `material_slots`・6-5 |
 | 列の型の変更の移行（`USING`） | 1 本（6 列） | `material_slots.deadline`／`submissions`・`summaries` の `first_submitted_at`・`last_submitted_at`／`comments.created_at` を `timestamp` から `timestamptz` へ。各列に `USING "列" AT TIME ZONE 'UTC'` を付ける | `material_slots`・`submissions`・`summaries`・`comments` |
 
-> **`USING` の根拠**：Prisma が生成する型の変更の移行には `USING` が無く、セッションの `TimeZone` が `Asia/Tokyo` の DB では、既存の値が 9 時間ずれる。`AT TIME ZONE 'UTC'` を足せば、UTC で保存されていた既存の値は同じ絶対時刻のまま残る（`../decisions.md` 2026-10-20・H-39 ④。蒲山の実測は PR #103 の会話）。移行ファイルは `prisma/migrations/20261016020606_timestamptz_for_time_columns`。
+> **`USING` の根拠**：Prisma が生成する型の変更の移行には `USING` が無く、セッションの `TimeZone` が `Asia/Tokyo` の DB では、既存の値が 9 時間ずれる。`AT TIME ZONE 'UTC'` を足せば、UTC で保存されていた既存の値は同じ絶対時刻のまま残る（`../decisions.md` 2026-10-20・H-39 ④。蒲山の実測は PR #103 の会話）。移行ファイルは `prisma/migrations/20261016020606_timestamptz_for_time_columns`。 **この `USING` は手書きで、移行を作り直すと失われる**（Prisma は生成しない。6-7 を確定の範囲に入れるわけではない）。
 > **`DEFERRABLE` の根拠**：Prisma のスキーマ言語は deferrable 制約を宣言する構文を持たない（[prisma/prisma#8806](https://github.com/prisma/prisma/issues/8806)・[discussions#8789](https://github.com/prisma/prisma/discussions/8789)）。
 > **手書き部分が失われうる条件**：いまは `Presentation` の `@@unique([eventOccasionId, displayOrder])` の宣言により、手書き部分は `prisma migrate dev` の差分に出ない（2026-09-30・Prisma 7.10.0 で実測・水戸レビュー PR #45）。**この宣言を外すと `DROP INDEX` が生成されて適用に失敗し、初回マイグレーションを作り直すと手書き部分は生成されない。** 適用に失敗したとき、エラーのヒント（`You can drop constraint … instead`）に従って制約ごと消すと、適用は通るが、`presentations` の `UNIQUE(event_occasion_id, display_order)` が DEFERRABLE ごと失われる（2026-10-02・Prisma 7.10.0 で実測・PR #54）。手書き部分があることは初回マイグレーションのファイルにもコメントで明記してある。
 > **この表は 6-3 から数えたもの**で、Prisma の使用バージョンでの可否は Ph.2 で確かめる。**本表に載せていないもの**：アーカイブ検索の全文検索用インデックス（6-5・Ph.2 で検証）。

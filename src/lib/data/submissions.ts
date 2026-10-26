@@ -47,7 +47,7 @@ function memberUserId(actor: Actor): number | null {
 }
 
 // 生徒が、そのチームのメンバー行に結びついているか（自チームか否かの文脈判定。decisions.md 2026-09-06・H-16）。
-async function isMemberOf(db: Db, actor: Actor, teamId: number): Promise<boolean> {
+export async function isMemberOf(db: Pick<Db, "teamMember">, actor: Actor, teamId: number): Promise<boolean> {
   const userId = memberUserId(actor);
   if (userId === null) return false;
   return (await db.teamMember.count({ where: { teamId, userId } })) > 0;

@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { PrismaClient } from "@/generated/prisma/client";
-import { getSubmissionMatrixAction, listTeamSubmissionsAction, submitMaterialAction } from "@/lib/actions/submissions";
+import { getPresentationDetailAction, getSubmissionMatrixAction, listTeamSubmissionsAction, submitMaterialAction } from "@/lib/actions/submissions";
 import { createTeam } from "@/lib/data/teams";
 import { setupFiscalYear } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
@@ -124,6 +124,22 @@ describeDb("提出の Server Action", () => {
       const matrix = await getSubmissionMatrixAction(s.occasionId);
       if (!matrix.ok) throw new Error("matrix failed");
       expect(matrix.data.rows[0].cells.find((c) => c.slotId === s.slotId)).toMatchObject({ status: "submitted", url: "https://example.invalid/a" });
+    });
+  });
+
+  it("発表詳細：未サインインは unauthenticated、引数が不正なら invalid_input。公開前に別の生徒は forbidden", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9924);
+      const stranger = await db.user.create({ data: { email: "s9924x@example.invalid", name: "他", role: "student" } });
+      signInAs(null);
+      expect(await getPresentationDetailAction(s.teamId, s.occasionId)).toEqual({ ok: false, code: "unauthenticated" });
+      signInAs({ id: s.studentId, role: "student" });
+      expect(await getPresentationDetailAction("1" as never, s.occasionId)).toEqual({ ok: false, code: "invalid_input" });
+      expect(await getPresentationDetailAction(s.teamId, s.occasionId)).toMatchObject({ ok: true, data: { team: { id: s.teamId } } });
+      signInAs({ id: String(stranger.id), role: "student" });
+      expect(await getPresentationDetailAction(s.teamId, s.occasionId)).toEqual({ ok: false, code: "forbidden" });
+      await db.eventOccasion.update({ where: { id: s.occasionId }, data: { isPublished: true } });
+      expect(await getPresentationDetailAction(s.teamId, s.occasionId)).toMatchObject({ ok: true });
     });
   });
 });

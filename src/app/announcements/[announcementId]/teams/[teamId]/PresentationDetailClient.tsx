@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -288,17 +287,6 @@ export function PresentationDetailClient({
               </div>
             )}
           </section>
-
-          {ownTeam && (
-            <div className="mt-8 flex flex-wrap gap-2">
-              <Link href={`/announcements/${a.id}/teams/${team.id}/submit`}>
-                <Button variant="primary">資料を提出する</Button>
-              </Link>
-              <Link href={`/announcements/${a.id}/teams/${team.id}/summary`}>
-                <Button variant="secondary">概要を入力する</Button>
-              </Link>
-            </div>
-          )}
         </>
       )}
     </div>

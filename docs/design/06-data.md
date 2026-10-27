@@ -218,7 +218,11 @@ erDiagram
         int id PK
         int team_id FK
         int event_occasion_id FK
+        text introduction "nullable"
+        text work_overview "nullable"
         text tech_stack "nullable"
+        text closing "nullable"
+        jsonb extra_sections
         timestamptz first_submitted_at
         timestamptz last_submitted_at
     }
@@ -422,16 +426,16 @@ erDiagram
 | event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 同上 |
 | introduction | text | NULL | — | — | **はじめに**（課題・背景・目的）。L2 の芯の項目。H-37 の先行方針（暫定）。**確定に含めない** |
 | work_overview | text | NULL | — | — | **作品概要**。L2 の芯の項目。同上 |
-| tech_stack | text | NULL | — | — | **使用技術欄**（L2 の芯の項目「開発環境」に当たる）。アーカイブ検索の対象（2026-07-26）。**入力は一覧選択＋その他（`../decisions.md` 2026-10-22・T-3 の決着）。型は未定で、いまは text** |
+| tech_stack | text | NULL | — | — | **使用技術欄**。アーカイブ検索の対象（2026-07-26）。**入力は一覧選択＋その他（`../decisions.md` 2026-10-22・T-3 の決着）。型は未定で、いまは text** |
 | closing | text | NULL | — | — | **終わりに**（今後の課題・意気込み）。L2 の芯の項目。H-37 の先行方針（暫定）。**確定に含めない** |
 | extra_sections | jsonb | NOT NULL | `'[]'` | — | **チームが見出しを付ける自由な欄**。`[{"heading": …, "body": …}, …]` の並び（H-37 の先行方針で最大 2 件。件数はコードの 1 箇所の定数で、DB の制約にしない）。**確定に含めない** |
 | first_submitted_at | timestamptz | NOT NULL | — | — | 2026-09-29 決着の2値方式を提出と同じ形で適用。**`submissions` と NULL 可否を揃えた**：行の存在＝提出済みという 6-6 の導出規則を保つため、行は初回提出時にしか作らない |
 | last_submitted_at | timestamptz | NOT NULL | — | — | 同上 |
 
-> **L2 の本文の列（`introduction`・`work_overview`・`closing`・`extra_sections`）は、H-37 の先行方針（2026-10-26）で足した暫定の列**で、確定の範囲に含めない。H-37 が決着して項目が変われば直す。足した理由は、保存先が無いと概要入力（SC-10）の保存を作れないため。
-> **列の形（芯の項目は項目ごとの列、自由な欄は `jsonb` の 1 列）の理由**：芯の 4 項目は `requirements.md` §3-3 の評価観点を焼き込んだコード定義で変わりにくいため、列にして型を DB で守る。自由な欄は件数が未決（H-37・字数の予算で詰める）で、0〜2 件のどれにもなりうるので、件数が変わっても列の追加や移行が要らない形にする。『作品の種類』の列は足さない（H-37 の先行方針）。
+> **L2 の本文の列（`introduction`・`work_overview`・`closing`・`extra_sections`）は、H-37 の先行方針（2026-10-26）で足した暫定の列**で、確定の範囲に含めない。H-37 が決着して項目が変われば直す。足した理由は、保存先が無いと概要入力（SC-10）の保存を作れないため。H-37 の先行方針（L2）の芯の項目「開発環境（使用技術）」は、既存の `tech_stack` を使う（L2 は採ると決めたことではなく、決着したら対応を直す）。
+> **列の形（芯の項目は項目ごとの列、自由な欄は `jsonb` の 1 列）の理由**：H-37 の先行方針（L2。水戸の案で、チームでは合意していない）では、芯の 4 項目（はじめに・作品概要・開発環境・終わりに）をコードが固定するので、項目ごとの列にして型を DB で守る。H-37 が決着して項目が変われば、列を直す。自由な欄は件数が未決（H-37・字数の予算で詰める）で、0〜2 件のどれにもなりうるので、件数が変わっても列の追加や移行が要らない形にする。『作品の種類』の列は足さない（H-37 の先行方針）。
 > **NULL 可否**：芯の 3 列は `tech_stack` と同じ NULL 可とする。入力の必須判定は、概要入力の保存（Action）に置き、DB の制約にはしない（H-37 が未決で、必須の範囲が変わりうるため）。`extra_sections` は『空の並び』と『未入力』を区別する意味が無いので、NOT NULL・既定値 `[]`。
-> **字数の上限は列にも置かない**（H-53 の先行方針は『実装しない』。1 ページに収まるかの保証は提出時の判定で行う方向で、#121 の結果を待つ）。
+> **字数の上限は列にも置かない**（H-53 の先行方針は『実装しない』。1 ページに収まることの保証は H-53 で扱う〔先行しない〕。#121 の結果を待つ）。
 > **年度の整合は DB で守らない**：`team_id` と `event_occasion_id` の年度が違う組み合わせも DB は受け入れる（`submissions` の同名の注と同じ）。アプリ層で守る。
 > **「概要」は資料枠（`material_slots.slot_type = '概要'`）の締切・必須／任意を参照する。** ただし `summaries` は `material_slot_id` を持たない — 概要枠は全発表会に1件ずつ存在する定番枠のため、`event_occasion_id` から一意に引ける（`material_slots` の部分インデックス `WHERE slot_type = '概要'`（6-3 `material_slots`）で整合性を保証する）。
 

@@ -68,6 +68,10 @@ function lockedIds(rows: { id: number; displayOrder: number | null }[], currentI
   return locked;
 }
 
+function sameSet(a: Set<number>, b: Set<number>): boolean {
+  return a.size === b.size && [...a].every((x) => b.has(x));
+}
+
 // SC-07・SC-08 の表示。全員が読める。発表順の昇順（未設定は最後）で、「発表中」・「発表済み」（動かせない行のうち、いま発表中の行より前）・自チーム（生徒）を添える。
 // 生徒はアーカイブ済みの年度の発表会を読めない（H-60 の先行方針と同じ線引き。getOccasion と同じ）。外れた行は「無い」と同じ occasion_not_found にする。
 export async function getTimetable(db: Db, actor: Actor, occasionId: number) {
@@ -86,14 +90,15 @@ export async function getTimetable(db: Db, actor: Actor, occasionId: number) {
   const userId = actor.role === "student" ? parseId(actor.userId) : null;
   const ownTeamIds = new Set(userId === null ? [] : (await db.teamMember.findMany({ where: { userId }, select: { teamId: true } })).map((m) => m.teamId));
 
-  const current = presentations.find((p) => p.id === occasion.currentPresentationId);
+  // 「発表済み」は、動かせない行のうち、いま発表中の行を除いたもの。動かせない行の規則（lockedIds）と同じ 1 か所から導く（SC-07：「T では動かせない行を示す」）。
+  const locked = lockedIds(presentations, occasion.currentPresentationId);
   const rows = presentations.toSorted(byDisplayOrder).map((p) => ({
     presentationId: p.id,
     teamId: p.teamId,
     teamName: p.team.name,
     displayOrder: p.displayOrder,
     isCurrent: p.id === occasion.currentPresentationId,
-    isDone: current?.displayOrder != null && p.displayOrder !== null && p.displayOrder < current.displayOrder,
+    isDone: locked.has(p.id) && p.id !== occasion.currentPresentationId,
     isOwnTeam: ownTeamIds.has(p.teamId),
   }));
   return { occasion: { id: occasion.id, kind: occasion.kind, currentPresentationId: occasion.currentPresentationId }, rows };
@@ -127,6 +132,12 @@ export async function setDisplayOrders(db: Db, actor: Actor, occasionId: number,
 
     const after = new Map(rows.map((r) => [r.id, r.displayOrder]));
     for (const u of changed) after.set(u.presentationId, u.displayOrder);
+    // 動かせる行を、いま発表中の行より前の番号へ入れる更新も拒否する（動かせない行の位置＝順番の上での何番目かが変わり、まだ発表していない行に「発表済み」が付くため。
+    // 水戸の読み：decisions.md 2026-10-26・H-48 の行の「位置」。新しい規則ではない）。更新後に動かせない行になる集合が、更新前と同じでなければ拒否する。
+    // 発表中の行の発表順が未設定のときは、前後が決まらないので、この検査は働かない（H-48 の行の①）。
+    if (!sameSet(lockedIds(rows, occasion.currentPresentationId), lockedIds(rows.map((r) => ({ id: r.id, displayOrder: after.get(r.id) ?? null })), occasion.currentPresentationId))) {
+      throw new TimetableError("presentation_locked");
+    }
     const orders = [...after.values()].filter((o): o is number => o !== null);
     if (new Set(orders).size !== orders.length) throw new TimetableError("duplicate_order");
 

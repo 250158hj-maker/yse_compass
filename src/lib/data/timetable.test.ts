@@ -52,8 +52,9 @@ async function setup(db: Db, year: number, orders: (number | null)[]) {
   const otherPs: { id: number }[] = [];
   for (const [i, displayOrder] of orders.entries()) {
     const team = await createTeam(db, teacher, { classId: klass.id, name: `チーム${i}`, members: [`メンバー${i}`] });
-    ps.push(await db.presentation.create({ data: { teamId: team.id, eventOccasionId: occasion.id, displayOrder }, select: { id: true, teamId: true } }));
-    otherPs.push(await db.presentation.create({ data: { teamId: team.id, eventOccasionId: other.id }, select: { id: true } }));
+    // createTeam が発表を作る版でも、作らない版でも通るよう、あれば発表順を更新し、無ければ作る（#175 との組み合わせ）。
+    ps.push(await db.presentation.upsert({ where: { teamId_eventOccasionId: { teamId: team.id, eventOccasionId: occasion.id } }, create: { teamId: team.id, eventOccasionId: occasion.id, displayOrder }, update: { displayOrder }, select: { id: true, teamId: true } }));
+    otherPs.push(await db.presentation.upsert({ where: { teamId_eventOccasionId: { teamId: team.id, eventOccasionId: other.id } }, create: { teamId: team.id, eventOccasionId: other.id }, update: {}, select: { id: true } }));
   }
   return { yearId, occasionId: occasion.id, otherOccasionId: other.id, ps, otherPs };
 }
@@ -123,6 +124,20 @@ describeDb("setDisplayOrders（発表順の更新・SC-07/SC-08 共通の入口�
       await expectError(setDisplayOrders(db, teacher, b.occasionId, [{ presentationId: bids[2], displayOrder: 3 }]), "presentation_locked");
       await setDisplayOrders(db, teacher, b.occasionId, [{ presentationId: bids[0], displayOrder: 2 }, { presentationId: bids[1], displayOrder: 1 }]);
       expect(await orderOf(db, bids)).toEqual([2, 1, null]);
+    });
+  });
+
+  it("動かせる行を、発表中の行より前の番号へ入れる更新は拒否する（番号に隙間があるとき）。後ろへの移動は通る", async () => {
+    await inTransaction(async (db) => {
+      const { occasionId, ps } = await setup(db, 9909, [2, 3, 4, null]);
+      const ids = ps.map((p) => p.id);
+      await setCurrentPresentation(db, teacher, occasionId, ids[1]); // 発表順 3 が発表中。2 番は前で動かせない
+      await expectError(setDisplayOrders(db, teacher, occasionId, [{ presentationId: ids[2], displayOrder: 1 }]), "presentation_locked"); // 4 番 → 1 番（前へ）
+      await expectError(setDisplayOrders(db, teacher, occasionId, [{ presentationId: ids[3], displayOrder: 1 }]), "presentation_locked"); // 未設定 → 1 番（前へ）
+      expect(await orderOf(db, ids)).toEqual([2, 3, 4, null]);
+      // 発表中より後ろの番号へは動かせる。
+      await setDisplayOrders(db, teacher, occasionId, [{ presentationId: ids[3], displayOrder: 9 }, { presentationId: ids[2], displayOrder: 5 }]);
+      expect(await orderOf(db, ids)).toEqual([2, 3, 5, 9]);
     });
   });
 

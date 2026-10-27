@@ -56,7 +56,8 @@ async function setup(db: Tx, year: number) {
   const ids: number[] = [];
   for (const [i, displayOrder] of [1, 2, 3].entries()) {
     const team = await createTeam(db, teacher, { classId: klass.id, name: `チーム${i}`, members: ["山田"] });
-    ids.push((await db.presentation.create({ data: { teamId: team.id, eventOccasionId: occasion.id, displayOrder }, select: { id: true } })).id);
+    // createTeam が発表を作る版でも、作らない版でも通るよう、あれば発表順を更新し、無ければ作る（#175 との組み合わせ）。
+    ids.push((await db.presentation.upsert({ where: { teamId_eventOccasionId: { teamId: team.id, eventOccasionId: occasion.id } }, create: { teamId: team.id, eventOccasionId: occasion.id, displayOrder }, update: { displayOrder }, select: { id: true } })).id);
   }
   return { occasionId: occasion.id, ids };
 }

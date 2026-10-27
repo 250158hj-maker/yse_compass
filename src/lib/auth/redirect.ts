@@ -42,6 +42,7 @@ export function safeRedirectPath(input: unknown, origin?: string): string {
   // `/a/../..//host` のように、`..` を畳んだ結果が `//host`（外部を指す形）になることがある。入口の検査だけでは足りないので、整えた結果も同じ検査にかける。
   if (path.startsWith("//") || path.startsWith("/\\") || new URL(path, BASE).origin !== BASE) return DEFAULT_SIGN_IN_REDIRECT;
   // サイトの根（/）は、戻り先が無いのと同じ扱い：Auth.js が戻り先なしのときに付ける値で、混在中の / はモックのホームだから。
+  // SC-02（ホーム。実装ルートは /）を置き換えたら、この扱いを外す（正しく / へ戻りたい人まで既定に送られる）。
   if (path === "/") return DEFAULT_SIGN_IN_REDIRECT;
   return path;
 }

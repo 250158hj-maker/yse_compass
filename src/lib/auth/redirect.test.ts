@@ -47,6 +47,22 @@ describe("safeRedirectPath（サインイン後の戻り先）", () => {
     expect(safeRedirectPath("http://localhost:3000//evil.example", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
   });
 
+  it("境界の値：ユーザー情報・大文字・別ポート・絶対 URL 中のバックスラッシュ・エンコードした //", () => {
+    const origin = "http://localhost:3000";
+    for (const bad of [
+      "https://localhost:3000@evil.example/",
+      "http://localhost:3000@evil.example/",
+      "http://localhost:3001/real/teams",
+      "http://localhost:3000/\\evil.example",
+    ]) {
+      expect(safeRedirectPath(bad, origin), bad).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    }
+    expect(safeRedirectPath("HTTP://LOCALHOST:3000/real/teams", origin)).toBe("/real/teams");
+    // エンコードした // は展開されず、同じサイトの道として残る。
+    expect(safeRedirectPath("/%2F%2Fevil.example")).toBe("/%2F%2Fevil.example");
+    expect(safeRedirectPath("http://localhost:3000/%2F%2Fevil.example", origin)).toBe("/%2F%2Fevil.example");
+  });
+
   it("サイトの根（/）は、戻り先が無いのと同じ扱い（Auth.js が戻り先なしのときに付ける値）", () => {
     expect(safeRedirectPath("/")).toBe(DEFAULT_SIGN_IN_REDIRECT);
     expect(safeRedirectPath("http://localhost:3000", "http://localhost:3000")).toBe(DEFAULT_SIGN_IN_REDIRECT);

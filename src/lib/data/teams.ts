@@ -126,7 +126,7 @@ export async function createTeam(db: Db, actor: Actor, input: CreateTeamInput) {
     throw new TeamError("invalid_input");
   }
 
-  const klass = await db.schoolClass.findUnique({ where: { id: input.classId }, select: { fiscalYear: { select: { isArchived: true } } } });
+  const klass = await db.schoolClass.findUnique({ where: { id: input.classId }, select: { fiscalYear: { select: { isArchived: true, eventOccasions: { select: { id: true } } } } } });
   if (!klass) throw new TeamError("class_not_found");
   if (klass.fiscalYear.isArchived) throw new TeamError("year_archived");
 
@@ -142,6 +142,8 @@ export async function createTeam(db: Db, actor: Actor, input: CreateTeamInput) {
           name,
           work: { create: { title: optionalText(input.workTitle) } },
           members: { create: memberNames.map((n) => ({ name: n })) },
+          // 新しいチームには発表が 1 件も無いので、不足分は全部。年度セットアップ側の補充は H-46 が③に決まるまで要らない（decisions.md 2026-09-21・years.ts）。
+          presentations: { create: klass.fiscalYear.eventOccasions.map((o) => ({ eventOccasionId: o.id })) },
         },
         select: { id: true, members: { select: { id: true, name: true }, orderBy: { id: "asc" } } },
       });

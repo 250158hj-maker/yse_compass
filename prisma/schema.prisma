@@ -184,7 +184,13 @@ model Summary {
   id               Int      @id @default(autoincrement())
   teamId           Int      @map("team_id")
   eventOccasionId  Int      @map("event_occasion_id")
+  // L2 の概要の本文（H-37 の先行方針・暫定。06-data.md 6-3 summaries）。決着して項目が変わったら直す。
+  introduction     String?  @db.Text
+  workOverview     String?  @map("work_overview") @db.Text
   techStack        String?  @map("tech_stack") @db.Text
+  closing          String?  @db.Text
+  // [{ "heading": …, "body": … }] の並び。件数の上限は DB の制約にせず、コードの定数で守る。
+  extraSections    Json     @default("[]") @map("extra_sections") @db.JsonB
   firstSubmittedAt DateTime @map("first_submitted_at") @db.Timestamptz(3)
   lastSubmittedAt  DateTime @map("last_submitted_at") @db.Timestamptz(3)
 

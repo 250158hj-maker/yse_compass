@@ -81,7 +81,9 @@ export function TimetableEditClient({ announcement: a }: { announcement: Announc
         {/* 入力(開始時刻・一律の発表時間)と「保存する」は見出しのすぐ下、並びの一覧の上に置く。1152×620(1440×900 の
             ウィンドウを 125% にした相当)でも、スクロールせずに入力・保存と、並びの先頭の 2 行が同じ画面に見えるようにするため。
             機能を説明するだけの文言・枠は置かない(水戸の指示 2026-10-12:開発フェーズの実装に入らないため)。
-            置くのは入力欄のラベル・操作の結果(未保存・確定)・次の工程へのボタンだけ。 */}
+            置くのは入力欄のラベル・操作の結果(未保存・確定)・次の工程へのボタンだけ。
+            ただし、並びが概要集の順になることを示す 1 行の注記は置く(04 SC-08 のメモ・decisions.md 2026-10-26 の H-51 (c))。
+            並びを変えたのに概要集の作り直しを忘れる、という運用の事故を防ぐための注記で、機能の説明ではない。 */}
         <div className="mt-4 flex flex-wrap items-end gap-x-5 gap-y-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-900/5">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-slate-500">開始時刻</span>
@@ -108,13 +110,16 @@ export function TimetableEditClient({ announcement: a }: { announcement: Announc
             )}
           </div>
         </div>
-        <p className="mt-2 min-h-5 text-xs text-slate-400" aria-live="polite">
-          {isDirty ? (
-            "未保存の変更があります"
-          ) : saved && confirmedAt ? (
-            <span className="text-sm text-slate-500">発表順を確定しました({formatDateTime(confirmedAt)})</span>
-          ) : null}
-        </p>
+        <div className="mt-2 flex min-h-5 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <p className="text-xs text-slate-400" aria-live="polite">
+            {isDirty ? (
+              "未保存の変更があります"
+            ) : saved && confirmedAt ? (
+              <span className="text-sm text-slate-500">発表順を確定しました({formatDateTime(confirmedAt)})</span>
+            ) : null}
+          </p>
+          <p className="text-xs text-slate-500">概要集は、この順で生成されます。</p>
+        </div>
 
         <div className="mt-2">
           <SortableList

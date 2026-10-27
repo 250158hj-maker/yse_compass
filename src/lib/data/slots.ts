@@ -6,7 +6,7 @@ import type { Actor } from "@/lib/data/years";
 // 先行方針で組んでいる（06 の列は現行のまま。決着したら変わる箇所は、各項の先行方針に書かれた範囲）:
 //   H-58 提出のある資料枠は削除を拒む。概要枠は削除できず、種類も変えられない（概要枠は 1 発表会 1 件・部分ユニークでも守られる）／
 //   H-27 締切は NULL（未設定）を許す。
-// 年度のアーカイブ済みかどうかでは塞がない：塞ぐ規則が正典に無い（チーム編集の H-55 と同じ扱い）。
+// 年度のアーカイブ済みかどうかでは塞がない（日程の編集と資料枠の編集・追加・削除。decisions.md 2026-10-23・H-62 の決着）。
 // SC-05 の「名称」は実装しない：event_occasions に名称の列が無い（禁則1）。
 // 認可の一次防衛線はここに置く（画面や Server Action が先に弾いても、ここでも必ず確かめる）。
 
@@ -167,7 +167,7 @@ export async function updateOccasionDate(db: Db, actor: Actor, occasionId: numbe
 // 発表会の公開・公開解除（requirements.md §3-3「発表会単位の一括公開」・04-screen.md SC-04【T 追加】）。先生の明示操作だけで切り替える（自動遷移を持たない：requirements.md §3 の状態遷移）。
 // チーム単位の出し分けはしない（04 SC-04「できないこと」）。同じ値への切り替えは何も変えずに成功する（画面の二重操作で失敗させない）。
 // 公開の位置（H-47）には依存しない：決着しても変わるのは呼ぶ画面だけで、ここは event_occasions.is_published を切り替えるだけ。
-// 年度のアーカイブ済みかどうかでは塞がない：塞ぐ規則が正典に無い（本ファイル冒頭・日程の編集と同じ扱い）。
+// 年度のアーカイブ済みかどうかでは塞がない：H-62 の決着（本ファイル冒頭）が決めたのは日程と資料枠の編集で、公開・公開解除は範囲外。塞ぐ規則は正典に無いので塞がない（決まったらここを直す）。
 export async function setOccasionPublished(db: Db, actor: Actor, occasionId: number, isPublished: boolean) {
   assertTeacher(actor);
   if (!isId(occasionId) || typeof isPublished !== "boolean") throw new SlotError("invalid_input");

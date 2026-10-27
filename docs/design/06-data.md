@@ -9,7 +9,7 @@
 
 > [!note] 確定の範囲（2026-10-19・10-20 のレビュー対象）
 > **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
-> - **対象**：6-3 の全 14 テーブルの列定義（列名・型・NULL・既定値・制約・対応する語彙・根拠、表の下の注。ただし注のうち、共通②で外れる文を除く）と、6-1・6-2 の ER 図。10/19 に基盤・背骨の 10 テーブル（`fiscal_years`・`classes`・`teams`・`team_members`・`works`・`users`・`event_occasions`・`material_slots`・`submissions`・`summaries`）、10/20 に後段の 4 テーブル（`presentations`・`comments`・`presentation_likes`・`comment_likes`）と ER 図
+> - **対象**：6-3 の全 14 テーブルの列定義（列名・型・NULL・既定値・制約・対応する語彙・根拠、表の下の注。ただし注のうち、共通②で外れる文を除く）と、6-1・6-2 の ER 図。10/19 に基盤・背骨の 10 テーブル（`fiscal_years`・`classes`・`teams`・`team_members`・`works`・`users`・`event_occasions`・`material_slots`・`submissions`・`summaries`）、10/20 に後段の 4 テーブル（`presentations`・`comments`・`presentation_likes`・`comment_likes`）と ER 図。**2026-10-27 に、日時の 6 列の型 `timestamptz`（`material_slots.deadline`・`submissions` と `summaries` の `first_submitted_at`・`last_submitted_at`・`comments.created_at`）と、`comments.created_at` の既定値 `now()`、6-2 の ER 図の該当する属性を加えた**（H-39 の決着：`../decisions.md` 2026-10-20。範囲の拡大：同 2026-10-27）。精度（Prisma の `Timestamptz(3)`）は 6-7 の範囲なので含めない
 > - **対象の中でも、確定に含めない列・記述**（未決に依存するため。ER 図は、下の列に当たる属性と、その列が表す関連のカーディナリティ〔6-1・6-2 の `SCHOOL_CLASS`–`TEAM` のクラス側＝`teams.class_id` の NOT NULL、`USER`–`TEAM_MEMBER` のメンバー行の側＝`team_members.user_id` の UNIQUE が全年度に効く形〕を、同じ列に付いた未決の注記とあわせて確定に含めない）：
 >   - `users`：確定に含めるのは `id`・`role` だけ。ただし `id` の型（`serial`）は含めない（H-30 ④。Auth.js の Prisma Adapter を採ると、利用者の id を文字列で渡すため、型が変わりうる。`users.id` を参照する外部キーの列〔`team_members.user_id`・`works.consent_set_by`・`comments.user_id`・`presentation_likes.user_id`・`comment_likes.user_id`〕の型も連動するので、同じく含めない）。`email`（利用者の同一性のキー・H-32）と `name`（先生の事前登録とホワイトリストの実体・H-26）は含めない
 >   - `works`：`consent_set_by` の型（H-30 ④。`users.id` の型に連動する）。NULL 可・外部キー・CHECK は含める
@@ -17,11 +17,11 @@
 >   - `team_members`・`teams`：`name` の長さの上限（`varchar` の型）と、`team_members.name` の同姓同名を禁じる制約の有無（H-56）
 >   - `teams`：`class_id` の NULL 可否（H-46。「チームがクラスに属さない状態を許す」案の決着で変わる）
 >   - `team_members`：`user_id` の UNIQUE が効く範囲（全年度に効く。年度をまたいだ引き換えの扱い・H-25 (d)(e)。本文が「本節では決めない」としている部分）。`user_id` の NULL 可・外部キーは含める（型は、上の `users` の行のとおり H-30 ④で含めない）
->   - `material_slots`：`deadline` の NULL 可否・既定値（H-27）。型 `timestamptz` は H-39 の決着（`../decisions.md` 2026-10-20）で決まったが、確定の範囲にはまだ入れていない（広げるにはレビューを経る）
->   - `submissions`：`url`（Drive 統合の範囲・未決 No.10。リンクの形が変わる）。`first_submitted_at`・`last_submitted_at` の型 `timestamptz` は H-39 の決着で決まったが、確定の範囲にはまだ入れていない
->   - `summaries`：`tech_stack` の型（T-3 は決着〔`../decisions.md` 2026-10-22〕したが、型は決まっていない）。**L2 の概要の本文を保存する列（`introduction`・`work_overview`・`closing`・`extra_sections`）**（H-37 の先行方針〔2026-10-26〕で足した。H-37 が決着して項目が変われば、これらの列を直す）。`first_submitted_at`・`last_submitted_at` の型 `timestamptz` は H-39 の決着で決まったが、確定の範囲にはまだ入れていない
+>   - `material_slots`：`deadline` の NULL 可否・既定値（H-27）。型 `timestamptz` は確定に含める（H-39 の決着。下の「対象」のとおり 2026-10-27 に範囲へ入れた）
+>   - `submissions`：`url`（Drive 統合の範囲・未決 No.10。リンクの形が変わる）。
+>   - `summaries`：`tech_stack` の型（T-3 は決着〔`../decisions.md` 2026-10-22〕したが、型は決まっていない）。**L2 の概要の本文を保存する列（`introduction`・`work_overview`・`closing`・`extra_sections`）**（H-37 の先行方針〔2026-10-26〕で足した。H-37 が決着して項目が変われば、これらの列を直す）
 >   - `presentations`：時刻枠（開始時刻・所要・休憩）を列として持たない前提（H-20）、表の下の「行の生成タイミング」の注（H-46 の決着で見直す。「クラスに属さないチームを許す」案を採ると、「そのチームの年度に」が `team → class → fiscal_year` で引けなくなる）
->   - `comments`：編集・削除の列を持たない前提（T-2）。`created_at` の型 `timestamptz` と既定値 `now()` は H-39 の決着で決まったが、確定の範囲にはまだ入れていない
+>   - `comments`：編集・削除の列を持たない前提（T-2）
 > - **確定に含めないもの（共通）**：①列・テーブル・関連の集合の完全さ（確定するのは挙げた列の定義で、挙げていない列・テーブル・関連が無いことまでは保証しない。たとえば H-20 の「タイムテーブルの行」の実体が ER 図に無いことは保証しない）。**ER 図は 6-3 から描いたもので、図に無い制約は 6-3 が正**（複合の UNIQUE、複合外部キーが複合であること〔`teams.leader_member_id`・`event_occasions.current_presentation_id`〕は図に描いていない）　②各テーブルの表の下の注のうち、範囲外の節や未決を指す文　③上流が TODO の根拠：`teams`・`team_members`・`users` の上流（`../requirements.md` §3-8・§3-6）は、できること・受け入れ基準が TODO のまま。この 3 テーブルの根拠は `../glossary.md` と `../decisions.md` に限られ、上流が埋まったとき、確定した列が変わりうる。特に `users.role` の 2 値は、先生ロールの親子二層構造（#8。先行方針は「単層で組む」）を採るときに、値を増やすか別の列で持つかが決まっていない
 > - **範囲外の節**：6-4〜6-7（索引方針の 6-5 を含む）、参照動作（コメントを参照する外部キーの動作が T-2 に依存する）
 > - **レビューする論点**：①各列が `../glossary.md`・`../requirements.md` のどの記述に対応するか（根拠の欄）が足りているか　②外部キーの向きと UNIQUE が、語彙の関係（チーム・メンバー・リーダー、資料枠・提出、発表・コメント・いいね）と合っているか　③NULL 可否が運用（先生がチームを作る・年度セットアップが資料枠を生成する）と合っているか　④型・既定値・CHECK が、正典の記述（`../glossary.md`・`../requirements.md`・`../decisions.md`）と合っているか。⑤6-1・6-2 の ER 図が 6-3 と一致し、関連の名前が正典と合っているか（#124。6-1 は属性を持たず、関連の名前とカーディナリティを持つ図なので、6-2 と照らすだけでなく、関連の名前の出典も見る）　⑥未決の先行方針の見直し（#124。H-20・H-26・H-27・H-32・T-2。結論は下の欄に書く）

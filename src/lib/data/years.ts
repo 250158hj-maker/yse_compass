@@ -80,7 +80,8 @@ function hasCode(e: unknown, code: string): boolean {
 }
 
 // 年度・クラス・4 発表会・定番の資料枠を、1 回の作成（Prisma の入れ子の作成は 1 トランザクション）で生成する。
-// チームは作らない（H-9）。発表（presentations）も作らない：チームがまだ無く、チーム作成時に既存の発表会の分を作る（decisions.md 2026-09-21）。
+// チームは作らない（H-9）。発表（presentations）も作らない：チームがまだ無く、チーム作成時（teams.ts の createTeam）に既存の発表会の分を作る（decisions.md 2026-09-21）。
+// 年度セットアップ側で既存のチームの分を補う処理は未実装：H-46 の先行方針ではチームは年度セットアップが作ったクラスにだけ属するので、この時点でチームは無く到達しない。H-46 が③（チームがクラスに属さない）に決まったら足す。
 export async function setupFiscalYear(db: Db, actor: Actor, input: SetupYearInput) {
   assertTeacher(actor);
   // 年度は西暦 4 桁（design/06-data.md 6-3 の fiscal_years.year）。範囲外の値は DB に渡さない（integer の範囲を超えると Prisma が例外を投げる）。

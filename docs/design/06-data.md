@@ -7,7 +7,7 @@
 > **主担当**：蒲山
 > **最終更新**：2026-10-27（蒲山）
 
-> [!note] 確定の範囲（2026-10-19・10-20 のレビュー対象）
+> [!note] 確定の範囲（2026-10-19・10-20・10-27 のレビュー対象）
 > **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
 > - **対象**：6-3 の全 14 テーブルの列定義（列名・型・NULL・既定値・制約・対応する語彙・根拠、表の下の注。ただし注のうち、共通②で外れる文を除く）と、6-1・6-2 の ER 図。10/19 に基盤・背骨の 10 テーブル（`fiscal_years`・`classes`・`teams`・`team_members`・`works`・`users`・`event_occasions`・`material_slots`・`submissions`・`summaries`）、10/20 に後段の 4 テーブル（`presentations`・`comments`・`presentation_likes`・`comment_likes`）と ER 図。**2026-10-27 に、日時の 6 列の型 `timestamptz`（`material_slots.deadline`・`submissions` と `summaries` の `first_submitted_at`・`last_submitted_at`・`comments.created_at`）と、`comments.created_at` の既定値 `now()`、6-2 の ER 図の該当する属性を加えた**（H-39 の決着：`../decisions.md` 2026-10-20。範囲の拡大：同 2026-10-27）。精度（Prisma の `Timestamptz(3)`）は 6-7 の範囲なので含めない
 > - **対象の中でも、確定に含めない列・記述**（未決に依存するため。ER 図は、下の列に当たる属性と、その列が表す関連のカーディナリティ〔6-1・6-2 の `SCHOOL_CLASS`–`TEAM` のクラス側＝`teams.class_id` の NOT NULL、`USER`–`TEAM_MEMBER` のメンバー行の側＝`team_members.user_id` の UNIQUE が全年度に効く形〕を、同じ列に付いた未決の注記とあわせて確定に含めない）：

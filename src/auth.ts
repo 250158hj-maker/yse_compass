@@ -24,5 +24,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
+  // サインインの画面は、自前の /login（Issue #185・H-64）。サインインが必要な画面と Auth.js の入口は、ここへ送る。
+  // サインインが断られたとき（学校ドメイン以外など）も、Auth.js 既定のエラー画面ではなく /login?error=… へ送り、ログイン画面で文言を出す。
+  pages: { signIn: "/login", error: "/login" },
   callbacks: createCallbacks(prisma, schoolDomain),
 });

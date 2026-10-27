@@ -5,7 +5,7 @@
 > **正典**：このファイル
 > **更新のしかた**：上書き
 > **主担当**：蒲山（インフラ担当。サーバーの持ち主：§2）
-> **最終更新**：2026-10-26（蒲山）
+> **最終更新**：2026-10-27（蒲山）
 
 ---
 
@@ -350,14 +350,14 @@ curl http://localhost:3000/api/health/db
 
 ### Google サインインの入口
 
-- **入口は `/real/teams`**（サーバーにする PC の Windows のブラウザで `http://localhost:3000/real/teams`）。**`/` はモックのホーム。未ログインなら `/login`（モックの人物選択）へ送られ、Google のサインインは無い。**
-- 開くと、サインインしていなければ Auth.js のサインインへ送られ、終わると `/real/teams` に戻る（`src/lib/auth/session.ts`）。
+- **入口は `/real/teams`**（サーバーにする PC の Windows のブラウザで `http://localhost:3000/real/teams`）。**`/` はモックのホーム。未ログインなら `/login` へ送られる。**
+- 開くと、サインインしていなければ自前のログイン画面（`/login?callbackUrl=…`）へ送られ、そこの「Google でログイン」（サインインの Action：`src/lib/actions/auth.ts`）を押して終わると、`/real/teams` に戻る（`src/lib/auth/session.ts`・Issue #185）。**入口の URL は、`/real/teams` のまま変わらない。** サインインが断られたとき（学校のドメイン以外など）は、`/login?error=…` に戻る（`src/auth.ts` の `pages.error`・2026-10-27 に `localhost` で、遷移先を確かめた）。
 - **サインインのあとに見えるもの（コードから言える範囲。実機では未確認）**
   - **学校のドメインのアカウントだけが通る**（`src/lib/auth/callbacks.ts` の `signIn`）。
   - **`DEV_TEACHER_EMAIL` のアカウント（先生）**：チーム一覧（`src/app/real/teams/page.tsx`）。画面の上部に「年度管理」へのリンクが出る（`src/app/real/layout.tsx`）。seed が入れる年度のうち、一覧に出るのは未アーカイブの 2026 年度だけ（2025 年度はアーカイブ済みで出ない。切り替えボタンも出ない）。seed はチームを入れないので、一覧は「2026年度には、まだチームがありません。」になる。チームの作成フォームが出る。
   - **それ以外の学校のアカウント**：初回のサインインで生徒として行が作られ、チーム一覧は開くが、作成フォームは出ない。
   - **seed の前にすでにサインインしていた場合は、seed のあとにサインインし直す**（ロールはサインインのときにトークンに載るため。`scripts/seed-dev.mjs` のコメントのとおり）。
-- 確かめていないこと：OAuth クライアントに登録済みの redirect URI が、この構成（`http://localhost:3000/api/auth/callback/google`）で通るか（`../docs/findings.md` F-04 は `localhost` の別の環境で確認）。
+- 確かめたこと（2026-10-27・デモ用 PC・`52b83ed` の版で、入口を変える前の Auth.js 既定のサインイン画面から）：OAuth クライアントに登録済みの redirect URI（`http://localhost:3000/api/auth/callback/google`）が、この構成で通る。サインインは 1 回目・2 回目とも通り、ロール（生徒・先生）が解決された。学校のドメイン以外のアカウントは、Google の入力画面が学校のドメインに固定していて、入力できなかった（アプリ側の拒否は単体テストで確認。実機では未確認）。別の PC への画面共有も映った（`../docs/findings.md` F-04 は別の環境で確認）。
 - 確かめたこと（2 回目）：Windows のブラウザから WSL の `localhost:3000` に届く（`/api/health/db` が `{"status":"ok"}`）。
 
 ## ステップ 6. LAN への公開

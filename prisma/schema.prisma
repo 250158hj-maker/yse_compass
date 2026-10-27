@@ -239,6 +239,9 @@ model Comment {
   label           String?  @db.VarChar
   body            String   @db.Text
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  // 編集日時（NULL は未編集）と削除の印（decisions.md 2026-10-26・T-2。行は消さず、返信は残す）。06 の確定の範囲に含めない。
+  editedAt        DateTime? @map("edited_at") @db.Timestamptz(3)
+  isDeleted       Boolean  @default(false) @map("is_deleted")
 
   presentation Presentation  @relation(fields: [presentationId], references: [id])
   user         User          @relation(fields: [userId], references: [id])

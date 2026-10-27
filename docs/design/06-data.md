@@ -5,7 +5,7 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-10-26（蒲山）
+> **最終更新**：2026-10-27（蒲山）
 
 > [!note] 確定の範囲（2026-10-19・10-20 のレビュー対象）
 > **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
@@ -19,7 +19,7 @@
 >   - `team_members`：`user_id` の UNIQUE が効く範囲（全年度に効く。年度をまたいだ引き換えの扱い・H-25 (d)(e)。本文が「本節では決めない」としている部分）。`user_id` の NULL 可・外部キーは含める（型は、上の `users` の行のとおり H-30 ④で含めない）
 >   - `material_slots`：`deadline` の NULL 可否・既定値（H-27）。型 `timestamptz` は H-39 の決着（`../decisions.md` 2026-10-20）で決まったが、確定の範囲にはまだ入れていない（広げるにはレビューを経る）
 >   - `submissions`：`url`（Drive 統合の範囲・未決 No.10。リンクの形が変わる）。`first_submitted_at`・`last_submitted_at` の型 `timestamptz` は H-39 の決着で決まったが、確定の範囲にはまだ入れていない
->   - `summaries`：`tech_stack` の型（T-3 は決着〔`../decisions.md` 2026-10-22〕したが、型は決まっていない）。`first_submitted_at`・`last_submitted_at` の型 `timestamptz` は H-39 の決着で決まったが、確定の範囲にはまだ入れていない
+>   - `summaries`：`tech_stack` の型（T-3 は決着〔`../decisions.md` 2026-10-22〕したが、型は決まっていない）。**L2 の概要の本文を保存する列（`introduction`・`work_overview`・`closing`・`extra_sections`）**（H-37 の先行方針〔2026-10-26〕で足した。H-37 が決着して項目が変われば、これらの列を直す）。`first_submitted_at`・`last_submitted_at` の型 `timestamptz` は H-39 の決着で決まったが、確定の範囲にはまだ入れていない
 >   - `presentations`：時刻枠（開始時刻・所要・休憩）を列として持たない前提（H-20）、表の下の「行の生成タイミング」の注（H-46 の決着で見直す。「クラスに属さないチームを許す」案を採ると、「そのチームの年度に」が `team → class → fiscal_year` で引けなくなる）
 >   - `comments`：編集・削除の列を持たない前提（T-2）。`created_at` の型 `timestamptz` と既定値 `now()` は H-39 の決着で決まったが、確定の範囲にはまだ入れていない
 > - **確定に含めないもの（共通）**：①列・テーブル・関連の集合の完全さ（確定するのは挙げた列の定義で、挙げていない列・テーブル・関連が無いことまでは保証しない。たとえば H-20 の「タイムテーブルの行」の実体が ER 図に無いことは保証しない）。**ER 図は 6-3 から描いたもので、図に無い制約は 6-3 が正**（複合の UNIQUE、複合外部キーが複合であること〔`teams.leader_member_id`・`event_occasions.current_presentation_id`〕は図に描いていない）　②各テーブルの表の下の注のうち、範囲外の節や未決を指す文　③上流が TODO の根拠：`teams`・`team_members`・`users` の上流（`../requirements.md` §3-8・§3-6）は、できること・受け入れ基準が TODO のまま。この 3 テーブルの根拠は `../glossary.md` と `../decisions.md` に限られ、上流が埋まったとき、確定した列が変わりうる。特に `users.role` の 2 値は、先生ロールの親子二層構造（#8。先行方針は「単層で組む」）を採るときに、値を増やすか別の列で持つかが決まっていない
@@ -420,11 +420,18 @@ erDiagram
 | id | serial | NOT NULL | — | PK | — |
 | team_id | int | NOT NULL | — | FK → teams.id・UNIQUE(team_id, event_occasion_id) | 1チーム×1発表会（年4件・A-3 決着） |
 | event_occasion_id | int | NOT NULL | — | FK → event_occasions.id | 同上 |
-| tech_stack | text | NULL | — | — | **使用技術欄**。アーカイブ検索の対象（2026-07-26）。**入力は一覧選択＋その他（`../decisions.md` 2026-10-22・T-3 の決着）。型は未定で、いまは text** |
+| introduction | text | NULL | — | — | **はじめに**（課題・背景・目的）。L2 の芯の項目。H-37 の先行方針（暫定）。**確定に含めない** |
+| work_overview | text | NULL | — | — | **作品概要**。L2 の芯の項目。同上 |
+| tech_stack | text | NULL | — | — | **使用技術欄**（L2 の芯の項目「開発環境」に当たる）。アーカイブ検索の対象（2026-07-26）。**入力は一覧選択＋その他（`../decisions.md` 2026-10-22・T-3 の決着）。型は未定で、いまは text** |
+| closing | text | NULL | — | — | **終わりに**（今後の課題・意気込み）。L2 の芯の項目。H-37 の先行方針（暫定）。**確定に含めない** |
+| extra_sections | jsonb | NOT NULL | `'[]'` | — | **チームが見出しを付ける自由な欄**。`[{"heading": …, "body": …}, …]` の並び（H-37 の先行方針で最大 2 件。件数はコードの 1 箇所の定数で、DB の制約にしない）。**確定に含めない** |
 | first_submitted_at | timestamptz | NOT NULL | — | — | 2026-09-29 決着の2値方式を提出と同じ形で適用。**`submissions` と NULL 可否を揃えた**：行の存在＝提出済みという 6-6 の導出規則を保つため、行は初回提出時にしか作らない |
 | last_submitted_at | timestamptz | NOT NULL | — | — | 同上 |
 
-> **入力欄の具体（背景・動機／起・結／1ページ集約に対応する列）はここに含めない。** 現行テンプレの現物が未入手のため（`../open-questions.md` §6 保留）。決着まではアプリ層で構造化データを持たせる場合も本ファイルへの列追加はせず、決着後にまとめて反映する。
+> **L2 の本文の列（`introduction`・`work_overview`・`closing`・`extra_sections`）は、H-37 の先行方針（2026-10-26）で足した暫定の列**で、確定の範囲に含めない。H-37 が決着して項目が変われば直す。足した理由は、保存先が無いと概要入力（SC-10）の保存を作れないため。
+> **列の形（芯の項目は項目ごとの列、自由な欄は `jsonb` の 1 列）の理由**：芯の 4 項目は `requirements.md` §3-3 の評価観点を焼き込んだコード定義で変わりにくいため、列にして型を DB で守る。自由な欄は件数が未決（H-37・字数の予算で詰める）で、0〜2 件のどれにもなりうるので、件数が変わっても列の追加や移行が要らない形にする。『作品の種類』の列は足さない（H-37 の先行方針）。
+> **NULL 可否**：芯の 3 列は `tech_stack` と同じ NULL 可とする。入力の必須判定は、概要入力の保存（Action）に置き、DB の制約にはしない（H-37 が未決で、必須の範囲が変わりうるため）。`extra_sections` は『空の並び』と『未入力』を区別する意味が無いので、NOT NULL・既定値 `[]`。
+> **字数の上限は列にも置かない**（H-53 の先行方針は『実装しない』。1 ページに収まるかの保証は提出時の判定で行う方向で、#121 の結果を待つ）。
 > **年度の整合は DB で守らない**：`team_id` と `event_occasion_id` の年度が違う組み合わせも DB は受け入れる（`submissions` の同名の注と同じ）。アプリ層で守る。
 > **「概要」は資料枠（`material_slots.slot_type = '概要'`）の締切・必須／任意を参照する。** ただし `summaries` は `material_slot_id` を持たない — 概要枠は全発表会に1件ずつ存在する定番枠のため、`event_occasion_id` から一意に引ける（`material_slots` の部分インデックス `WHERE slot_type = '概要'`（6-3 `material_slots`）で整合性を保証する）。
 
@@ -506,7 +513,7 @@ erDiagram
 | 「いま発表中」の参照 | `event_occasions.current_presentation_id` は単一値参照のため追加索引は不要 | §3-10 |
 | 発表詳細のコメント一覧（スレッド表示） | `comments(presentation_id, created_at)`・`comments(parent_comment_id)` | §3-5・§3-9 |
 | アーカイブ検索（基本メタデータ：年度・チーム名・作品名・資料種別） | `teams(name)`・`works(title)`・`material_slots(slot_type)` への通常インデックス（`works(id)` の部分インデックス `WHERE publication_consent = 'approved'` と組み合わせる） | §3-7 受け入れ基準。検索対象は公開許可済みのみ |
-| アーカイブ検索（概要の本文・使用技術欄） | `summaries.tech_stack` への全文検索用インデックス（GIN、日本語形態素解析は Ph.2 で検証）。**「概要の本文」は列自体が未定**（現行テンプレ現物未入手・`../open-questions.md` §6 保留）のため索引方針も保留 | §3-7。検索対象は公開許可済みのみ |
+| アーカイブ検索（概要の本文・使用技術欄） | `summaries.tech_stack` への全文検索用インデックス（GIN、日本語形態素解析は Ph.2 で検証）。**「概要の本文」の列（`introduction`・`work_overview`・`closing`・`extra_sections`）は H-37 の先行方針で足した暫定の列**で、これらへの索引方針は保留（H-37 の決着と、日本語の全文検索の検証〔Ph.2〕を待つ。自由な欄の `jsonb` は、検索対象にするとき別の作り方になる） | §3-7。検索対象は公開許可済みのみ |
 | ユーザーのロール判定（認可の一次防衛線・H-16） | `users(email)` UNIQUE（既存）で足りる。全読み取りがここを通る（`09-nfr.md` 9-4） | §4 セキュリティ |
 | 実行主体の所属チーム判定（認可の文脈軸・H-16） | `team_members(user_id)` UNIQUE（既存）で足りる。`team_members` からチームへは `team_id` を直接持つため逆引きの結合は1段（`09-nfr.md` 9-4） | §4 セキュリティ |
 

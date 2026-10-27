@@ -10,8 +10,20 @@ export const DEFAULT_SIGN_IN_REDIRECT = "/announcements";
 const MAX_LENGTH = 2048;
 const BASE = "http://redirect.invalid";
 
-export function safeRedirectPath(input: unknown): string {
+// origin は、このサイト自身の origin（例：http://localhost:3000）。Auth.js が戻り先を絶対 URL（http://localhost:3000/real/teams）で付けることがあるので
+// （/api/auth/signin から入ったときなどを localhost で確かめた）、同じ origin の絶対 URL だけは、道に直して受ける。origin が無ければ、絶対 URL は受けない。
+export function safeRedirectPath(input: unknown, origin?: string): string {
   if (typeof input !== "string" || input === "" || input.length > MAX_LENGTH) return DEFAULT_SIGN_IN_REDIRECT;
+  if (origin !== undefined && /^https?:\/\//i.test(input)) {
+    let abs: URL;
+    try {
+      abs = new URL(input);
+    } catch {
+      return DEFAULT_SIGN_IN_REDIRECT;
+    }
+    if (abs.origin !== origin) return DEFAULT_SIGN_IN_REDIRECT;
+    return safeRedirectPath(abs.pathname + abs.search);
+  }
   // 先頭は `/` の 1 文字だけ。`//host`・`/\host`（ブラウザはバックスラッシュを `/` と読む）は外部を指しうる。
   if (!input.startsWith("/") || input.startsWith("//") || input.startsWith("/\\")) return DEFAULT_SIGN_IN_REDIRECT;
 
@@ -29,5 +41,7 @@ export function safeRedirectPath(input: unknown): string {
   const path = url.pathname + url.search;
   // `/a/../..//host` のように、`..` を畳んだ結果が `//host`（外部を指す形）になることがある。入口の検査だけでは足りないので、整えた結果も同じ検査にかける。
   if (path.startsWith("//") || path.startsWith("/\\") || new URL(path, BASE).origin !== BASE) return DEFAULT_SIGN_IN_REDIRECT;
+  // サイトの根（/）は、戻り先が無いのと同じ扱い：Auth.js が戻り先なしのときに付ける値で、混在中の / はモックのホームだから。
+  if (path === "/") return DEFAULT_SIGN_IN_REDIRECT;
   return path;
 }

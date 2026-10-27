@@ -33,6 +33,26 @@ describe("safeRedirectPath（サインイン後の戻り先）", () => {
     expect(safeRedirectPath("/loginhelp")).toBe("/loginhelp");
   });
 
+  it("同じサイトの絶対 URL は、origin を渡したときだけ、道に直して受ける（Auth.js が付ける形）", () => {
+    const origin = "http://localhost:3000";
+    expect(safeRedirectPath("http://localhost:3000/real/teams", origin)).toBe("/real/teams");
+    expect(safeRedirectPath("http://localhost:3000/real/teams?year=2026", origin)).toBe("/real/teams?year=2026");
+    // origin が違う・無いものは、既定にする。
+    expect(safeRedirectPath("http://localhost:3000/real/teams")).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    expect(safeRedirectPath("http://evil.example/real/teams", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    expect(safeRedirectPath("http://localhost:3000.evil.example/real/teams", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    expect(safeRedirectPath("https://localhost:3000/real/teams", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    // 同じ origin でも、ループになる道・外部を指す形になる道は、既定にする。
+    expect(safeRedirectPath("http://localhost:3000/login", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    expect(safeRedirectPath("http://localhost:3000//evil.example", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
+  });
+
+  it("サイトの根（/）は、戻り先が無いのと同じ扱い（Auth.js が戻り先なしのときに付ける値）", () => {
+    expect(safeRedirectPath("/")).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    expect(safeRedirectPath("http://localhost:3000", "http://localhost:3000")).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    expect(safeRedirectPath("http://localhost:3000/", "http://localhost:3000")).toBe(DEFAULT_SIGN_IN_REDIRECT);
+  });
+
   it("長すぎる値は、既定にする", () => {
     expect(safeRedirectPath("/" + "a".repeat(2048))).toBe(DEFAULT_SIGN_IN_REDIRECT);
   });

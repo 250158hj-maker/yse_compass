@@ -1,9 +1,15 @@
+import { headers } from "next/headers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signIn, signOut } from "@/auth";
 import { signInWithGoogleAction, signOutAction } from "@/lib/actions/auth";
 
 // Server Action の薄い層だけを確かめる（戻り先の整え方は lib/auth/redirect.test.ts）。signIn・signOut は差し替える（本物は Google が要る）。
 vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
+vi.mock("next/headers", () => ({ headers: vi.fn() }));
+
+function requestHeaders(values: Record<string, string>) {
+  vi.mocked(headers).mockResolvedValue(new Headers(values) as never);
+}
 
 // Auth.js の signIn・signOut は、リダイレクトを、この形の例外で行う（握りつぶすと、画面が遷移しない）。
 class RedirectSignal extends Error {
@@ -13,6 +19,7 @@ class RedirectSignal extends Error {
 beforeEach(() => {
   vi.mocked(signIn).mockReset();
   vi.mocked(signOut).mockReset();
+  requestHeaders({ host: "localhost:3000" });
 });
 
 describe("signInWithGoogleAction", () => {
@@ -28,6 +35,18 @@ describe("signInWithGoogleAction", () => {
     await signInWithGoogleAction("/login");
     for (const call of vi.mocked(signIn).mock.calls) expect(call).toEqual(["google", { redirectTo: "/announcements" }]);
     expect(signIn).toHaveBeenCalledTimes(4);
+  });
+
+  it("Auth.js が付ける同じサイトの絶対 URL の戻り先は、道に直して呼ぶ。別のサイトのものは既定にする", async () => {
+    await signInWithGoogleAction("http://localhost:3000/real/teams");
+    await signInWithGoogleAction("http://evil.example/real/teams");
+    expect(vi.mocked(signIn).mock.calls.map((c) => c[1])).toEqual([{ redirectTo: "/real/teams" }, { redirectTo: "/announcements" }]);
+  });
+
+  it("プロキシの後ろでは、転送されたホストとプロトコルで、同じサイトかを確かめる", async () => {
+    requestHeaders({ host: "internal:3000", "x-forwarded-host": "compass.example", "x-forwarded-proto": "https" });
+    await signInWithGoogleAction("https://compass.example/real/teams");
+    expect(signIn).toHaveBeenCalledWith("google", { redirectTo: "/real/teams" });
   });
 
   it("引数の形が違う（文字列でも null でもない）なら invalid_input で、サインインを呼ばない", async () => {

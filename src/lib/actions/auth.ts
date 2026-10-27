@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { signIn, signOut } from "@/auth";
 import { safeRedirectPath } from "@/lib/auth/redirect";
 
@@ -14,7 +15,11 @@ export type AuthActionResult = { ok: true } | { ok: false; code: "invalid_input"
 // 戻り先が文字列でも null でも undefined でもない（形が違う）ときだけ invalid_input を返す。Server Action は画面の型を通らずに直接呼べるため。
 export async function signInWithGoogleAction(callbackUrl?: string | null): Promise<AuthActionResult> {
   if (callbackUrl !== undefined && callbackUrl !== null && typeof callbackUrl !== "string") return { ok: false, code: "invalid_input" };
-  await signIn("google", { redirectTo: safeRedirectPath(callbackUrl) });
+  // このサイト自身の origin。Auth.js が付ける絶対 URL の戻り先を、同じサイトのものだけ受けるために使う（lib/auth/redirect.ts）。
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const origin = host ? `${h.get("x-forwarded-proto") ?? "http"}://${host}` : undefined;
+  await signIn("google", { redirectTo: safeRedirectPath(callbackUrl, origin) });
   return { ok: true };
 }
 

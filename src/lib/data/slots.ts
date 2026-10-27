@@ -163,3 +163,18 @@ export async function updateOccasionDate(db: Db, actor: Actor, occasionId: numbe
     throw e;
   }
 }
+
+// 発表会の公開・公開解除（requirements.md §3-3「発表会単位の一括公開」・04-screen.md SC-04【T 追加】）。先生の明示操作だけで切り替える（自動遷移を持たない：requirements.md §3 の状態遷移）。
+// チーム単位の出し分けはしない（04 SC-04「できないこと」）。同じ値への切り替えは何も変えずに成功する（画面の二重操作で失敗させない）。
+// 公開の位置（H-47）には依存しない：決着しても変わるのは呼ぶ画面だけで、ここは event_occasions.is_published を切り替えるだけ。
+// 年度のアーカイブ済みかどうかでは塞がない：塞ぐ規則が正典に無い（本ファイル冒頭・日程の編集と同じ扱い）。
+export async function setOccasionPublished(db: Db, actor: Actor, occasionId: number, isPublished: boolean) {
+  assertTeacher(actor);
+  if (!isId(occasionId) || typeof isPublished !== "boolean") throw new SlotError("invalid_input");
+  try {
+    return await db.eventOccasion.update({ where: { id: occasionId }, data: { isPublished }, select: { id: true, kind: true, isPublished: true } });
+  } catch (e) {
+    if (hasCode(e, "P2025")) throw new SlotError("occasion_not_found");
+    throw e;
+  }
+}

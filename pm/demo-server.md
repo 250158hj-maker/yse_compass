@@ -5,7 +5,7 @@
 > **正典**：このファイル
 > **更新のしかた**：上書き
 > **主担当**：蒲山（インフラ担当。サーバーの持ち主：§2）
-> **最終更新**：2026-10-26（蒲山）
+> **最終更新**：2026-10-29（蒲山）
 
 ---
 
@@ -37,6 +37,18 @@
 | 4 | HTTPS の clone・`.env` の作成が通った。**手順どおりでなかった点がある**（ステップ 4 末尾） **出力は記録に残っていない。** |
 | 5 | 1 回目に未実測だった本書の形（ログに出して終了コードを見る）で、ビルドが `exit=0` で通った |
 | 6 | 別の PC から届いた |
+
+**3 回目の実測（2026-10-29・蒲山）：2 回目で立てたデモサーバーを、`main` の最新（2f25ce6）へ更新して起動し直し、確かめた。** 条件は 2 回目と同じ PC・アカウント。**通った範囲は次のとおり。**
+
+| ステップ | 3 回目の状態 |
+| --- | --- |
+| 5 の 1 | **Docker Engine が止まっていて、`sudo systemctl start docker` を打ってから `docker compose up -d --wait db` が通った**（止まっていた原因は未確認。直前に何で止まったかを記録していない） |
+| 5 の 3・4・5・7 | `git pull` は fast-forward。`pnpm install --frozen-lockfile` は `Already up to date`。`migrate status` は未適用 2 本が並んだ（想定どおり）。`migrate deploy` が 2 本とも適用され、`prisma generate`（Prisma Client 7.10.0）も通った。ビルドは `build exit=0` |
+| 5 の 8・9 | `pnpm start` で起動。`/api/health/db` が、**サーバー PC のブラウザと、同じ教室の別の PC のブラウザの両方で** `{"status":"ok"}` を返した |
+| 6-4 | 別の PC の PowerShell で `Test-NetConnection <Windows の IP> -Port 5432` が `TcpTestSucceeded` `False`（5432 番は LAN に出ていない） |
+| Google サインイン | サーバー PC のブラウザの `http://localhost:3000/real/teams` で、**Google サインインが通った**（この PC の ID・シークレットは設定済み）。**生徒のロールでも、先生のロールでも通った**（先生は `DEV_TEACHER_EMAIL` に入れて seed のあと、サインインし直した）。先生の画面の細部（作成フォーム・「年度管理」の表示）は記録していない |
+
+**確かめていないこと：** 別の PC からの Google サインイン（H-38）、Windows の再起動・サインアウト・スリープをまたいだ挙動（§3）。
 
 ## 2. サーバーの持ち主
 
@@ -327,6 +339,7 @@ pnpm build > ~/yse-build.log 2>&1; echo "build exit=$?"
 ```
 
 - **1 は、1 回目は未実測**（10/23 より前に作られていた DB のコンテナが、すでに `(healthy)` で動いていた）。**2 回目は実行した**（出力は記録していない）。`--wait` が使えない版のときは、`docker compose up -d db` のあと、`docker compose ps` の `db` が `(healthy)` になるまで繰り返す。
+- **1 が通らないときは、Docker Engine が止まっていないかを疑う。** `sudo systemctl start docker` を打ってから、1 をやり直す（3 回目の実測で必要だった。パスワードを聞かれる。そのときのエラーの文面は記録していない）。
 - **2 で依存を実際に取得する初回は、1 回目は未実測**（`Already up to date`）。**2 回目は実行した**（出力は記録していない）。
 - **7 で `exit=0` になるまで、8 へ進まない。** 0 以外なら `tail -n 40 ~/yse-build.log` で原因を見る。
 
@@ -377,7 +390,7 @@ ip -4 addr show eth0 | grep inet
 - 実測では、`eth0` は 172 系ではなかった（NAT 方式の WSL が 172 系とは限らない）。
 
 ```powershell
-# [PowerShell] Windows の IP（Wi-Fi の場合。インターフェース名は環境による）と、ネットワークの種類
+# [PowerShell] Windows の IP と、ネットワークの種類（別の PC から届くのは、教室の LAN につながっているほう。Wi-Fi なら `Wi-Fi` の行。`vEthernet (WSL …)` は Windows と WSL の内部用で、使わない）
 Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.254*' -and $_.IPAddress -ne '127.0.0.1' } | Select-Object InterfaceAlias, IPAddress
 Get-NetConnectionProfile | Select-Object InterfaceAlias, NetworkCategory
 ```
@@ -386,7 +399,7 @@ Get-NetConnectionProfile | Select-Object InterfaceAlias, NetworkCategory
 
 ### 6-2. ポート転送（3000 番だけ）
 
-**管理者として開いた PowerShell で行う**（§3。管理者の資格情報が要る。普通に開いた PowerShell では通らない）。**この PowerShell では `wsl` を打たない。**
+**管理者として開いた PowerShell で行う**（§3。管理者の資格情報が要る。普通に開いた PowerShell では通らない）。開き方は、`Win + X` →「ターミナル (管理者)」（または「Windows PowerShell (管理者)」）で、確認のダイアログに「はい」。**この PowerShell では `wsl` を打たない。**
 
 ```powershell
 # [PowerShell・管理者] 入っている転送を確かめる（空なら何も出ない）

@@ -40,12 +40,12 @@ export function TimetableClient({
         }
       />
 
-      {/* 先生は当日の進行(発表中・次の発表へ・当日の入れ替え)を行う。生徒の描画は従来のまま(fallback)。 */}
+      {/* 先生は当日の進行(発表中・次の発表へ・当日の入れ替え)を行う。生徒(fallback)は、発表中のチームより前の行に「発表済み」を添える。 */}
       <RoleGate
         allow={["teacher"]}
         fallback={
           <div className="mt-6">
-            <TimetableRows timetable={timetable} announcementId={a.id} />
+            <TimetableRows timetable={timetable} announcementId={a.id} showPresented />
           </div>
         }
       >

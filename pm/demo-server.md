@@ -5,7 +5,7 @@
 > **正典**：このファイル
 > **更新のしかた**：上書き
 > **主担当**：蒲山（インフラ担当。サーバーの持ち主：§2）
-> **最終更新**：2026-10-27（蒲山）
+> **最終更新**：2026-10-29（蒲山）
 
 ---
 
@@ -37,6 +37,20 @@
 | 4 | HTTPS の clone・`.env` の作成が通った。**手順どおりでなかった点がある**（ステップ 4 末尾） **出力は記録に残っていない。** |
 | 5 | 1 回目に未実測だった本書の形（ログに出して終了コードを見る）で、ビルドが `exit=0` で通った |
 | 6 | 別の PC から届いた |
+
+**3 回目の実測（2026-10-29・蒲山）：2 回目で立てたデモサーバーを、`main` の最新（2f25ce6）へ更新して起動し直し、確かめた。** 条件は 2 回目と同じ PC・アカウント。**通った範囲は次のとおり。**
+
+| ステップ | 3 回目の状態 |
+| --- | --- |
+| 5 の 1 | `sudo systemctl start docker` を打ってから `docker compose up -d --wait db` が通った。**ただし、Docker が止まっていたとは言えない。** `journalctl -u docker` で、dockerd の起動は、**WSL の起動（`uptime -s` が 08:01:40）の 2 秒後の 08:01:42 の 1 回だけ**で、その日の 00:00 以降に停止の記録は無く、`systemctl is-enabled docker` は `enabled` だった。**自動で起動していた可能性が高い**（`sudo systemctl start docker` を打つ前の状態を確かめていないので、打つ前に動いていたかは断定できない） |
+| 更新（`git pull`）と 5 の 2〜5・7 | `git pull` は fast-forward。`pnpm install --frozen-lockfile` は `Already up to date`。`migrate status` は未適用 2 本が並んだ（想定どおり）。`migrate deploy` が 2 本とも適用され、`prisma generate`（Prisma Client 7.10.0）も通った。ビルドは `build exit=0`。**seed（5 の 6）は、この更新では打っていない** |
+| 5 の 8・9 | `pnpm start` で起動。`/api/health/db` が、**サーバー PC のブラウザと、同じ教室の別の PC のブラウザの両方で** `{"status":"ok"}` を返した |
+| 6-4 | 別の PC の PowerShell で `Test-NetConnection <Windows の IP> -Port 5432` が `TcpTestSucceeded` `False`（5432 番は LAN に出ていない。**同じ教室の別の PC 1 台・1 回**） |
+| Google サインイン | サーバー PC のブラウザの `http://localhost:3000/real/teams` で、**Google サインインが通った**（この PC の ID・シークレットは設定済み）。**生徒のロールでも、先生のロールでも通った**（先生のロールにした方法は記録していない。`DEV_TEACHER_EMAIL` の設定と seed は打っていない）。先生の画面の細部（作成フォーム・「年度管理」の表示）は記録していない |
+
+**別の PC からのサインイン（3 回目・1 回）：同じ教室の別の PC のブラウザで `http://<Windows の IP>:3000/real/teams` を開くと、Auth.js のサインイン画面（「Sign in with Google」）までは出た。ボタンを押すと、Google の画面を経由せず `http://localhost:3000/api/auth/signin/google` へ送られ、別の PC 自身の `localhost` を指すので `ERR_CONNECTION_REFUSED` になった。** **別の PC では、Google のログイン情報を入力していない。** サーバー PC の `.env` に、`AUTH_URL` は無く、`AUTH_TRUST_HOST` の行は有った（値は見ていない）。`AUTH_URL` が無いと、Auth.js が付ける絶対 URL の origin は Host ではなく待ち受けから組まれる、という既存の記録（`src/lib/actions/auth.test.ts`）と合うが、**この経路でどの値から `localhost` が組まれたかは、直接は確かめていない（見当）。** 別の PC からのサインインは H-38 が決まるまで対象外（§1）で、この結果は、その手前の状態の記録。
+
+**確かめていないこと：** `AUTH_URL` を IP に変えたときの挙動と、Google が IP の戻り先を拒否するか（Google の画面まで進んでいない）、Windows の再起動・サインアウト・スリープをまたいだ挙動（§3）。
 
 ## 2. サーバーの持ち主
 
@@ -327,6 +341,7 @@ pnpm build > ~/yse-build.log 2>&1; echo "build exit=$?"
 ```
 
 - **1 は、1 回目は未実測**（10/23 より前に作られていた DB のコンテナが、すでに `(healthy)` で動いていた）。**2 回目は実行した**（出力は記録していない）。`--wait` が使えない版のときは、`docker compose up -d db` のあと、`docker compose ps` の `db` が `(healthy)` になるまで繰り返す。
+- **1 が通らないときは、Docker Engine が動いているかを先に確かめる**（`systemctl status docker --no-pager | head -8`。`is-enabled` が `enabled` なら、WSL の起動で自動で上がる）。動いていなければ `sudo systemctl start docker`（パスワードを聞かれる）を打ってから、1 をやり直す。**3 回目は、`sudo systemctl start docker` を打ったが、Docker は WSL の起動の 2 秒後に自動で起動していて、この操作は要らなかった可能性が高い**（エラーの文面は記録していない。打つ前の状態も確かめていない）。
 - **2 で依存を実際に取得する初回は、1 回目は未実測**（`Already up to date`）。**2 回目は実行した**（出力は記録していない）。
 - **7 で `exit=0` になるまで、8 へ進まない。** 0 以外なら `tail -n 40 ~/yse-build.log` で原因を見る。
 
@@ -348,16 +363,19 @@ curl http://localhost:3000/api/health/db
 - **端末を閉じたときの挙動・バックグラウンドでの常駐は、本書では扱わない**（再起動の試験は §3 の表。常駐は今後の課題）。
 - **2 回目の実測**：3（`migrate status`）は、未適用の 3 本が並んだ（想定どおり）。6（seed）は「年度 2026・2025、クラス 6 件、先生 1 人」で、1 回目と同じ。7（ビルド）は `build exit=0`。**9 は、`curl` ではなく、サーバーにした PC の Windows のブラウザ（Edge）で `http://localhost:3000/api/health/db` を開いて `{"status":"ok"}` を確かめた。** 1・2・4・5 の出力は記録していない。
 
+- **更新して起動し直すとき（3 回目で通した順）**：①Docker Engine と DB が動いているかを確かめる（動いていなければ 1。上の `sudo systemctl start docker`）→ ②`git pull`（`main`・変更なしを先に確かめる）→ ③上の 2〜5・7（`migrate status` で `drift`・`failed`・P3005 が出たら止める。`migrate deploy`・`prisma generate`・ビルドは `exit=0` まで）→ ④8（`pnpm start`）→ ⑤9（疎通）。**`pnpm start` が動いたままなら、②の前に端末で Ctrl-C して止める**（3 回目は、止まっていたので、この操作を行っていない）。seed（6）は、年度・クラス・先生を作り直すときだけ。
+
 ### Google サインインの入口
 
 - **入口は `/real/teams`**（サーバーにする PC の Windows のブラウザで `http://localhost:3000/real/teams`）。**`/` はモックのホーム。未ログインなら `/login` へ送られる。**
 - 開くと、サインインしていなければ自前のログイン画面（`/login?callbackUrl=…`）へ送られ、そこの「Google でログイン」（サインインの Action：`src/lib/actions/auth.ts`）を押して終わると、`/real/teams` に戻る（`src/lib/auth/session.ts`・Issue #185）。**入口の URL は、`/real/teams` のまま変わらない。** サインインが断られたとき（学校のドメイン以外など）は、`/login?error=…` に戻る（`src/auth.ts` の `pages.error`・2026-10-27 に `localhost` で、遷移先を確かめた）。
 - **サインインのあとに見えるもの（コードから言える範囲。実機では未確認）**
   - **学校のドメインのアカウントだけが通る**（`src/lib/auth/callbacks.ts` の `signIn`）。
-  - **`DEV_TEACHER_EMAIL` のアカウント（先生）**：チーム一覧（`src/app/real/teams/page.tsx`）。画面の上部に「年度管理」へのリンクが出る（`src/app/real/layout.tsx`）。seed が入れる年度のうち、一覧に出るのは未アーカイブの 2026 年度だけ（2025 年度はアーカイブ済みで出ない。切り替えボタンも出ない）。seed はチームを入れないので、一覧は「2026年度には、まだチームがありません。」になる。チームの作成フォームが出る。
+  - **`DEV_TEACHER_EMAIL` のアカウント（先生）**：チーム一覧（`src/app/(real)/real/teams/page.tsx`）。画面の上部に「年度管理」へのリンクが出る（`src/app/(real)/real/layout.tsx`）。seed が入れる年度のうち、一覧に出るのは未アーカイブの 2026 年度だけ（2025 年度はアーカイブ済みで出ない。切り替えボタンも出ない）。seed はチームを入れないので、一覧は「2026年度には、まだチームがありません。」になる。チームの作成フォームが出る。
   - **それ以外の学校のアカウント**：初回のサインインで生徒として行が作られ、チーム一覧は開くが、作成フォームは出ない。
   - **seed の前にすでにサインインしていた場合は、seed のあとにサインインし直す**（ロールはサインインのときにトークンに載るため。`scripts/seed-dev.mjs` のコメントのとおり）。
 - 確かめたこと（2026-10-27・デモ用 PC・`52b83ed` の版で、入口を変える前の Auth.js 既定のサインイン画面から）：OAuth クライアントに登録済みの redirect URI（`http://localhost:3000/api/auth/callback/google`）が、この構成で通る。サインインは 1 回目・2 回目とも通り、ロール（生徒・先生）が解決された。学校のドメイン以外のアカウントは、Google の入力画面が学校のドメインに固定していて、入力できなかった（アプリ側の拒否は単体テストで確認。実機では未確認）。別の PC への画面共有も映った（`../docs/findings.md` F-04 は別の環境で確認）。
+- 確かめたこと（3 回目・2026-10-29・`2f25ce6` の版で、入口を変える前の Auth.js 既定のサインイン画面から）：この構成（サーバーにした PC の `http://localhost:3000`）で、Google サインインが一周通った（OAuth クライアントに登録済みの redirect URI を含む。生徒・先生の両方のロール。§1 の 3 回目の表）。`../docs/findings.md` F-04 は `localhost` の別の環境での確認。
 - 確かめたこと（2 回目）：Windows のブラウザから WSL の `localhost:3000` に届く（`/api/health/db` が `{"status":"ok"}`）。
 
 ## ステップ 6. LAN への公開
@@ -377,16 +395,17 @@ ip -4 addr show eth0 | grep inet
 - 実測では、`eth0` は 172 系ではなかった（NAT 方式の WSL が 172 系とは限らない）。
 
 ```powershell
-# [PowerShell] Windows の IP（Wi-Fi の場合。インターフェース名は環境による）と、ネットワークの種類
+# [PowerShell] Windows の IP と、ネットワークの種類
 Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.254*' -and $_.IPAddress -ne '127.0.0.1' } | Select-Object InterfaceAlias, IPAddress
 Get-NetConnectionProfile | Select-Object InterfaceAlias, NetworkCategory
 ```
 
+- **使う IP は、教室の LAN につながっている行（Wi-Fi なら `Wi-Fi`）。** **実測**（3 回目）：`Wi-Fi` の行の IP で、別の PC から届いた。**仕組みからの説明（実測では確かめていない）**：`vEthernet (WSL …)` は Windows と WSL の内部用で、別の PC からは見えないので使わない。
 - **`NetworkCategory` を見る。** 実測では **`DomainAuthenticated`**（ドメインに参加した Wi-Fi）で、F-13 の `Private` とは違った。**ファイアウォールの許可は、ここで出た種類のプロファイルに付ける**（6-3）。
 
 ### 6-2. ポート転送（3000 番だけ）
 
-**管理者として開いた PowerShell で行う**（§3。管理者の資格情報が要る。普通に開いた PowerShell では通らない）。**この PowerShell では `wsl` を打たない。**
+**管理者として開いた PowerShell で行う**（§3。管理者の資格情報が要る。普通に開いた PowerShell では通らない）。開き方は、`Win + X` →「ターミナル (管理者)」（または「Windows PowerShell (管理者)」）で、確認のダイアログが出る。**3 回目の実測では、管理者のアカウントの資格情報（ID とパスワード）を求められた**（値は書かない）。**この PowerShell では `wsl` を打たない。**
 
 ```powershell
 # [PowerShell・管理者] 入っている転送を確かめる（空なら何も出ない）

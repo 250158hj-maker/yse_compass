@@ -7,25 +7,42 @@ import type { Timetable, TimetableSlot } from "@/lib/types";
 // 発表会詳細(埋め込み)とタイムテーブル画面(単独ページ)の両方から使う共通の行表示。
 // チーム枠は発表詳細(チーム×発表会)へのリンクにする。
 // 1 行の描画は TimetableSlotRow に切り出してあり、先生の SC-07 の当日の入れ替え(ドラッグ)も同じ行を使う。
-// この一覧の描画(生徒のホーム・生徒の SC-07・発表会詳細)は従来とまったく同じ。
-export function TimetableRows({ timetable, announcementId }: { timetable: Timetable | null; announcementId: string }) {
+// この一覧の描画(生徒のホーム・発表会詳細)は従来とまったく同じ。生徒の SC-07 だけ、showPresented で「発表済み」を添える。
+// 「発表済み」は、発表中のチームより前の行(04 SC-07)。発表中のチームがいなければ、どの行にも出さない。
+export function TimetableRows({
+  timetable,
+  announcementId,
+  showPresented = false,
+}: {
+  timetable: Timetable | null;
+  announcementId: string;
+  showPresented?: boolean;
+}) {
   const slots = timetable ? [...timetable.slots].sort((x, y) => x.order - y.order) : [];
 
   if (slots.length === 0) {
     return <EmptyState message="タイムテーブルはまだ作成されていません。" />;
   }
 
+  const currentIndex = slots.findIndex((s) => !s.isBreak && s.teamId === timetable?.currentPresentingTeamId);
+
   return (
     <div className="flex flex-col gap-2">
-      {slots.map((slot) => (
-        <TimetableSlotRow key={slot.id} slot={slot} timetable={timetable} announcementId={announcementId} />
+      {slots.map((slot, index) => (
+        <TimetableSlotRow
+          key={slot.id}
+          slot={slot}
+          timetable={timetable}
+          announcementId={announcementId}
+          presented={showPresented && currentIndex >= 0 && index < currentIndex}
+        />
       ))}
     </div>
   );
 }
 
 // タイムテーブルの 1 行。チーム枠は発表詳細へのリンク、休憩はリンクにしない。発表中のチームは rose で強調する。
-// presented は先生の SC-07 の当日の進行だけが渡す(発表を終えたチームに「発表済み」を添える)。省略時は従来どおり。
+// presented は SC-07(先生の当日の進行・生徒の表示)だけが渡す(発表を終えたチームに「発表済み」を添える)。省略時は従来どおり。
 export function TimetableSlotRow({
   slot,
   timetable,

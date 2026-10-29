@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Badge, PhaseBadge } from "@/components/ui/Badge";
+import { PhaseBadge } from "@/components/ui/Badge";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -16,25 +15,23 @@ import { useBooklet, useTimetable } from "@/context/TeacherDemoContext";
 import { teamSlotsInOrder } from "@/lib/demo/teacher-derived";
 import { getYearById } from "@/lib/mock";
 import { getTeacherDemoBookletPdf } from "@/lib/mock/teacher-demo";
-import { formatDateTime } from "@/lib/format";
 import type { Announcement } from "@/lib/types";
 
 // SC-11 概要集生成。
-// 生成後は概要集の中身を画面に描き直さず、「生成の結果」(ファイル名・日時・ページ数・入ったチーム・スキップしたチーム)だけを出す。
+// 生成後は概要集の中身を画面に描き直さず、「生成の結果」(ファイル名・ページ数・入ったチーム・スキップしたチーム)だけを出す。日時と「生成済み」は出さない(04 SC-11・H-7・H-8)。
 // 読む人が見るのは配られた PDF で、中身の描画は PDF の 1 か所に持つ(requirements §3-3「確認・修正せずそのまま配布」)。
 // 並びは SC-08 で保存した発表順(useTimetable の slots)、中身はデモ用の時刻の時点で提出済みの概要(useBooklet)。
 // 「生成」した事実は先生の共有状態に記録し(markGenerated)、ハブの工程表が読む。
 // 発表会が終わった後でも、いつでも何度でも生成できる(04 SC-11)。未提出のチームは確認ダイアログを経てスキップする。
 // 概要を出したチームが 1 つも無いときだけは中身が空になるので、生成・作り直しのボタンを押せなくし、状態だけを出す。
-// ［PDF を開く］とページ数は、PDF を用意した発表会(getTeacherDemoBookletPdf)で、入るチームがあるときだけ出す。
+// ［別タブで開く］［ダウンロード］とページ数は、PDF を用意した発表会(getTeacherDemoBookletPdf)で、入るチームがあるときだけ出す。
 export function SummaryBookletClient({ announcement: a }: { announcement: Announcement }) {
   const { entries, missing, generatedAt, markGenerated } = useBooklet(a.id);
-  const { slots, orderConfirmed } = useTimetable(a.id);
+  const { slots } = useTimetable(a.id);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const teamSlots = teamSlotsInOrder(slots);
   const orderByTeam = new Map(teamSlots.map((s, i) => [s.teamId, i + 1]));
-  const orderText = entries.map((e) => e.team.name).join(" → ");
   const canGenerate = entries.length > 0;
   const pdf = canGenerate ? getTeacherDemoBookletPdf(a.id) : null;
   const yearLabel = getYearById(a.yearId)?.label;
@@ -65,27 +62,11 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
         />
         <PageHeader
           eyebrow={a.title}
-          title="概要集生成・プレビュー"
-          meta={
-            <>
-              <PhaseBadge phase={a.phase} />
-              {generatedAt && <Badge tone="emerald">生成済み</Badge>}
-            </>
-          }
+          title="概要集生成"
+          meta={<PhaseBadge phase={a.phase} />}
         />
 
         <div className="mt-4 flex flex-col gap-3">
-          {canGenerate && !orderConfirmed && (
-            <InlineNotice tone="warning">
-              発表順がまだ確定していません。いまの並び({orderText || "なし"})で作られます。
-              <Link
-                href={`/announcements/${a.id}/timetable/edit`}
-                className="ml-1 font-medium underline underline-offset-2"
-              >
-                発表順を編集
-              </Link>
-            </InlineNotice>
-          )}
           {canGenerate && !generatedAt && missing.length > 0 && (
             <InlineNotice tone="warning">
               {missing.length}チームが概要未提出です({missing.map((t) => t.name).join("、")})。
@@ -105,16 +86,18 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
         {generatedAt && (
           <Card className="mt-4 shadow-sm shadow-slate-900/5">
             <p className="text-sm font-semibold break-all text-slate-900">{fileName}</p>
-            <p className="mt-1 text-xs text-slate-400">
-              生成 {formatDateTime(generatedAt)}
-              {pdf && `・${pdf.pages} ページ`}
-            </p>
+            {pdf && <p className="mt-1 text-xs text-slate-400">{pdf.pages} ページ</p>}
             <div className="mt-3 flex flex-wrap gap-2">
               {pdf && (
-                // K3(サーバーサイド生成)の生成物を別タブで開く。モックなので、開くのは public/ に置いた固定の PDF。
-                <a href={pdf.href} target="_blank" rel="noopener noreferrer" className={buttonClassName("primary")}>
-                  PDF を開く
-                </a>
+                // K3(サーバーサイド生成)の生成物を別タブで開く・ダウンロードする。モックなので、開くのは public/ に置いた固定の PDF。
+                <>
+                  <a href={pdf.href} target="_blank" rel="noopener noreferrer" className={buttonClassName("primary")}>
+                    別タブで開く
+                  </a>
+                  <a href={pdf.href} download={fileName} className={buttonClassName("secondary")}>
+                    ダウンロード
+                  </a>
+                </>
               )}
               <Button variant="secondary" onClick={handleGenerateClick} disabled={!canGenerate}>
                 作り直す
@@ -167,8 +150,8 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
           open={confirmOpen}
           onClose={() => setConfirmOpen(false)}
           onConfirm={markGenerated}
-          title="未提出チームがあります"
-          description={`${missing.map((t) => t.name).join("、")} は概要が未提出です。スキップして概要集を生成しますか?`}
+          title={`${missing.length} チームをスキップして生成します`}
+          description={`スキップするチーム:${missing.map((t) => t.name).join("、")}(概要が未提出)`}
           confirmLabel="スキップして生成する"
         />
       </div>

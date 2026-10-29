@@ -42,7 +42,7 @@
 
 | ステップ | 3 回目の状態 |
 | --- | --- |
-| 5 の 1 | **Docker Engine が止まっていて、`sudo systemctl start docker` を打ってから `docker compose up -d --wait db` が通った**（止まっていた原因は未確認。直前に何で止まったかを記録していない） |
+| 5 の 1 | `sudo systemctl start docker` を打ってから `docker compose up -d --wait db` が通った。**ただし、Docker が止まっていたとは言えない。** `journalctl -u docker` で、dockerd の起動は、**WSL の起動（`uptime -s` が 08:01:40）の 2 秒後の 08:01:42 の 1 回だけ**で、その日の 00:00 以降に停止の記録は無く、`systemctl is-enabled docker` は `enabled` だった。**自動で起動していた可能性が高い**（`sudo systemctl start docker` を打つ前の状態を確かめていないので、打つ前に動いていたかは断定できない） |
 | 更新（`git pull`）と 5 の 2〜5・7 | `git pull` は fast-forward。`pnpm install --frozen-lockfile` は `Already up to date`。`migrate status` は未適用 2 本が並んだ（想定どおり）。`migrate deploy` が 2 本とも適用され、`prisma generate`（Prisma Client 7.10.0）も通った。ビルドは `build exit=0`。**seed（5 の 6）は、この更新では打っていない** |
 | 5 の 8・9 | `pnpm start` で起動。`/api/health/db` が、**サーバー PC のブラウザと、同じ教室の別の PC のブラウザの両方で** `{"status":"ok"}` を返した |
 | 6-4 | 別の PC の PowerShell で `Test-NetConnection <Windows の IP> -Port 5432` が `TcpTestSucceeded` `False`（5432 番は LAN に出ていない。**同じ教室の別の PC 1 台・1 回**） |
@@ -341,7 +341,7 @@ pnpm build > ~/yse-build.log 2>&1; echo "build exit=$?"
 ```
 
 - **1 は、1 回目は未実測**（10/23 より前に作られていた DB のコンテナが、すでに `(healthy)` で動いていた）。**2 回目は実行した**（出力は記録していない）。`--wait` が使えない版のときは、`docker compose up -d db` のあと、`docker compose ps` の `db` が `(healthy)` になるまで繰り返す。
-- **1 が通らないときは、Docker Engine が止まっていないかを疑う。** `sudo systemctl start docker` を打ってから、1 をやり直す（3 回目の実測で必要だった。パスワードを聞かれる。そのときのエラーの文面は記録していない）。
+- **1 が通らないときは、Docker Engine が動いているかを先に確かめる**（`systemctl status docker --no-pager | head -8`。`is-enabled` が `enabled` なら、WSL の起動で自動で上がる）。動いていなければ `sudo systemctl start docker`（パスワードを聞かれる）を打ってから、1 をやり直す。**3 回目は、`sudo systemctl start docker` を打ったが、Docker は WSL の起動の 2 秒後に自動で起動していて、この操作は要らなかった可能性が高い**（エラーの文面は記録していない。打つ前の状態も確かめていない）。
 - **2 で依存を実際に取得する初回は、1 回目は未実測**（`Already up to date`）。**2 回目は実行した**（出力は記録していない）。
 - **7 で `exit=0` になるまで、8 へ進まない。** 0 以外なら `tail -n 40 ~/yse-build.log` で原因を見る。
 
@@ -363,7 +363,7 @@ curl http://localhost:3000/api/health/db
 - **端末を閉じたときの挙動・バックグラウンドでの常駐は、本書では扱わない**（再起動の試験は §3 の表。常駐は今後の課題）。
 - **2 回目の実測**：3（`migrate status`）は、未適用の 3 本が並んだ（想定どおり）。6（seed）は「年度 2026・2025、クラス 6 件、先生 1 人」で、1 回目と同じ。7（ビルド）は `build exit=0`。**9 は、`curl` ではなく、サーバーにした PC の Windows のブラウザ（Edge）で `http://localhost:3000/api/health/db` を開いて `{"status":"ok"}` を確かめた。** 1・2・4・5 の出力は記録していない。
 
-- **更新して起動し直すとき（3 回目で通した順）**：①Docker Engine と DB が動いているかを確かめる（止まっていれば 1。上の `sudo systemctl start docker`）→ ②`git pull`（`main`・変更なしを先に確かめる）→ ③上の 2〜5・7（`migrate status` で `drift`・`failed`・P3005 が出たら止める。`migrate deploy`・`prisma generate`・ビルドは `exit=0` まで）→ ④8（`pnpm start`）→ ⑤9（疎通）。**`pnpm start` が動いたままなら、②の前に端末で Ctrl-C して止める**（3 回目は、止まっていたので、この操作を行っていない）。seed（6）は、年度・クラス・先生を作り直すときだけ。
+- **更新して起動し直すとき（3 回目で通した順）**：①Docker Engine と DB が動いているかを確かめる（動いていなければ 1。上の `sudo systemctl start docker`）→ ②`git pull`（`main`・変更なしを先に確かめる）→ ③上の 2〜5・7（`migrate status` で `drift`・`failed`・P3005 が出たら止める。`migrate deploy`・`prisma generate`・ビルドは `exit=0` まで）→ ④8（`pnpm start`）→ ⑤9（疎通）。**`pnpm start` が動いたままなら、②の前に端末で Ctrl-C して止める**（3 回目は、止まっていたので、この操作を行っていない）。seed（6）は、年度・クラス・先生を作り直すときだけ。
 
 ### Google サインインの入口
 

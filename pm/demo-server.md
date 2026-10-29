@@ -48,7 +48,9 @@
 | 6-4 | 別の PC の PowerShell で `Test-NetConnection <Windows の IP> -Port 5432` が `TcpTestSucceeded` `False`（5432 番は LAN に出ていない） |
 | Google サインイン | サーバー PC のブラウザの `http://localhost:3000/real/teams` で、**Google サインインが通った**（この PC の ID・シークレットは設定済み）。**生徒のロールでも、先生のロールでも通った**（先生は `DEV_TEACHER_EMAIL` に入れて seed のあと、サインインし直した）。先生の画面の細部（作成フォーム・「年度管理」の表示）は記録していない |
 
-**確かめていないこと：** 別の PC からの Google サインイン（H-38）、Windows の再起動・サインアウト・スリープをまたいだ挙動（§3）。
+**別の PC からのサインイン（3 回目・1 回）：同じ教室の別の PC のブラウザで `http://<Windows の IP>:3000/real/teams` を開くと、Auth.js のサインイン画面（「Sign in with Google」）までは出た。ボタンを押すと、Google の画面を経由せず `http://localhost:3000/api/auth/signin/google` へ送られ、別の PC 自身の `localhost` を指すので `ERR_CONNECTION_REFUSED` になった。** **別の PC では、Google のログイン情報を入力していない。** サーバー PC の `.env` に、`AUTH_URL` は無く、`AUTH_TRUST_HOST` の行は有った（値は見ていない）。`AUTH_URL` が無いと、Auth.js が付ける絶対 URL の origin は Host ではなく待ち受けから組まれる、という既存の記録（`src/lib/actions/auth.test.ts`）と合うが、**この経路でどの値から `localhost` が組まれたかは、直接は確かめていない（見当）。** 別の PC からのサインインは H-38 が決まるまで対象外（§1）で、この結果は、その手前の状態の記録。
+
+**確かめていないこと：** `AUTH_URL` を IP に変えたときの挙動と、Google が IP の戻り先を拒否するか（Google の画面まで進んでいない）、Windows の再起動・サインアウト・スリープをまたいだ挙動（§3）。
 
 ## 2. サーバーの持ち主
 

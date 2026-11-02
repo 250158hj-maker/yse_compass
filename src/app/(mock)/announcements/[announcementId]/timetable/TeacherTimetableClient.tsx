@@ -17,7 +17,7 @@ import type { Announcement } from "@/lib/types";
 //   つまみを出すのは、まだ発表していない行だけ(発表を終えた行・いま発表中の行は動かせない)。
 // - 当日の入れ替えは SC-08 と同じ部品(SortableList)と同じ時刻の規則(lib/demo/schedule.ts)。並べ替えたら時刻を詰め直す。
 // - 並び・発表中は先生の共有状態(useTimetable)を読む。モックに直書きの currentPresentingTeamId は読まない。
-// - 生徒が見る SC-07 は TimetableClient の従来の描画(getTimetableFor)のまま。
+// - 生徒が見る SC-07 は TimetableClient の描画(getTimetableFor。「発表済み」つき)のまま。
 
 // 「最初の発表を開始」を押した直後、同じ帯の右端(同じ座標)に「次の発表へ」が出る。ダブルクリックの 2 回目が
 // それに当たって先頭のチームが飛ばされないよう、開始からこの間に来た「次の発表へ」のクリックは無視する。

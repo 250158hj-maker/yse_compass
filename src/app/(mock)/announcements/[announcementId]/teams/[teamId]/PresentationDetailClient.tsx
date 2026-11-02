@@ -8,6 +8,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Badge, CommentLabelBadge, PhaseBadge } from "@/components/ui/Badge";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { fieldClassName } from "@/components/ui/FormField";
@@ -38,6 +39,11 @@ export function PresentationDetailClient({
   const [newLabel, setNewLabel] = useState<CommentLabel>("感想");
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
+  // コメントの「…」メニュー(T-2)。メニューの開閉・編集中のコメント・削除の確認の対象を、それぞれ 1 件ずつ持つ。
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   // レンダー中扱いになる Date.now() を避け、返信の id は連番で振る(React Compiler の純粋性)。
   const replySeq = useRef(0);
 
@@ -81,6 +87,33 @@ export function PresentationDetailClient({
     }));
     setReplyDrafts((prev) => ({ ...prev, [commentId]: "" }));
     setOpenReplyId(null);
+  }
+
+  function updateComment(commentId: string, patch: Partial<Comment>) {
+    setSubmission((prev) => ({
+      ...prev,
+      comments: prev.comments.map((c) => (c.id === commentId ? { ...c, ...patch } : c)),
+    }));
+  }
+
+  function startEdit(comment: Comment) {
+    setEditingId(comment.id);
+    setEditDraft(comment.body);
+    setMenuOpenId(null);
+  }
+
+  // 編集は本文だけを直し、「編集済み」を付ける。編集の履歴は持たない(T-2 の決定が決めない点)。
+  function saveEdit(commentId: string) {
+    const body = editDraft.trim();
+    if (!body) return;
+    updateComment(commentId, { body, editedAt: new Date().toISOString() });
+    setEditingId(null);
+  }
+
+  // 削除は行を消さず、削除の印を付ける。返信は残る(T-2 の決定③)。
+  function confirmDelete() {
+    if (deleteTargetId) updateComment(deleteTargetId, { isDeleted: true });
+    setDeleteTargetId(null);
   }
 
   return (
@@ -221,7 +254,14 @@ export function PresentationDetailClient({
               <EmptyState message="まだコメントがありません。" />
             ) : (
               <div className="flex flex-col gap-3">
-                {visibleComments.map((comment) => (
+                {visibleComments.map((comment) => {
+                  // 「…」メニュー: 自分のコメントは編集・削除、先生は他の人のコメントの削除(T-2・04 SC-12)。
+                  // 「自分のコメント」は、モックでは名前の一致で見分ける(本実装では、データ層が返す)。削除済みには出さない。
+                  const ownComment = !!currentUser && comment.authorName === currentUser.name;
+                  const canEdit = ownComment;
+                  const canDelete = ownComment || teacher;
+                  const showMenu = !comment.isDeleted && (canEdit || canDelete) && editingId !== comment.id;
+                  return (
                   <Card key={comment.id} className="shadow-sm shadow-slate-900/5">
                     <div className="flex items-start gap-3">
                       <span
@@ -236,9 +276,73 @@ export function PresentationDetailClient({
                             <span className="font-medium text-slate-900">{comment.authorName}</span>
                             <CommentLabelBadge label={comment.label} />
                           </div>
-                          <span className="text-xs text-slate-400">{formatDateTime(comment.postedAt)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400">
+                              {formatDateTime(comment.postedAt)}
+                              {comment.editedAt && !comment.isDeleted && "(編集済み)"}
+                            </span>
+                            {showMenu && (
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  aria-label="コメントのメニュー"
+                                  aria-expanded={menuOpenId === comment.id}
+                                  onClick={() => setMenuOpenId((v) => (v === comment.id ? null : comment.id))}
+                                  className="rounded px-1.5 text-base leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                                >
+                                  …
+                                </button>
+                                {menuOpenId === comment.id && (
+                                  <div className="absolute right-0 z-10 mt-1 w-24 rounded-md border border-slate-200 bg-white py-1 text-sm shadow-md shadow-slate-900/10">
+                                    {canEdit && (
+                                      <button
+                                        type="button"
+                                        onClick={() => startEdit(comment)}
+                                        className="block w-full px-3 py-1.5 text-left text-slate-700 hover:bg-slate-50"
+                                      >
+                                        編集
+                                      </button>
+                                    )}
+                                    {canDelete && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setMenuOpenId(null);
+                                          setDeleteTargetId(comment.id);
+                                        }}
+                                        className="block w-full px-3 py-1.5 text-left text-rose-600 hover:bg-rose-50"
+                                      >
+                                        削除
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-700">{comment.body}</p>
+                        {editingId === comment.id ? (
+                          <div className="mt-2">
+                            <textarea
+                              className={fieldClassName}
+                              rows={2}
+                              value={editDraft}
+                              onChange={(e) => setEditDraft(e.target.value)}
+                            />
+                            <div className="mt-2 flex justify-end gap-2">
+                              <Button variant="secondary" onClick={() => setEditingId(null)}>
+                                キャンセル
+                              </Button>
+                              <Button variant="primary" onClick={() => saveEdit(comment.id)} disabled={!editDraft.trim()}>
+                                保存
+                              </Button>
+                            </div>
+                          </div>
+                        ) : comment.isDeleted ? (
+                          <p className="mt-2 text-sm italic text-slate-400">このコメントは削除されました</p>
+                        ) : (
+                          <p className="mt-2 text-sm leading-relaxed text-slate-700">{comment.body}</p>
+                        )}
                       </div>
                     </div>
                     <div className="mt-3 flex items-center gap-3 pl-11">
@@ -283,12 +387,23 @@ export function PresentationDetailClient({
                       </div>
                     )}
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
         </>
       )}
+
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={confirmDelete}
+        title="コメントを削除します"
+        description="削除すると、このコメントは「このコメントは削除されました」と表示されます。返信は残ります。"
+        confirmLabel="削除する"
+        confirmVariant="danger"
+      />
     </div>
   );
 }

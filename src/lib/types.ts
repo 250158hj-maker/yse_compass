@@ -125,6 +125,9 @@ export type Comment = {
   body: string;
   likeCount: number;
   postedAt: string;
+  // 編集日時(未編集なら無い)と削除の印。06 の comments.edited_at・is_deleted(decisions.md 2026-10-26 の T-2)に対応する。
+  editedAt?: string;
+  isDeleted?: boolean;
   replies: Reply[];
 };
 

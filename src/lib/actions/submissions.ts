@@ -5,6 +5,7 @@ import { isId } from "@/lib/ids";
 import { prisma } from "@/lib/prisma";
 import { getSubmissionMatrix } from "@/lib/data/submission-matrix";
 import { getPresentationDetail } from "@/lib/data/presentation-detail";
+import { listOccasionPresentations } from "@/lib/data/presentation-list";
 import { getOwnSummary, saveSummary, type SummaryInput } from "@/lib/data/summaries";
 import { SubmissionError, listTeamSubmissions, submitMaterial, type SubmissionErrorCode } from "@/lib/data/submissions";
 import type { Actor } from "@/lib/data/years";
@@ -51,4 +52,8 @@ export async function saveSummaryAction(teamId: number, occasionId: number, inpu
 
 export async function getOwnSummaryAction(teamId: number, occasionId: number) {
   return run(isId(teamId) && isId(occasionId), (actor) => getOwnSummary(prisma, actor, teamId, occasionId));
+}
+
+export async function listOccasionPresentationsAction(occasionId: number) {
+  return run(isId(occasionId), (actor) => listOccasionPresentations(prisma, actor, occasionId));
 }

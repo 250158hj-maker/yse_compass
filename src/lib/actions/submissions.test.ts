@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { PrismaClient } from "@/generated/prisma/client";
-import { getOwnSummaryAction, getPresentationDetailAction, getSubmissionMatrixAction, listTeamSubmissionsAction, saveSummaryAction, submitMaterialAction } from "@/lib/actions/submissions";
+import { getOwnSummaryAction, getPresentationDetailAction, getSubmissionMatrixAction, listOccasionPresentationsAction, listTeamSubmissionsAction, saveSummaryAction, submitMaterialAction } from "@/lib/actions/submissions";
 import { createTeam } from "@/lib/data/teams";
 import { setupFiscalYear } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
@@ -173,6 +173,19 @@ describeDb("提出の Server Action", () => {
       // 形は正しいが全欄が空のときは、形の誤りとは別のコードで返る（画面が文言を分けられるように）。
       expect(await saveSummaryAction(s.teamId, s.occasionId, {})).toEqual({ ok: false, code: "empty_summary" });
       expect(await db.summary.count({ where: { teamId: s.teamId } })).toBe(0);
+    });
+  });
+
+  it("発表（チーム）一覧：未サインインは unauthenticated、引数が不正なら invalid_input。生徒は公開前に not_published、先生は一覧", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9928);
+      signInAs(null);
+      expect(await listOccasionPresentationsAction(s.occasionId)).toEqual({ ok: false, code: "unauthenticated" });
+      signInAs({ id: s.studentId, role: "student" });
+      expect(await listOccasionPresentationsAction("1" as never)).toEqual({ ok: false, code: "invalid_input" });
+      expect(await listOccasionPresentationsAction(s.occasionId)).toEqual({ ok: true, data: { kind: "not_published" } });
+      signInAs({ id: "1", role: "teacher" });
+      expect(await listOccasionPresentationsAction(s.occasionId)).toMatchObject({ ok: true, data: { kind: "list", presentations: [{ teamId: s.teamId }] } });
     });
   });
 });

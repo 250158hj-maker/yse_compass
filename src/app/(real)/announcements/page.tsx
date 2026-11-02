@@ -48,7 +48,7 @@ export default async function AnnouncementsPage() {
       <Breadcrumbs items={[{ label: "ホーム", href: "/" }, { label: "発表会一覧" }]} />
       <PageHeader title="発表会一覧" meta={current ? `${current.fiscalYear.year}年度` : undefined} />
 
-      {!current ? (
+      {!current || current.occasions.length === 0 ? (
         <div className="mt-6">
           <InlineNotice tone="warning">
             当年度の発表会がありません。発表会は、年度を開始すると作られます。

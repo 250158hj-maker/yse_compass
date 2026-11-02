@@ -154,11 +154,11 @@ describeDb("saveSummary・getOwnSummary（SC-10 の保存・読み取り）", ()
     });
   });
 
-  it("全欄が空の保存は invalid_input。1 欄だけでも入っていれば通る。空白だけの欄は未入力（null）として保存する", async () => {
+  it("全欄が空の保存は empty_summary（形の誤りの invalid_input とは分ける）。1 欄だけでも入っていれば通る。空白だけの欄は未入力（null）として保存する", async () => {
     await inTransaction(async (db) => {
       const s = await setup(db, 9809);
-      await expectError(saveSummary(db, s.a.actor, s.a.teamId, s.occasionId, {}, T0), "invalid_input");
-      await expectError(saveSummary(db, s.a.actor, s.a.teamId, s.occasionId, { introduction: "  ", workOverview: null, extraSections: [] }, T0), "invalid_input");
+      await expectError(saveSummary(db, s.a.actor, s.a.teamId, s.occasionId, {}, T0), "empty_summary");
+      await expectError(saveSummary(db, s.a.actor, s.a.teamId, s.occasionId, { introduction: "  ", workOverview: null, extraSections: [] }, T0), "empty_summary");
       const saved = await saveSummary(db, s.a.actor, s.a.teamId, s.occasionId, { closing: "  終わり  ", introduction: "   " }, T0);
       expect(saved).toMatchObject({ closing: "終わり", introduction: null, workOverview: null, techStack: null, extraSections: [] });
       expect(await db.summary.count({ where: { teamId: s.a.teamId } })).toBe(1);

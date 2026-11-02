@@ -73,7 +73,8 @@ function parseInput(input: unknown): ParsedSummary {
     extraSections: parseExtraSections(raw.extraSections),
   };
   const empty = parsed.introduction === null && parsed.workOverview === null && parsed.techStack === null && parsed.closing === null && parsed.extraSections.length === 0;
-  if (empty) throw new SubmissionError("invalid_input");
+  // 全欄が空は、形の誤り（invalid_input）と分ける。画面が「入力が空です」と「送った値が壊れています」を区別して、文言を対応づけられるように。
+  if (empty) throw new SubmissionError("empty_summary");
   return parsed;
 }
 
@@ -145,6 +146,8 @@ export async function getOwnSummary(db: Db, actor: Actor, teamId: number, occasi
   if (!isId(teamId) || !isId(occasionId)) throw new SubmissionError("invalid_input");
   if (!(await isMemberOf(db, actor, teamId))) throw new SubmissionError("forbidden");
 
+  // アーカイブ済みの年度でも読む（H-60 ②：自チームならアーカイブ後も読める。04 SC-10 の「年度アーカイブ後は読み取り専用」のため）。
+  // getPresentationDetail・getOccasion は H-60 の先行方針 ① で「無い」と同じ結果にするが、これは SC-10 の自チームの本文で、返る相手は自チームだけ。H-60 が決着したら変わるのはここ。
   await loadTeamAndOccasion(db, teamId, occasionId);
   const row = await db.summary.findUnique({ where: { teamId_eventOccasionId: { teamId, eventOccasionId: occasionId } }, select: selectColumns });
   if (!row) return null;

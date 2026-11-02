@@ -170,7 +170,8 @@ describeDb("提出の Server Action", () => {
       expect(await saveSummaryAction(s.teamId, s.occasionId, null as never)).toEqual(bad);
       expect(await saveSummaryAction(s.teamId, s.occasionId, "x" as never)).toEqual(bad);
       expect(await getOwnSummaryAction(1.5, s.occasionId)).toEqual(bad);
-      expect(await saveSummaryAction(s.teamId, s.occasionId, {})).toEqual(bad);
+      // 形は正しいが全欄が空のときは、形の誤りとは別のコードで返る（画面が文言を分けられるように）。
+      expect(await saveSummaryAction(s.teamId, s.occasionId, {})).toEqual({ ok: false, code: "empty_summary" });
       expect(await db.summary.count({ where: { teamId: s.teamId } })).toBe(0);
     });
   });

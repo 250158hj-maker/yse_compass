@@ -1,0 +1,101 @@
+import { notFound } from "next/navigation";
+import { Badge, PhaseBadge } from "@/components/ui/Badge";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { Card } from "@/components/ui/Card";
+import { InlineNotice } from "@/components/ui/InlineNotice";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { SectionHeading } from "@/components/ui/SectionHeading";
+import { requireSessionUser } from "@/lib/auth/session";
+import { getOccasion } from "@/lib/data/occasions";
+import { listMaterialSlots } from "@/lib/data/slots";
+import { formatDateTime, formatOccasionDate } from "@/lib/format";
+import { parseId } from "@/lib/ids";
+import { prisma } from "@/lib/prisma";
+import type { AnnouncementPhase } from "@/lib/types";
+import { PublishToggle } from "./PublishToggle";
+
+// 対応: docs/design/04-screen.md SC-04（発表会詳細）。Issue #184（モックの画面を本番仕様にする）の 2 枚目。
+// 見た目はモックのまま、データは data 層（getOccasion・listMaterialSlots）、ユーザーは requireSessionUser から読む。画面で権限や集計の判定をしない。
+// 出すもの: 発表会の概要（種別・開催日・公開状態）、先生だけに出す資料枠の一覧と公開・公開解除。生徒には資料枠を出さない（SC-04）。
+// 含めない:
+//   - 「提出締切」（H-61 の決着で SC-04 の概要に出さないことにした：docs/decisions.md 2026-10-23。締切は資料枠ごとに、先生の一覧で見る）。
+//   - 工程表と「いまここ」（H-47 の先行方針：H-44 の決着まで本実装に出さない。モックの先生のハブにある）。
+//   - 先生の導線（発表会編集・提出状況一覧・タイムテーブル編集・概要集生成・タイムテーブルでの進行）：行き先の画面が本実装に置き換わるたびに、その PR で足す。
+//   - 発表（チーム）一覧：データ層の関数ができてから、別の PR で足す。
+// 発表会の名前は、種別（企画／設計／試作／最終）から作る表示で、正式な名前は決まっていない（H-63 の決着まで）。
+
+// テンプレート参照は、書くときに http(s) だけを受けている（slots.ts）が、リンクにする前にもう一度確かめる。
+function openableUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function AnnouncementDetailPage({ params }: { params: Promise<{ announcementId: string }> }) {
+  const { announcementId } = await params;
+  const user = await requireSessionUser(`/announcements/${announcementId}`);
+  // URL の ID は、形と integer の範囲を確かめてから DB に渡す（範囲外を渡すと Prisma が例外を投げ、500 になる）。
+  const id = parseId(announcementId);
+  const actor = { userId: user.id, role: user.role };
+  // アーカイブ済みの年度の発表会は、生徒には「無い」と同じ結果で返る（getOccasion の線引き）。
+  const occasion = id !== null ? await getOccasion(prisma, actor, id) : null;
+  if (!occasion) notFound();
+  const isTeacher = user.role === "teacher";
+  const slots = isTeacher ? await listMaterialSlots(prisma, actor, occasion.id) : null;
+  const title = `${occasion.kind}発表会`;
+
+  return (
+    <div className="mx-auto max-w-6xl">
+      <Breadcrumbs items={[{ label: "ホーム", href: "/" }, { label: "発表会一覧", href: "/announcements" }, { label: title }]} />
+      <PageHeader
+        eyebrow={`${occasion.fiscalYear.year}年度`}
+        title={title}
+        meta={
+          <>
+            <PhaseBadge phase={occasion.kind as AnnouncementPhase} />
+            <span>開催日 {occasion.eventDate ? formatOccasionDate(occasion.eventDate) : "未定"}</span>
+            <Badge tone={occasion.isPublished ? "emerald" : "slate"}>{occasion.isPublished ? "公開中" : "非公開"}</Badge>
+          </>
+        }
+        actions={isTeacher ? <PublishToggle occasionId={occasion.id} isPublished={occasion.isPublished} /> : undefined}
+      />
+
+      <div className="mt-6 flex flex-col gap-6">
+        {occasion.fiscalYear.isArchived && <InlineNotice tone="warning">この年度はアーカイブ済みです。</InlineNotice>}
+
+        {slots && (
+          <section>
+            <SectionHeading>資料枠（先生だけに表示されます）</SectionHeading>
+            {slots.length === 0 ? (
+              <InlineNotice tone="info">資料枠がありません。</InlineNotice>
+            ) : (
+              <Card>
+                <ul className="divide-y divide-slate-100">
+                  {slots.map((s) => {
+                    const template = openableUrl(s.templateUrl);
+                    return (
+                      <li key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3 text-sm">
+                        <span className="min-w-24 font-medium text-slate-900">{s.slotType}</span>
+                        <Badge tone={s.isRequired ? "rose" : "slate"}>{s.isRequired ? "必須" : "任意"}</Badge>
+                        <span className="text-slate-500">締切 {s.deadline ? formatDateTime(s.deadline.toISOString()) : "未設定"}</span>
+                        {template && (
+                          <a href={template} target="_blank" rel="noopener noreferrer" className="text-brand-700 underline">
+                            テンプレート
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Card>
+            )}
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}

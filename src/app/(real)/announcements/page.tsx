@@ -6,6 +6,7 @@ import { CardLink } from "@/components/ui/Card";
 import { PhaseBadge, Badge } from "@/components/ui/Badge";
 import { requireSessionUser } from "@/lib/auth/session";
 import { getCurrentYearOccasions } from "@/lib/data/occasions";
+import { formatOccasionDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import type { AnnouncementPhase } from "@/lib/types";
 
@@ -13,8 +14,7 @@ import type { AnnouncementPhase } from "@/lib/types";
 // 見た目はモックのまま、データは data 層（getCurrentYearOccasions）、ユーザーは requireSessionUser から読む。画面で権限や集計の判定をしない。
 // 含めない: 各件の「締切」（H-61 の決着で SC-03 に出さないことにした：docs/decisions.md 2026-10-23）、「提出状況サマリ」（同じ決着で定義した。取得層にまだ無く、3.2.3 で足す。足すまでは出さない）。
 // 「＋新規作成」は置かない：発表会は年度セットアップだけが作る（§3-1）。
-// 発表会の名前は、種別（企画／設計／試作／最終）から作る表示で、正式な名前は決まっていない。
-// 遷移先は、SC-04 が置き換わるまでの間、本実装の /real/announcements/[id] にする（モックの SC-04 は、モックの ID でしか開けないため）。
+// 発表会の名前は、種別（企画／設計／試作／最終）から作る表示で、正式な名前は決まっていない（H-63 の決着まで）。SC-04 の見出しも、同じ作り方にそろえてある。
 
 const iconProps = {
   viewBox: "0 0 24 24",
@@ -35,9 +35,6 @@ function CalendarIcon() {
     </svg>
   );
 }
-
-// 開催日は date 型（タイムゾーンを持たない）。Date の UTC の日付をそのまま読んで、実行環境のタイムゾーンで日付がずれないようにする。
-const dateFormatter = new Intl.DateTimeFormat("ja-JP", { timeZone: "UTC", year: "numeric", month: "long", day: "numeric" });
 
 export default async function AnnouncementsPage() {
   const user = await requireSessionUser("/announcements");
@@ -67,7 +64,7 @@ export default async function AnnouncementsPage() {
           {current.occasions.map((o) => (
             <CardLink
               key={o.id}
-              href={`/real/announcements/${o.id}`}
+              href={`/announcements/${o.id}`}
               className="shadow-sm shadow-slate-900/5 hover:-translate-y-0.5 hover:shadow-md hover:shadow-brand-500/20"
             >
               <div className="flex items-center justify-between">
@@ -81,7 +78,7 @@ export default async function AnnouncementsPage() {
                     <CalendarIcon />
                     開催日
                   </dt>
-                  <dd>{o.eventDate ? dateFormatter.format(o.eventDate) : "未定"}</dd>
+                  <dd>{o.eventDate ? formatOccasionDate(o.eventDate) : "未定"}</dd>
                 </div>
               </dl>
             </CardLink>

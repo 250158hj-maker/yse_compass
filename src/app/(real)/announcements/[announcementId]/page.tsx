@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { requireSessionUser } from "@/lib/auth/session";
 import { getOccasion } from "@/lib/data/occasions";
+import { listOccasionPresentations } from "@/lib/data/presentation-list";
 import { listMaterialSlots } from "@/lib/data/slots";
 import { formatDateTime, formatOccasionDate } from "@/lib/format";
 import { parseId } from "@/lib/ids";
@@ -16,12 +17,13 @@ import { PublishToggle } from "./PublishToggle";
 
 // 対応: docs/design/04-screen.md SC-04（発表会詳細）。Issue #184（モックの画面を本番仕様にする）の 2 枚目。
 // 見た目はモックのまま、データは data 層（getOccasion・listMaterialSlots）、ユーザーは requireSessionUser から読む。画面で権限や集計の判定をしない。
-// 出すもの: 発表会の概要（種別・開催日・公開状態）、先生だけに出す資料枠の一覧と公開・公開解除。生徒には資料枠を出さない（SC-04）。
+// 出すもの: 発表会の概要（種別・開催日・公開状態）、先生だけに出す資料枠の一覧と公開・公開解除、発表（チーム）一覧。生徒には資料枠を出さない（SC-04）。
+// 発表（チーム）一覧は listOccasionPresentations の結果をそのまま写す。一覧を出すか、公開前の案内に切り替えるかの判定は関数が持つ（生徒には、公開前は一覧を返さない）。
 // 含めない:
 //   - 「提出締切」（H-61 の決着で SC-04 の概要に出さないことにした：docs/decisions.md 2026-10-23。締切は資料枠ごとに、先生の一覧で見る）。
 //   - 工程表と「いまここ」（H-47 の先行方針：H-44 の決着まで本実装に出さない。モックの先生のハブにある）。
 //   - 先生の導線（発表会編集・提出状況一覧・タイムテーブル編集・概要集生成・タイムテーブルでの進行）：行き先の画面が本実装に置き換わるたびに、その PR で足す。
-//   - 発表（チーム）一覧：データ層の関数ができてから、別の PR で足す。
+//   - 発表（チーム）一覧の各行から発表詳細（SC-12）へのリンク：SC-12 が本実装に置き換わるときに足す（行き先がモックのままだと、本物の ID では開けないため）。
 // 発表会の名前は、種別（企画／設計／試作／最終）から作る表示で、正式な名前は決まっていない（H-63 の決着まで）。
 
 // テンプレート参照は、書くときに http(s) だけを受けている（slots.ts）が、リンクにする前にもう一度確かめる。
@@ -46,6 +48,7 @@ export default async function AnnouncementDetailPage({ params }: { params: Promi
   if (!occasion) notFound();
   const isTeacher = user.role === "teacher";
   const slots = isTeacher ? await listMaterialSlots(prisma, actor, occasion.id) : null;
+  const presentations = await listOccasionPresentations(prisma, actor, occasion.id);
   const title = `${occasion.kind}発表会`;
 
   return (
@@ -95,6 +98,23 @@ export default async function AnnouncementDetailPage({ params }: { params: Promi
             )}
           </section>
         )}
+
+        <section>
+          <SectionHeading>発表一覧</SectionHeading>
+          {presentations.kind === "not_published" ? (
+            <InlineNotice tone="info">資料は先生の公開操作後に閲覧できます。</InlineNotice>
+          ) : presentations.presentations.length === 0 ? (
+            <InlineNotice tone="info">発表するチームがまだ登録されていません。</InlineNotice>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {presentations.presentations.map((p) => (
+                <div key={p.teamId} className="rounded-lg border border-slate-200 bg-white p-4">
+                  {p.workTitle ? `${p.teamName}(${p.workTitle})` : p.teamName}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

@@ -24,6 +24,8 @@ export async function listOccasionPresentations(db: Db, actor: Actor, occasionId
     select: { isPublished: true },
   });
   if (!occasion) throw new SubmissionError("occasion_not_found");
+  // 自チームの生徒にも、公開前は一覧を出さない。04 SC-04 の共通の欄（生徒は S1・S2 とも一覧を見る。非公開のあいだは「公開後に閲覧できます」の案内）に合わせた。
+  // §4-4 の SC-04 の行は、公開前に一覧へ行けないのを「チームを持たない生徒」と書いていて、読みがずれる（H-33。決着したら変わるのはこの行）。
   if (actor.role === "student" && !occasion.isPublished) return { kind: "not_published" };
 
   const rows = await db.presentation.findMany({

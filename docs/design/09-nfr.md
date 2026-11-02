@@ -45,8 +45,8 @@
 | 項目 | 方式 | 出典 |
 | --- | --- | --- |
 | サインイン基盤 | Auth.js ＋ Google Provider（学校 Workspace アカウント） | `../requirements.md` §5・`../findings.md` F-04 |
-| 学内限定の担保 | ID トークンの `hd` を `signIn` コールバックでサーバー側で再検証する。認可リクエストの `hd` は誘導のヒントで、保証ではない | `../decisions.md` 2026-09-21 |
-| 要求スコープ | `openid email profile` のみ（Stage 1） | `../decisions.md` 2026-09-21 |
+| 学内限定の担保 | ID トークンの `hd` を `signIn` コールバックでサーバー側で再検証する。認可リクエストの `hd` は誘導のヒントで、保証ではない（設計判断。動作は F-04 で確認） | `../decisions.md` 2026-09-21・`../findings.md` F-04 |
+| 要求スコープ | `openid email profile` のみ（Stage 1）（設計判断。検証の結果ではない） | `../decisions.md` 2026-09-21 |
 | OAuth 同意画面 | 内部（Internal） | `../findings.md` F-04 |
 
 ### セッションの性質 — JWT 戦略が引き受けること

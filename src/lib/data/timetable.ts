@@ -50,7 +50,7 @@ async function lockOccasion(tx: Db, occasionId: number) {
 }
 
 // 発表順の昇順。未設定（NULL）は最後に置き、同じ並びのなかでは発表の id 順にする。
-function byDisplayOrder(a: { id: number; displayOrder: number | null }, b: { id: number; displayOrder: number | null }) {
+export function byDisplayOrder(a: { id: number; displayOrder: number | null }, b: { id: number; displayOrder: number | null }) {
   if (a.displayOrder === b.displayOrder) return a.id - b.id;
   if (a.displayOrder === null) return 1;
   if (b.displayOrder === null) return -1;

@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { PrismaClient } from "@/generated/prisma/client";
-import { getPresentationDetailAction, getSubmissionMatrixAction, listTeamSubmissionsAction, submitMaterialAction } from "@/lib/actions/submissions";
+import { getOwnSummaryAction, getPresentationDetailAction, getSubmissionMatrixAction, listTeamSubmissionsAction, saveSummaryAction, submitMaterialAction } from "@/lib/actions/submissions";
 import { createTeam } from "@/lib/data/teams";
 import { setupFiscalYear } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
@@ -140,6 +140,39 @@ describeDb("提出の Server Action", () => {
       expect(await getPresentationDetailAction(s.teamId, s.occasionId)).toEqual({ ok: false, code: "forbidden" });
       await db.eventOccasion.update({ where: { id: s.occasionId }, data: { isPublished: true } });
       expect(await getPresentationDetailAction(s.teamId, s.occasionId)).toMatchObject({ ok: true });
+    });
+  });
+
+  it("概要：自チームの生徒は保存・差し替えでき、読み取りで返る。未サインインは unauthenticated、先生は forbidden", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9926);
+      signInAs(null);
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a" })).toEqual({ ok: false, code: "unauthenticated" });
+      expect(await getOwnSummaryAction(s.teamId, s.occasionId)).toEqual({ ok: false, code: "unauthenticated" });
+      signInAs({ id: "1", role: "teacher" });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a" })).toEqual({ ok: false, code: "forbidden" });
+      signInAs({ id: s.studentId, role: "student" });
+      expect(await getOwnSummaryAction(s.teamId, s.occasionId)).toEqual({ ok: true, data: null });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a" })).toMatchObject({ ok: true, data: { introduction: "a", isLate: false } });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "b", techStack: "TypeScript" })).toMatchObject({ ok: true, data: { introduction: "b", techStack: "TypeScript" } });
+      expect(await getOwnSummaryAction(s.teamId, s.occasionId)).toMatchObject({ ok: true, data: { introduction: "b" } });
+      expect(await db.summary.count({ where: { teamId: s.teamId } })).toBe(1);
+    });
+  });
+
+  it("概要：引数の形が不正なら invalid_input で、何も書かない。規則違反（全欄が空）はデータ層のコードで返る", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9927);
+      signInAs({ id: s.studentId, role: "student" });
+      const bad = { ok: false, code: "invalid_input" };
+      expect(await saveSummaryAction("1" as never, s.occasionId, { introduction: "a" })).toEqual(bad);
+      expect(await saveSummaryAction(s.teamId, 0, { introduction: "a" })).toEqual(bad);
+      expect(await saveSummaryAction(s.teamId, s.occasionId, null as never)).toEqual(bad);
+      expect(await saveSummaryAction(s.teamId, s.occasionId, "x" as never)).toEqual(bad);
+      expect(await getOwnSummaryAction(1.5, s.occasionId)).toEqual(bad);
+      // 形は正しいが全欄が空のときは、形の誤りとは別のコードで返る（画面が文言を分けられるように）。
+      expect(await saveSummaryAction(s.teamId, s.occasionId, {})).toEqual({ ok: false, code: "empty_summary" });
+      expect(await db.summary.count({ where: { teamId: s.teamId } })).toBe(0);
     });
   });
 });

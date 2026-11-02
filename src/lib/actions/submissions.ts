@@ -5,10 +5,11 @@ import { isId } from "@/lib/ids";
 import { prisma } from "@/lib/prisma";
 import { getSubmissionMatrix } from "@/lib/data/submission-matrix";
 import { getPresentationDetail } from "@/lib/data/presentation-detail";
+import { getOwnSummary, saveSummary, type SummaryInput } from "@/lib/data/summaries";
 import { SubmissionError, listTeamSubmissions, submitMaterial, type SubmissionErrorCode } from "@/lib/data/submissions";
 import type { Actor } from "@/lib/data/years";
 
-// 対応: docs/requirements.md §3-4（提出）・§3-5（発表詳細）。規則と認可の本体は lib/data/ の submissions.ts・submission-matrix.ts・presentation-detail.ts にある（一次防衛線）。ここは、サインイン済みのロールを
+// 対応: docs/requirements.md §3-3（概要の入力）・§3-4（提出）・§3-5（発表詳細）。規則と認可の本体は lib/data/ の submissions.ts・submission-matrix.ts・presentation-detail.ts・summaries.ts にある（一次防衛線）。ここは、サインイン済みのロールを
 // 取り出して渡し、SubmissionError を画面が扱える結果に直すだけの薄い層。
 // ロールはサインイン時にトークンへ載せた値で、解除の即時性は保証しない（H-30）。
 
@@ -41,4 +42,13 @@ export async function getSubmissionMatrixAction(occasionId: number) {
 
 export async function getPresentationDetailAction(teamId: number, occasionId: number) {
   return run(isId(teamId) && isId(occasionId), (actor) => getPresentationDetail(prisma, actor, teamId, occasionId));
+}
+
+// 概要の中身（欄・自由な欄）の形と値は、データ層が確かめる。ここでは、入力がオブジェクトであることだけを確かめる。
+export async function saveSummaryAction(teamId: number, occasionId: number, input: SummaryInput) {
+  return run(isId(teamId) && isId(occasionId) && typeof input === "object" && input !== null, (actor) => saveSummary(prisma, actor, teamId, occasionId, input));
+}
+
+export async function getOwnSummaryAction(teamId: number, occasionId: number) {
+  return run(isId(teamId) && isId(occasionId), (actor) => getOwnSummary(prisma, actor, teamId, occasionId));
 }

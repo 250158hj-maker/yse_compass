@@ -5,12 +5,12 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-10-30（水戸）
+> **最終更新**：2026-11-02（蒲山）
 
 > [!note] 確定の範囲（2026-10-19・10-20・10-27 のレビュー対象）
 > **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
 > - **対象**：6-3 の全 14 テーブルの列定義（列名・型・NULL・既定値・制約・対応する語彙・根拠、表の下の注。ただし注のうち、共通②で外れる文を除く）と、6-1・6-2 の ER 図。10/19 に基盤・背骨の 10 テーブル（`fiscal_years`・`classes`・`teams`・`team_members`・`works`・`users`・`event_occasions`・`material_slots`・`submissions`・`summaries`）、10/20 に後段の 4 テーブル（`presentations`・`comments`・`presentation_likes`・`comment_likes`）と ER 図。**2026-10-27 に、日時の 6 列の型 `timestamptz`（`material_slots.deadline`・`submissions` と `summaries` の `first_submitted_at`・`last_submitted_at`・`comments.created_at`）と、`comments.created_at` の既定値 `now()`、6-2 の ER 図の該当する属性を加えた**（H-39 の決着：`../decisions.md` 2026-10-20。範囲の拡大：同 2026-10-27）。精度（Prisma の `Timestamptz(3)`）は 6-7 の範囲なので含めない
-> - **対象の中でも、確定に含めない列・記述**（未決に依存するため。ER 図は、下の列に当たる属性と、その列が表す関連のカーディナリティ〔6-1・6-2 の `SCHOOL_CLASS`–`TEAM` のクラス側＝`teams.class_id` の NOT NULL、`USER`–`TEAM_MEMBER` のメンバー行の側＝`team_members.user_id` の UNIQUE が全年度に効く形〕を、同じ列に付いた未決の注記とあわせて確定に含めない）：
+> - **対象の中でも、確定に含めない列・記述**（未決に依存するため、または決着したが範囲にまだ入れていないため。ER 図は、下の列に当たる属性と、その列が表す関連のカーディナリティ〔6-1・6-2 の `SCHOOL_CLASS`–`TEAM` のクラス側＝`teams.class_id` の NOT NULL、`USER`–`TEAM_MEMBER` のメンバー行の側＝`team_members.user_id` の UNIQUE が全年度に効く形〕を、同じ列に付いた未決の注記とあわせて確定に含めない）：
 >   - `users`：確定に含めるのは `id`・`role` だけ。ただし `id` の型（`serial`）は含めない（H-30 ④。Auth.js の Prisma Adapter を採ると、利用者の id を文字列で渡すため、型が変わりうる。`users.id` を参照する外部キーの列〔`team_members.user_id`・`works.consent_set_by`・`comments.user_id`・`presentation_likes.user_id`・`comment_likes.user_id`〕の型も連動するので、同じく含めない）。`email`（利用者の同一性のキー・H-32）と `name`（先生の事前登録とホワイトリストの実体・H-26）は含めない
 >   - `works`：`consent_set_by` の型（H-30 ④。`users.id` の型に連動する）。NULL 可・外部キー・CHECK は含める
 >   - `fiscal_years`：未アーカイブの年度を同時に 1 件に限る制約の有無（H-54 の判断①）
@@ -568,7 +568,7 @@ erDiagram
 | 部分インデックス | 2 | 概要枠の部分ユニーク（`material_slots (event_occasion_id) WHERE slot_type = '概要'`）／`works` の `WHERE publication_consent = 'approved'`（6-5） | `material_slots`・6-5 |
 | 列の型の変更の移行（`USING`） | 1 本（6 列） | `material_slots.deadline`／`submissions`・`summaries` の `first_submitted_at`・`last_submitted_at`／`comments.created_at` を `timestamp` から `timestamptz` へ。各列に `USING "列" AT TIME ZONE 'UTC'` を付ける | `material_slots`・`submissions`・`summaries`・`comments` |
 
-> **`USING` の根拠**：Prisma が生成する型の変更の移行には `USING` が無く、セッションの `TimeZone` が `Asia/Tokyo` の DB では、既存の値が 9 時間ずれる。`AT TIME ZONE 'UTC'` を足せば、UTC で保存されていた既存の値は同じ絶対時刻のまま残る（`../decisions.md` 2026-10-20・H-39 ④。蒲山の実測は PR #103 の会話）。移行ファイルは `prisma/migrations/20261016020606_timestamptz_for_time_columns`。 **この `USING` は手書きで、移行を作り直すと失われる**（Prisma は生成しない。6-7 を確定の範囲に入れるわけではない）。
+> **`USING` の根拠**：Prisma が生成する型の変更の移行には `USING` が無く、セッションの `TimeZone` が `Asia/Tokyo` の DB では、既存の値が 9 時間ずれる。`AT TIME ZONE 'UTC'` を足せば、UTC で保存されていた既存の値は同じ絶対時刻のまま残る（`../decisions.md` 2026-10-20・H-39 ④。蒲山の実測は PR #103 の会話）。移行ファイルは `prisma/migrations/20261016020606_timestamptz_for_time_columns`。**この `USING` は手書きで、移行を作り直すと失われる**（Prisma は生成しない）。
 > **`DEFERRABLE` の根拠**：Prisma のスキーマ言語は deferrable 制約を宣言する構文を持たない（[prisma/prisma#8806](https://github.com/prisma/prisma/issues/8806)・[discussions#8789](https://github.com/prisma/prisma/discussions/8789)）。
 > **手書き部分が失われうる条件**：いまは `Presentation` の `@@unique([eventOccasionId, displayOrder])` の宣言により、手書き部分は `prisma migrate dev` の差分に出ない（2026-09-30・Prisma 7.10.0 で実測・水戸レビュー PR #45）。**この宣言を外すと `DROP INDEX` が生成されて適用に失敗し、初回マイグレーションを作り直すと手書き部分は生成されない。** 適用に失敗したとき、エラーのヒント（`You can drop constraint … instead`）に従って制約ごと消すと、適用は通るが、`presentations` の `UNIQUE(event_occasion_id, display_order)` が DEFERRABLE ごと失われる（2026-10-02・Prisma 7.10.0 で実測・PR #54）。手書き部分があることは初回マイグレーションのファイルにもコメントで明記してある。
 > **この表は 6-3 から数えたもの**で、Prisma の使用バージョンでの可否は Ph.2 で確かめる。**本表に載せていないもの**：アーカイブ検索の全文検索用インデックス（6-5・Ph.2 で検証）。

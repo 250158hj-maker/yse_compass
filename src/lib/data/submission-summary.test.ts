@@ -164,6 +164,36 @@ describeDb("getSubmissionSummaries（SC-03 の提出状況サマリ）", () => {
     });
   });
 
+  it("全体のチーム数は、同じ年度の全クラスのチームの合計（getSubmissionMatrix と同じ範囲）", async () => {
+    await inTransaction(async (db) => {
+      const { id: fiscalYearId } = await setupFiscalYear(db, teacher, { year: 9913, classNames: ["IG21", "IG22"] });
+      const classes = await db.schoolClass.findMany({ where: { fiscalYearId }, orderBy: { id: "asc" } });
+      const occasion = await db.eventOccasion.findFirstOrThrow({ where: { fiscalYearId, kind: "企画" } });
+      await createTeam(db, teacher, { classId: classes[0].id, name: "一組-1", members: ["山田"] });
+      await createTeam(db, teacher, { classId: classes[0].id, name: "一組-2", members: ["山田"] });
+      const other = await createTeam(db, teacher, { classId: classes[1].id, name: "二組-1", members: ["山田"] });
+      // 二組のチームが必須の枠をすべて提出すると、一組のチームと合わせた 3 チームのうち 1 チームが提出済みになる。
+      const presentation = await db.materialSlot.findFirstOrThrow({ where: { eventOccasionId: occasion.id, slotType: "プレゼン資料" } });
+      await db.summary.create({ data: { teamId: other.id, eventOccasionId: occasion.id, firstSubmittedAt: WHEN, lastSubmittedAt: WHEN } });
+      await db.submission.create({ data: { teamId: other.id, materialSlotId: presentation.id, url: URL, firstSubmittedAt: WHEN, lastSubmittedAt: WHEN } });
+      expect((await getSubmissionSummaries(db, teacher))![0]).toEqual({ occasionId: occasion.id, kind: "counted", submittedTeams: 1, totalTeams: 3 });
+    });
+  });
+
+  it("前年度のチームは、当年度の全体のチーム数にも提出済みの数にも入らない", async () => {
+    await inTransaction(async (db) => {
+      const old = await setup(db, 9914, 2);
+      // 前年度のチームが必須の枠をすべて提出していても、当年度の数には混ざらない。
+      for (const t of old.teams) {
+        await db.summary.create({ data: { teamId: t.teamId, eventOccasionId: old.occasionId, firstSubmittedAt: WHEN, lastSubmittedAt: WHEN } });
+        await submitMaterial(db, t.actor, t.teamId, old.presentationId, URL);
+      }
+      const current = await setup(db, 9915, 1);
+      const result = await getSubmissionSummaries(db, teacher);
+      expect(result![0]).toEqual({ occasionId: current.occasionId, kind: "counted", submittedTeams: 0, totalTeams: 1 });
+    });
+  });
+
   it("先生でも生徒でもない主体は、forbidden で弾く", async () => {
     await inTransaction(async (db) => {
       await setup(db, 9912);

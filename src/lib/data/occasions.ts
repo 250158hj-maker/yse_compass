@@ -6,7 +6,7 @@ import { EVENT_KINDS, YearError, type Actor } from "@/lib/data/years";
 // 先行方針で組んでいる:
 //   H-54 「当年度」は未アーカイブの年度のうち year が最大のもの。
 // getCurrentYearOccasions（SC-03）は、アーカイブ済みの年度を先生にも生徒にも返さない（確定の規則：requirements.md §3-7 受け入れ基準「発表会一覧から外れる。解除で元に戻る」・SC-03 の「できないこと」の過年度の表示）。H-60 がどう決着しても変わらない。
-// 返さないもの: SC-03 の「締切」（H-61 の決着で SC-03・SC-04 の概要に出さないことにした：docs/decisions.md 2026-10-23）と「提出状況サマリ」（同じ決着で定義した。まだ返さず、3.2.3 で足す）。
+// 返さないもの: SC-03 の「締切」（H-61 の決着で SC-03・SC-04 の概要に出さないことにした：docs/decisions.md 2026-10-23）と「提出状況サマリ」（同じ決着で定義した。ここでは返さず、submission-summary.ts の getSubmissionSummaries が返す）。
 // 資料枠の一覧は SC-04 の T 専用（生徒には出さない）で、ここには含めない。
 
 type Db = Pick<PrismaClient, "fiscalYear" | "eventOccasion">;

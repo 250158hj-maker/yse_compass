@@ -127,10 +127,12 @@
 | スタイル | Tailwind CSS 4 | `docs/decisions.md`（2026-09-06） |
 | UI 最適化 | React Compiler（`next.config.ts` の `reactCompiler: true`） | `docs/decisions.md`（2026-09-06） |
 | パッケージマネージャ | pnpm | `docs/decisions.md`（2026-09-06） |
-| 開発環境 | Docker | 企画書 §3-1 |
+| バンドラ | Turbopack（固定） | `docs/decisions.md`（2026-09-04） |
+| PDF 生成 | 純粋 JS の PDF ライブラリ（ヘッドレスブラウザは使わない） | `docs/decisions.md`（2026-09-04） |
+| 開発環境 | Docker（PostgreSQL のみ。Next.js アプリはホスト直起動） | 企画書 §3-1・`docs/decisions.md`（2026-09-04） |
 
 **認証（Auth.js ＋ 学校 Google アカウントで OAuth が通るか）が最大の技術リスク。** 詳細は `docs/requirements.md` §5。
-その手前にあったロール解決（H-10）は **2026-09-05 に先生ホワイトリスト方式で決着**した（`docs/decisions.md`）ので、**残る技術リスクは、OAuth 自体の可否と、本番環境のネットワーク成立性（`docs/open-questions.md` H-23・H-28）の2つ**になっている。
+その手前にあったロール解決（H-10）は **2026-09-05 に先生ホワイトリスト方式で決着**した（`docs/decisions.md`）。**残る技術リスクの現状は `docs/requirements.md` §5 が持つ**（ここに項目を書き写さない）。
 
 ---
 

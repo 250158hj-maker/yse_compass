@@ -189,4 +189,20 @@ describeDb("getSubmissionMatrix（SC-06：T のみ）", () => {
       expect(rows.every((r) => r.requiredMissingCount === 0 && !r.hasRequiredMissing && r.cells.every((c) => !c.isRequiredMissing))).toBe(true);
     });
   });
+
+  // チームを作る前（年度を開始した直後）に先生が SC-06 を開く場面。空状態は 2026-09-04 の H-9 の行が決めていて、画面は rows が空かで出し分ける。
+  // total: 0 を「すべて提出済み」と読ませないために、この返り値の形をここで固定する（#233 のレビューの推奨）。
+  it("チームが 0 件のとき、rows は空で、必須の枠があれば total は 0。必須の枠も 0 件なら no_required_slots", async () => {
+    await inTransaction(async (db) => {
+      const { id: fiscalYearId } = await setupFiscalYear(db, teacher, { year: 9942, classNames: ["IG21"] });
+      const occasion = await db.eventOccasion.findFirstOrThrow({ where: { fiscalYearId, kind: "企画" } });
+      const withRequired = await getSubmissionMatrix(db, teacher, occasion.id);
+      expect(withRequired.rows).toEqual([]);
+      expect(withRequired.requiredMissing).toEqual({ kind: "counted", total: 0 });
+      await db.materialSlot.updateMany({ where: { eventOccasionId: occasion.id }, data: { isRequired: false } });
+      const withoutRequired = await getSubmissionMatrix(db, teacher, occasion.id);
+      expect(withoutRequired.rows).toEqual([]);
+      expect(withoutRequired.requiredMissing).toEqual({ kind: "no_required_slots" });
+    });
+  });
 });

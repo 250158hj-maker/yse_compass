@@ -80,6 +80,8 @@ export async function getSubmissionMatrix(db: Db, actor: Actor, occasionId: numb
       hasRequiredMissing: requiredMissingCount > 0,
     };
   });
+  // チームが 0 件のとき rows は空で、必須の枠があれば total は 0 になる。SC-06 の空状態は 2026-09-04 の H-9 の行が決めていて、
+  // 画面は rows が空かで出し分ける（total: 0 を「必須の未提出 0 件＝すべて提出済み」と読ませない。テストで固定している）。
   const requiredMissing: RequiredMissingSummary = slots.some((slot) => slot.isRequired)
     ? { kind: "counted", total: rows.reduce((sum, row) => sum + row.requiredMissingCount, 0) }
     : { kind: "no_required_slots" };

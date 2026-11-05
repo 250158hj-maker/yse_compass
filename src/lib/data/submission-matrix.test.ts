@@ -75,7 +75,7 @@ describeDb("getSubmissionMatrix（SC-06：T のみ）", () => {
       const { rows } = await getSubmissionMatrix(db, teacher, s.occasionId);
       const cellA = rows[0].cells.find((c) => c.slotId === s.videoId);
       expect(cellA).toMatchObject({ status: "submitted", url: "https://example.invalid/a", isLate: true, showLastUpdated: false });
-      expect(rows[1].cells.find((c) => c.slotId === s.videoId)).toEqual({ slotId: s.videoId, status: "missing" });
+      expect(rows[1].cells.find((c) => c.slotId === s.videoId)).toEqual({ slotId: s.videoId, status: "missing", isRequiredMissing: false });
     });
   });
 
@@ -111,7 +111,7 @@ describeDb("getSubmissionMatrix（SC-06：T のみ）", () => {
       const { slots, rows } = await getSubmissionMatrix(db, teacher, s.occasionId);
       const summarySlot = slots.find((x) => x.slotType === "概要")!;
       expect(rows[0].cells.find((c) => c.slotId === summarySlot.id)).toMatchObject({ status: "submitted", url: null, firstSubmittedAt: when });
-      expect(rows[1].cells.find((c) => c.slotId === summarySlot.id)).toEqual({ slotId: summarySlot.id, status: "missing" });
+      expect(rows[1].cells.find((c) => c.slotId === summarySlot.id)).toEqual({ slotId: summarySlot.id, status: "missing", isRequiredMissing: true });
     });
   });
 
@@ -126,6 +126,67 @@ describeDb("getSubmissionMatrix（SC-06：T のみ）", () => {
       }
       await expect(getSubmissionMatrix(db, teacher, 0)).rejects.toMatchObject({ code: "invalid_input" });
       await expect(getSubmissionMatrix(db, teacher, 2_000_000_000)).rejects.toMatchObject({ code: "occasion_not_found" });
+    });
+  });
+
+  // 必須の未提出（SC-06 の上部の件数・強調・絞り込み。Issue #184）。画面は数えず、ここの結果を写す。
+  it("必須の資料枠の未提出を、セル・チームの行・全体で返す。任意の枠は数えない", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9938);
+      const { slots, rows, requiredMissing } = await getSubmissionMatrix(db, teacher, s.occasionId);
+      const required = slots.filter((x) => x.isRequired);
+      expect(required.map((x) => x.slotType)).toEqual(["概要", "プレゼン資料"]);
+      expect(slots.some((x) => !x.isRequired)).toBe(true); // 動画は任意
+      for (const row of rows) {
+        expect(row.requiredMissingCount).toBe(required.length);
+        expect(row.hasRequiredMissing).toBe(true);
+        for (const cell of row.cells) expect(cell.isRequiredMissing).toBe(slots.find((x) => x.id === cell.slotId)!.isRequired);
+      }
+      expect(requiredMissing).toEqual({ kind: "counted", total: required.length * rows.length });
+    });
+  });
+
+  it("提出すると、そのセルの印と、チームの行・全体の件数から外れる（概要枠は概要の行で見る）", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9939);
+      const presentation = await db.materialSlot.findFirstOrThrow({ where: { eventOccasionId: s.occasionId, slotType: "プレゼン資料" } });
+      const when = new Date("2026-11-06T00:00:00Z");
+      await submitMaterial(db, s.a.actor, s.a.teamId, presentation.id, "https://example.invalid/p", when);
+      await db.summary.create({ data: { teamId: s.a.teamId, eventOccasionId: s.occasionId, firstSubmittedAt: when, lastSubmittedAt: when } });
+      const { slots, rows, requiredMissing } = await getSubmissionMatrix(db, teacher, s.occasionId);
+      const required = slots.filter((x) => x.isRequired);
+      // A は必須の 2 枠を出した。B は何も出していない。
+      expect(rows[0].requiredMissingCount).toBe(0);
+      expect(rows[0].hasRequiredMissing).toBe(false);
+      expect(rows[0].cells.every((c) => !c.isRequiredMissing)).toBe(true);
+      expect(rows[1].requiredMissingCount).toBe(required.length);
+      expect(rows[1].hasRequiredMissing).toBe(true);
+      expect(requiredMissing).toEqual({ kind: "counted", total: required.length });
+    });
+  });
+
+  it("必須の資料枠があり、すべて提出済みなら、件数は 0 を返す（「必須の枠が無い」とは区別する）", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9940);
+      const presentation = await db.materialSlot.findFirstOrThrow({ where: { eventOccasionId: s.occasionId, slotType: "プレゼン資料" } });
+      const when = new Date("2026-11-06T00:00:00Z");
+      for (const t of [s.a, s.b]) {
+        await submitMaterial(db, t.actor, t.teamId, presentation.id, `https://example.invalid/${t.teamId}`, when);
+        await db.summary.create({ data: { teamId: t.teamId, eventOccasionId: s.occasionId, firstSubmittedAt: when, lastSubmittedAt: when } });
+      }
+      const { rows, requiredMissing } = await getSubmissionMatrix(db, teacher, s.occasionId);
+      expect(rows.every((r) => r.requiredMissingCount === 0 && !r.hasRequiredMissing)).toBe(true);
+      expect(requiredMissing).toEqual({ kind: "counted", total: 0 });
+    });
+  });
+
+  it("必須の資料枠が 0 件のときは、件数を返さず「必須の資料枠が無い」を返す。セルとチームの行に印は付かない（#184・H-66 の②と同じ考え方）", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9941);
+      await db.materialSlot.updateMany({ where: { eventOccasionId: s.occasionId }, data: { isRequired: false } });
+      const { rows, requiredMissing } = await getSubmissionMatrix(db, teacher, s.occasionId);
+      expect(requiredMissing).toEqual({ kind: "no_required_slots" });
+      expect(rows.every((r) => r.requiredMissingCount === 0 && !r.hasRequiredMissing && r.cells.every((c) => !c.isRequiredMissing))).toBe(true);
     });
   });
 });

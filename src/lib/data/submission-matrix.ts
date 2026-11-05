@@ -11,12 +11,21 @@ import type { Actor } from "@/lib/data/years";
 // 提出状態は 2 値（未提出／提出済み）で、遅延と差し替えは行から導く（06 6-6）。第 3 の状態は持たない。
 // 概要枠は提出（submissions）ではなく概要（summaries）の行の有無で見る。概要にはリンクが無いので url は null。
 // 先生だけが読む: 先生には文脈判定を適用せず、クラス横断で全チームを返す（decisions.md 2026-09-26）。
+// 必須の未提出（SC-06 の上部の件数・チームの強調・「未提出のみ表示」・セルの強調。Issue #184 の 2026-11-02 の依頼）:
+//   画面では数えない・判定しない（#184 の方針）ので、セルに印（isRequiredMissing）・チームの行に件数（requiredMissingCount・hasRequiredMissing）・
+//   全体に合計（requiredMissing）を、ここで返す。数え方は H-15 の先行方針（必須のみ・任意の枠は数えない）。
+//   必須の資料枠が 0 件のときは、0 件と返すと「すべて提出済み」と読めるので、件数を返さず区別を返す
+//   （SC-03 のサマリの H-66 の②と同じ考え方。SC-06 は H-66 の対象外なので、2026-11-05 に #184 で水戸さん・鈴木さんが了承した。決定行は水戸さんが入れる）。
 
 type Db = Pick<PrismaClient, "eventOccasion" | "materialSlot" | "submission" | "summary" | "team">;
 
+// isRequiredMissing：必須の枠で、かつ未提出。画面が status と枠の必須を突き合わせずに、そのまま強調に使う。
 export type MatrixCell =
-  | { slotId: number; status: "missing" }
-  | { slotId: number; status: "submitted"; url: string | null; firstSubmittedAt: Date; lastSubmittedAt: Date; isLate: boolean; showLastUpdated: boolean };
+  | { slotId: number; status: "missing"; isRequiredMissing: boolean }
+  | { slotId: number; status: "submitted"; isRequiredMissing: false; url: string | null; firstSubmittedAt: Date; lastSubmittedAt: Date; isLate: boolean; showLastUpdated: boolean };
+
+// 全体の「必須の未提出」。必須の資料枠が 0 件の発表会は、数えられないので、件数ではなく区別を返す。
+export type RequiredMissingSummary = { kind: "no_required_slots" } | { kind: "counted"; total: number };
 
 // 発表会 1 つの「チーム × 資料枠」。チームは、その発表会の年度のクラスに属する全チーム（クラス → チームの順）。枠は定番の並び（id の昇順）。
 export async function getSubmissionMatrix(db: Db, actor: Actor, occasionId: number) {
@@ -47,22 +56,32 @@ export async function getSubmissionMatrix(db: Db, actor: Actor, occasionId: numb
   const submissionOf = new Map(submissions.map((x) => [`${x.teamId}:${x.materialSlotId}`, x]));
   const summaryOf = new Map(summaries.map((x) => [x.teamId, { ...x, url: null as string | null }]));
 
-  const rows = teams.map((team) => ({
-    team: { id: team.id, name: team.name, className: team.class.name },
-    cells: slots.map((slot): MatrixCell => {
+  const rows = teams.map((team) => {
+    const cells = slots.map((slot): MatrixCell => {
       const isSummary = slot.slotType === SUMMARY_SLOT_TYPE;
       const found = isSummary ? summaryOf.get(team.id) : submissionOf.get(`${team.id}:${slot.id}`);
-      if (!found) return { slotId: slot.id, status: "missing" };
+      if (!found) return { slotId: slot.id, status: "missing", isRequiredMissing: slot.isRequired };
       return {
         slotId: slot.id,
         status: "submitted",
+        isRequiredMissing: false,
         url: found.url,
         firstSubmittedAt: found.firstSubmittedAt,
         lastSubmittedAt: found.lastSubmittedAt,
         isLate: isLate(found.firstSubmittedAt, slot.deadline),
         showLastUpdated: isReplacedAfterDeadline(found.firstSubmittedAt, found.lastSubmittedAt, slot.deadline),
       };
-    }),
-  }));
-  return { slots, rows };
+    });
+    const requiredMissingCount = cells.filter((cell) => cell.isRequiredMissing).length;
+    return {
+      team: { id: team.id, name: team.name, className: team.class.name },
+      cells,
+      requiredMissingCount,
+      hasRequiredMissing: requiredMissingCount > 0,
+    };
+  });
+  const requiredMissing: RequiredMissingSummary = slots.some((slot) => slot.isRequired)
+    ? { kind: "counted", total: rows.reduce((sum, row) => sum + row.requiredMissingCount, 0) }
+    : { kind: "no_required_slots" };
+  return { slots, rows, requiredMissing };
 }

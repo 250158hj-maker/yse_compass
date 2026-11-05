@@ -16,7 +16,7 @@ import type { AnnouncementPhase } from "@/lib/types";
 import { PublishToggle } from "./PublishToggle";
 
 // 対応: docs/design/04-screen.md SC-04（発表会詳細）。Issue #184（モックの画面を本番仕様にする）の 2 枚目。
-// 見た目はモックのまま、データは data 層（getOccasion・listMaterialSlots）、ユーザーは requireSessionUser から読む。画面で権限や集計の判定をしない。
+// 見た目はモックのまま、データは data 層（getOccasion・listMaterialSlots・listOccasionPresentations）、ユーザーは requireSessionUser から読む。画面で権限や集計の判定をしない。
 // 出すもの: 発表会の概要（種別・開催日・公開状態）、先生だけに出す資料枠の一覧と公開・公開解除、発表（チーム）一覧。生徒には資料枠を出さない（SC-04）。
 // 発表（チーム）一覧は listOccasionPresentations の結果をそのまま写す。一覧を出すか、公開前の案内に切り替えるかの判定は関数が持つ（生徒には、公開前は一覧を返さない）。
 // 含めない:

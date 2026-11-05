@@ -2,12 +2,13 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { addMember, createTeam, getTeam, listClassOptions, listTeams, renameMember, setLeader, TeamError, updateTeam, type Actor } from "@/lib/data/teams";
+import { EVENT_KINDS } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
 
 // DB を使うテスト。流儀は auth/callbacks.test.ts と同じ（各テストはトランザクションの中で動かし、最後に取り消す）。
 // DB が失敗すると PostgreSQL はそのトランザクションを中止するので、DB のエラーを期待する検証は各テストの最後に置く。
 
-type Db = Parameters<typeof listClassOptions>[0];
+type Db = Parameters<typeof listClassOptions>[0] & Pick<PrismaClient, "eventOccasion" | "presentation">;
 
 class Rollback extends Error {}
 
@@ -169,6 +170,22 @@ describeDb("createTeam", () => {
       const year = await seedYear(db, 9001);
       await expectError(createTeam(db, student, { classId: year.classes[0].id, name: "チームA", members: ["水戸"] }), "forbidden");
       expect(await listTeams(db, teacher, year.id)).toEqual([]);
+    });
+  });
+
+  it("そのクラスの年度の発表会の数だけ発表を作り、発表順は未設定にする。別の年度の発表会には作らない（decisions.md 2026-09-21）", async () => {
+    await inTransaction(async (db) => {
+      const year = await seedYear(db, 9004);
+      const other = await seedYear(db, 9005);
+      const occasions = await Promise.all(EVENT_KINDS.map((kind) => db.eventOccasion.create({ data: { fiscalYearId: year.id, kind }, select: { id: true } })));
+      const otherOccasion = await db.eventOccasion.create({ data: { fiscalYearId: other.id, kind: EVENT_KINDS[0] }, select: { id: true } });
+
+      const created = await createTeam(db, teacher, { classId: year.classes[0].id, name: "チームA", members: ["水戸"] });
+
+      const rows = await db.presentation.findMany({ where: { teamId: created.id }, select: { eventOccasionId: true, displayOrder: true } });
+      expect(rows.map((r) => r.eventOccasionId).sort()).toEqual(occasions.map((o) => o.id).sort());
+      expect(rows.every((r) => r.displayOrder === null)).toBe(true);
+      expect(rows.some((r) => r.eventOccasionId === otherOccasion.id)).toBe(false);
     });
   });
 

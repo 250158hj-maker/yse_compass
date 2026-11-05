@@ -47,3 +47,16 @@ export function formatShortDateTime(iso: string): string {
 export function formatDateTime(iso: string): string {
   return dateTimeFormatter.format(new Date(iso));
 }
+
+// 開催日（event_date）は date 型で、タイムゾーンを持たない。Date の UTC の日付をそのまま読んで、実行環境や日本時間への変換で日付がずれないようにする。
+// 絶対時刻（締切など）は、上の日本時間の整形を使う。
+const occasionDateFormatter = new Intl.DateTimeFormat("ja-JP", {
+  timeZone: "UTC",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
+export function formatOccasionDate(date: Date): string {
+  return occasionDateFormatter.format(date);
+}

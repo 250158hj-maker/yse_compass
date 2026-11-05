@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { PrismaClient } from "@/generated/prisma/client";
-import { addMaterialSlotAction, deleteMaterialSlotAction, updateMaterialSlotAction, updateOccasionDateAction } from "@/lib/actions/slots";
+import { addMaterialSlotAction, deleteMaterialSlotAction, setOccasionPublishedAction, updateMaterialSlotAction, updateOccasionDateAction } from "@/lib/actions/slots";
 import { setupFiscalYear } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
 
@@ -64,6 +64,7 @@ describeDb("資料枠・日程の Server Action", () => {
       const slotId = added.data.id;
       expect(await updateMaterialSlotAction(slotId, { isRequired: true })).toMatchObject({ ok: true, data: { slotType: "動画", isRequired: true } });
       expect(await updateOccasionDateAction(occasionId, "2026-12-18")).toMatchObject({ ok: true, data: { id: occasionId } });
+      expect(await setOccasionPublishedAction(occasionId, true)).toMatchObject({ ok: true, data: { id: occasionId, isPublished: true } });
       expect(await deleteMaterialSlotAction(slotId)).toEqual({ ok: true, data: undefined });
       expect(await db.materialSlot.count({ where: { id: slotId } })).toBe(0);
     });
@@ -77,6 +78,8 @@ describeDb("資料枠・日程の Server Action", () => {
       signInAs("student");
       expect(await addMaterialSlotAction(occasionId, { slotType: "動画", isRequired: false })).toEqual({ ok: false, code: "forbidden" });
       expect(await updateOccasionDateAction(occasionId, "2026-12-18")).toEqual({ ok: false, code: "forbidden" });
+      expect(await setOccasionPublishedAction(occasionId, true)).toEqual({ ok: false, code: "forbidden" });
+      expect((await db.eventOccasion.findUniqueOrThrow({ where: { id: occasionId } })).isPublished).toBe(false);
       expect(await db.materialSlot.count({ where: { eventOccasionId: occasionId } })).toBe(2);
       expect((await db.eventOccasion.findUniqueOrThrow({ where: { id: occasionId } })).eventDate).toBeNull();
     });
@@ -93,6 +96,8 @@ describeDb("資料枠・日程の Server Action", () => {
       expect(await updateMaterialSlotAction(1, [] as never)).toEqual(bad);
       expect(await deleteMaterialSlotAction(1.5)).toEqual(bad);
       expect(await updateOccasionDateAction(occasionId, 20261218 as never)).toEqual(bad);
+      expect(await setOccasionPublishedAction(occasionId, "true" as never)).toEqual(bad);
+      expect(await setOccasionPublishedAction(0, true)).toEqual(bad);
       expect(await db.materialSlot.count({ where: { eventOccasionId: occasionId } })).toBe(2);
     });
   });

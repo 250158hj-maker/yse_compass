@@ -21,7 +21,8 @@ export type SubmissionErrorCode =
   | "slot_not_found"
   | "occasion_not_found"
   | "summary_slot"
-  | "year_archived";
+  | "year_archived"
+  | "empty_summary";
 
 export class SubmissionError extends Error {
   constructor(readonly code: SubmissionErrorCode) {

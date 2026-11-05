@@ -25,3 +25,12 @@ describe.each(["UTC", "America/Los_Angeles", "Asia/Tokyo"])("日時の整形は�
     expect(formatShortDateTime(instant)).toBe("10/21 00:00");
   });
 });
+
+// 開催日は date 型（日付だけ）で、DB から UTC 0 時の Date として返る。端末の時間で読むと、西の TZ（ロサンゼルスなど）では前日にずれる。UTC の日付をそのまま読む。
+describe.each(["UTC", "America/Los_Angeles", "Asia/Tokyo"])("開催日の整形は実行環境の TZ（%s）に依らず、日付そのまま", (tz) => {
+  it("date 型（UTC 0 時）の日付を読む", async () => {
+    process.env.TZ = tz;
+    const { formatOccasionDate } = await import("@/lib/format");
+    expect(formatOccasionDate(new Date("2026-12-18T00:00:00Z"))).toBe("2026年12月18日");
+  });
+});

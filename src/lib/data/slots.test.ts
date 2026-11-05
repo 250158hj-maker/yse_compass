@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
-import { addMaterialSlot, deleteMaterialSlot, listMaterialSlots, SlotError, SUMMARY_SLOT_TYPE, updateMaterialSlot, updateOccasionDate } from "@/lib/data/slots";
+import { addMaterialSlot, deleteMaterialSlot, listMaterialSlots, SlotError, SUMMARY_SLOT_TYPE, setOccasionPublished, updateMaterialSlot, updateOccasionDate } from "@/lib/data/slots";
 import { createTeam } from "@/lib/data/teams";
 import { setupFiscalYear, type Actor } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
@@ -263,6 +263,39 @@ describeDb("updateOccasionDate（SC-05：日程）", () => {
       await expectError(updateOccasionDate(db, student, occasionId, "2026-12-18"), "forbidden");
       expect((await db.eventOccasion.findUniqueOrThrow({ where: { id: occasionId } })).eventDate).toBeNull();
       await expectError(updateOccasionDate(db, teacher, 2_147_483_647, "2026-12-18"), "occasion_not_found");
+    });
+  });
+});
+
+describeDb("setOccasionPublished（SC-04：公開・公開解除）", () => {
+  it("公開し、公開解除で戻せる。同じ値への切り替えは成功して何も変えない。ほかの発表会は変わらない", async () => {
+    await inTransaction(async (db) => {
+      const { fiscalYearId, occasionId } = await setup(db, 9741);
+      const other = await db.eventOccasion.findFirstOrThrow({ where: { fiscalYearId, id: { not: occasionId } } });
+      expect(await setOccasionPublished(db, teacher, occasionId, true)).toMatchObject({ id: occasionId, isPublished: true });
+      expect(await setOccasionPublished(db, teacher, occasionId, true)).toMatchObject({ isPublished: true });
+      expect((await db.eventOccasion.findUniqueOrThrow({ where: { id: other.id } })).isPublished).toBe(false);
+      expect(await setOccasionPublished(db, teacher, occasionId, false)).toMatchObject({ isPublished: false });
+    });
+  });
+
+  it("アーカイブ済みの年度の発表会でも切り替えられる（塞ぐ規則が正典に無い）", async () => {
+    await inTransaction(async (db) => {
+      const { occasionId } = await setup(db, 9742);
+      const { fiscalYearId } = await db.eventOccasion.findUniqueOrThrow({ where: { id: occasionId }, select: { fiscalYearId: true } });
+      await db.fiscalYear.update({ where: { id: fiscalYearId }, data: { isArchived: true } });
+      expect(await setOccasionPublished(db, teacher, occasionId, true)).toMatchObject({ isPublished: true });
+    });
+  });
+
+  it("生徒は forbidden で何も変わらない。無い発表会は occasion_not_found。id・値の形が違えば invalid_input", async () => {
+    await inTransaction(async (db) => {
+      const { occasionId } = await setup(db, 9743);
+      await expectError(setOccasionPublished(db, student, occasionId, true), "forbidden");
+      expect((await db.eventOccasion.findUniqueOrThrow({ where: { id: occasionId } })).isPublished).toBe(false);
+      await expectError(setOccasionPublished(db, teacher, 0, true), "invalid_input");
+      await expectError(setOccasionPublished(db, teacher, occasionId, "true" as never), "invalid_input");
+      await expectError(setOccasionPublished(db, teacher, 2_147_483_647, true), "occasion_not_found");
     });
   });
 });

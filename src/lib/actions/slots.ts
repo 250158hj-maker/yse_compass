@@ -3,10 +3,10 @@
 import { auth } from "@/auth";
 import { isId } from "@/lib/ids";
 import { prisma } from "@/lib/prisma";
-import { SlotError, addMaterialSlot, deleteMaterialSlot, updateMaterialSlot, updateOccasionDate, type NewSlotInput, type SlotErrorCode, type SlotPatch } from "@/lib/data/slots";
+import { SlotError, addMaterialSlot, deleteMaterialSlot, setOccasionPublished, updateMaterialSlot, updateOccasionDate, type NewSlotInput, type SlotErrorCode, type SlotPatch } from "@/lib/data/slots";
 import type { Actor } from "@/lib/data/years";
 
-// 対応: docs/requirements.md §3-1。規則と認可の本体は lib/data/slots.ts にある（一次防衛線）。ここは、サインイン済みのロールを
+// 対応: docs/requirements.md §3-1・§3-3（公開・公開解除）。規則と認可の本体は lib/data/slots.ts にある（一次防衛線）。ここは、サインイン済みのロールを
 // 取り出して渡し、SlotError を画面が扱える結果に直すだけの薄い層。
 // ロールはサインイン時にトークンへ載せた値で、解除の即時性は保証しない（H-30）。
 
@@ -41,4 +41,8 @@ export async function deleteMaterialSlotAction(slotId: number) {
 
 export async function updateOccasionDateAction(occasionId: number, eventDate: string | null) {
   return run(isId(occasionId) && (eventDate === null || typeof eventDate === "string"), (actor) => updateOccasionDate(prisma, actor, occasionId, eventDate));
+}
+
+export async function setOccasionPublishedAction(occasionId: number, isPublished: boolean) {
+  return run(isId(occasionId) && typeof isPublished === "boolean", (actor) => setOccasionPublished(prisma, actor, occasionId, isPublished));
 }

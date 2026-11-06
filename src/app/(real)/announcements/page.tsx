@@ -52,7 +52,7 @@ export default async function AnnouncementsPage() {
             {user.role === "teacher" && (
               <>
                 {" "}
-                <Link href="/real/years" className="font-medium underline">
+                <Link href="/admin/years" className="font-medium underline">
                   年度管理へ
                 </Link>
               </>

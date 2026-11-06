@@ -25,7 +25,7 @@ import { PublishToggle } from "./PublishToggle";
 //   - 「提出締切」（H-61 の決着で SC-04 の概要に出さないことにした：docs/decisions.md 2026-10-23。締切は資料枠ごとに、先生の一覧で見る）。
 //   - 工程表と「いまここ」（H-47 の先行方針：H-44 の決着まで本実装に出さない。モックの先生のハブにある）。
 //   - 先生の導線のうち、発表会編集・タイムテーブル編集・概要集生成・タイムテーブルでの進行と、全員向けの「タイムテーブルへの導線」（04 SC-04 の共通）：行き先の画面が本実装に置き換わるたびに、その PR で足す（全員向けのタイムテーブルへの導線は、SC-07 を置き換える PR）。提出状況一覧（SC-06）への導線は、SC-06 を置き換えた PR で、見出しの右のボタンとして足した（先生だけ）。
-//   - 発表（チーム）一覧の各行から発表詳細（SC-12）へのリンク：SC-12 が本実装に置き換わるときに足す（行き先がモックのままだと、本物の ID では開けないため）。
+// 追加：発表（チーム）一覧の各行は、発表詳細（SC-12）へのリンクにした（SC-12 を本実装に置き換えた PR で、モックの見た目の押せるカードに戻した）。
 // 発表会の名前は、種別（企画／設計／試作／最終）から作る表示で、正式な名前は決まっていない（H-63 の決着まで）。
 
 // テンプレート参照は、書くときに http(s) だけを受けている（slots.ts）が、リンクにする前にもう一度確かめる。
@@ -119,9 +119,13 @@ export default async function AnnouncementDetailPage({ params }: { params: Promi
           ) : (
             <div className="flex flex-col gap-2">
               {presentations.presentations.map((p) => (
-                <div key={p.teamId} className="rounded-lg border border-slate-200 bg-white p-4">
+                <Link
+                  key={p.teamId}
+                  href={`/announcements/${occasion.id}/teams/${p.teamId}`}
+                  className="rounded-lg border border-slate-200 bg-white p-4 hover:border-brand-300"
+                >
                   {p.workTitle ? `${p.teamName}(${p.workTitle})` : p.teamName}
-                </div>
+                </Link>
               ))}
             </div>
           )}

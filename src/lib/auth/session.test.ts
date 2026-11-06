@@ -18,17 +18,17 @@ beforeEach(() => {
 describe("requireSessionUser", () => {
   it("未ログインなら、戻り先つきで /login へ送る", async () => {
     vi.mocked(auth).mockResolvedValue(null as never);
-    await expect(requireSessionUser("/real/teams")).rejects.toThrow("REDIRECT:/login?callbackUrl=%2Freal%2Fteams");
+    await expect(requireSessionUser("/teams")).rejects.toThrow("REDIRECT:/login?callbackUrl=%2Fteams");
   });
 
   it("戻り先の特殊な文字は、URL の部品として符号化して付ける", async () => {
     vi.mocked(auth).mockResolvedValue({} as never);
-    await expect(requireSessionUser("/real/teams?year=2026&x=1")).rejects.toThrow("REDIRECT:/login?callbackUrl=%2Freal%2Fteams%3Fyear%3D2026%26x%3D1");
+    await expect(requireSessionUser("/teams?year=2026&x=1")).rejects.toThrow("REDIRECT:/login?callbackUrl=%2Fteams%3Fyear%3D2026%26x%3D1");
   });
 
   it("サインイン済みなら、ユーザーを返す", async () => {
     const user = { id: "1", role: "teacher", name: "n" };
     vi.mocked(auth).mockResolvedValue({ user } as never);
-    expect(await requireSessionUser("/real/teams")).toBe(user);
+    expect(await requireSessionUser("/teams")).toBe(user);
   });
 });

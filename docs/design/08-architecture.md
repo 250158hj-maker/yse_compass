@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-10-19（蒲山）
+> **最終更新**：2026-11-06（水戸）
 
 ## この章が答える問い
 
@@ -34,7 +34,7 @@
 | DB | PostgreSQL 16（Docker イメージ `postgres:16-alpine`） | 同上 | `../../CLAUDE.md` §5 の確定採用。関係モデルで足りるデータ形状（テーブル定義は `06-data.md` 6-3） | `../../CLAUDE.md` §5・`docker-compose.yml` |
 | DB アクセス | **Prisma**（2026-09-05 に採用決定。**モデルと初回マイグレーションを導入**〔06 データ設計 #23 の 6-3 から導出〕。業務データのアクセス層（8-3 の Data Access）は未実装） | バージョン番号は `package.json` が正 | `../../CLAUDE.md` §5・企画書 §2-3 の正典どおり。driver adapter（`@prisma/adapter-pg`）は `../decisions.md`（2026-09-29）で決着。疎通確認の `pg` 直接使用は暫定で、業務データのアクセス層には持ち込まない。下記「ORM の採用方針」参照 | `../decisions.md`（2026-09-05・2026-09-29）・`prisma/schema.prisma`・`src/lib/prisma.ts`・`src/app/api/health/db/route.ts`（疎通確認は現状のまま `pg` 直接） |
 | PDF 生成 | 純粋 JS の PDF ライブラリ（ヘッドレスブラウザ非依存） | 銘柄は実装着手時に確定 | Chromium 同梱を避ける（K3 検証・`../decisions.md` 2026-09-04） | `../decisions.md`・`05-output.md` 5-4 |
-| 認証 | Auth.js ＋ Google Workspace OAuth（サインインの疎通は一次検証済み・ロール解決はサインイン時に `users` を照会して JWT に載せる〔H-30・H-31・H-32 の先行方針〕） | 本番投入可否は未検証（`07-interface.md` 7-2） | 学校 Google アカウントとの統合が前提。**OAuth が通るかが最大の技術リスク**（一次検証は通った・`../findings.md` F-04） | `../requirements.md` §5・`07-interface.md` 7-2 |
+| 認証 | Auth.js ＋ Google Workspace OAuth（サインインの疎通は一次検証済み・ロール解決はサインイン時に `users` を照会して JWT に載せる〔H-30 の先行方針。H-31・H-32 は 2026-11-06 に決着〕） | 本番投入可否は未検証（`07-interface.md` 7-2） | 学校 Google アカウントとの統合が前提。**OAuth が通るかが最大の技術リスク**（一次検証は通った・`../findings.md` F-04） | `../requirements.md` §5・`07-interface.md` 7-2 |
 | パッケージマネージャ | pnpm | — | `../../CLAUDE.md` 既定 | `../../CLAUDE.md` |
 | バンドラ | **Turbopack（固定）** | — | dev と build で別のバンドラを通る状態を作らない。既定に頼らず `--turbopack` を明示する（8-6・`../findings.md` **F-02**） | `package.json` |
 | 開発環境 | **Docker は PostgreSQL のみ**／Next.js アプリはホスト直起動 | — | アプリをコンテナに入れたことだけが原因の問題（バインドマウント越しのファイル監視・`.next` の所有者・バンドラの使い分け）を設計から消す（8-6・`../findings.md` **F-02**） | `docker-compose.yml` |

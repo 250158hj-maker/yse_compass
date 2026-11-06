@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge, PhaseBadge } from "@/components/ui/Badge";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -22,7 +24,7 @@ import { PublishToggle } from "./PublishToggle";
 // 含めない:
 //   - 「提出締切」（H-61 の決着で SC-04 の概要に出さないことにした：docs/decisions.md 2026-10-23。締切は資料枠ごとに、先生の一覧で見る）。
 //   - 工程表と「いまここ」（H-47 の先行方針：H-44 の決着まで本実装に出さない。モックの先生のハブにある）。
-//   - 先生の導線（発表会編集・提出状況一覧・タイムテーブル編集・概要集生成・タイムテーブルでの進行）と、全員向けの「タイムテーブルへの導線」（04 SC-04 の共通）：行き先の画面が本実装に置き換わるたびに、その PR で足す（全員向けのタイムテーブルへの導線は、SC-07 を置き換える PR）。
+//   - 先生の導線のうち、発表会編集・タイムテーブル編集・概要集生成・タイムテーブルでの進行と、全員向けの「タイムテーブルへの導線」（04 SC-04 の共通）：行き先の画面が本実装に置き換わるたびに、その PR で足す（全員向けのタイムテーブルへの導線は、SC-07 を置き換える PR）。提出状況一覧（SC-06）への導線は、SC-06 を置き換えた PR で、見出しの右のボタンとして足した（先生だけ）。
 //   - 発表（チーム）一覧の各行から発表詳細（SC-12）へのリンク：SC-12 が本実装に置き換わるときに足す（行き先がモックのままだと、本物の ID では開けないため）。
 // 発表会の名前は、種別（企画／設計／試作／最終）から作る表示で、正式な名前は決まっていない（H-63 の決着まで）。
 
@@ -64,7 +66,16 @@ export default async function AnnouncementDetailPage({ params }: { params: Promi
             <Badge tone={occasion.isPublished ? "emerald" : "slate"}>{occasion.isPublished ? "公開中" : "非公開"}</Badge>
           </>
         }
-        actions={isTeacher ? <PublishToggle occasionId={occasion.id} isPublished={occasion.isPublished} /> : undefined}
+        actions={
+          isTeacher ? (
+            <>
+              <Link href={`/announcements/${occasion.id}/submissions`} className={buttonClassName("secondary")}>
+                提出状況一覧
+              </Link>
+              <PublishToggle occasionId={occasion.id} isPublished={occasion.isPublished} />
+            </>
+          ) : undefined
+        }
       />
 
       <div className="mt-6 flex flex-col gap-6">

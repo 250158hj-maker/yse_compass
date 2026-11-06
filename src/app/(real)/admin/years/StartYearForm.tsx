@@ -13,8 +13,17 @@ type ClassRow = { key: number; name: string; autoFocus?: boolean };
 
 // 年度一括セットアップ（SC-19 の【年度を開始】）。先行方針（H-57）: 年度は先生が整数で入力する。クラス名は前年度のクラスを初期値に出し
 // （前年度が無ければ空）、確定の前に先生が追加・削除・編集できる。クラスが 0 件のときは確定させない。同じ年度は拒む。
-// 年度の初期値は出さない（正典に無い規則を足さない）。チームは作らない（H-9：セットアップとチーム登録は独立した操作）。
-export function StartYearForm({ defaultClassNames, previousYear }: { defaultClassNames: string[]; previousYear: number | null }) {
+// 年度の初期値は出さない（正典に無い規則を足さない）。チームは作らない（年度セットアップはチームを作らない：decisions.md 2026-11-02）。
+// 年度を開始できたら、onDone を呼ぶ（呼ぶ側が、フォームを閉じるのに使う）。
+export function StartYearForm({
+  defaultClassNames,
+  previousYear,
+  onDone,
+}: {
+  defaultClassNames: string[];
+  previousYear: number | null;
+  onDone?: () => void;
+}) {
   const { run, pending, error } = useYearAction();
   const [year, setYear] = useState("");
   const [rows, setRows] = useState<ClassRow[]>(() => (defaultClassNames.length > 0 ? defaultClassNames : [""]).map((name, i) => ({ key: i + 1, name })));
@@ -56,7 +65,7 @@ export function StartYearForm({ defaultClassNames, previousYear }: { defaultClas
   }
 
   function start() {
-    run(() => setupYearAction({ year: Number(year), classNames: classNames() }));
+    run(() => setupYearAction({ year: Number(year), classNames: classNames() }), onDone);
   }
 
   return (

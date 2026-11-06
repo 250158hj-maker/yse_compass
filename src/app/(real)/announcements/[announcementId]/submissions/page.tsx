@@ -102,7 +102,7 @@ export default async function SubmissionsPage({
 
       {rows.length === 0 ? (
         <div className="mt-4">
-          <EmptyState message={matrix.rows.length === 0 ? "チームがまだ登録されていません。" : "未提出のチームはありません。"} />
+          <EmptyState message={matrix.rows.length === 0 ? "チームがまだ登録されていません。" : "必須の未提出があるチームはありません。"} />
         </div>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-900/5">

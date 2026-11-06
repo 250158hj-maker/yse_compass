@@ -164,7 +164,7 @@ function ownTeamDeadlines(rows: { announcement: Announcement; missing: number }[
   };
 }
 
-// 通知を送らない(2026-07-24 決定)ので、締切と未提出の可視化はこの一覧が最後の砦。必須枠の未提出だけを強調する(H-15)。
+// 通知を送らない(2026-07-24 決定)ので、締切と未提出の可視化はこの一覧が最後の砦。必須枠の未提出だけを強調する(decisions.md 2026-11-06 の H-15 の行)。
 function OwnTeamSlots({ announcements, team }: { announcements: Announcement[]; team: Team }) {
   const rows = announcements.map((a) => {
     const submission = getSubmission(a.id, team.id);

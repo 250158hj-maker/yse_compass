@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { LateBadge, PhaseBadge, StatusBadge } from "@/components/ui/Badge";
+import { Badge, LateBadge, PhaseBadge, StatusBadge } from "@/components/ui/Badge";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { buttonClassName } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { MaterialLink } from "@/components/ui/MaterialLink";
@@ -20,12 +22,24 @@ import { isValidUrl } from "@/lib/url";
 // 先生だけが読める（関数が先生以外を拒む）。拒否された場合は、案内だけを出す。
 // セルは「未提出／提出済み」の 2 値に、遅延を別のバッジで重ねる（3 値に見せない：SC-06 のメモ）。遅延と最終更新日時を添えるかは、関数が返した値をそのまま写す。
 // 含めない:
-//   - 「必須枠の未提出」の件数・未提出の必須枠があるチームの強調・「未提出のみ表示」の絞り込み・未提出の必須セルの強調：必須で未提出かの判定は画面でしない。関数ができてから足す（#184 で蒲山さんに依頼）。
+//   - 画面で必須の未提出を数えない・判定しない（#184 の方針）。件数・チームの強調・セルの強調・絞り込みは、関数が返した値（requiredMissing・hasRequiredMissing・isRequiredMissing）をそのまま使う。
 //   - ヘッダーの「提出締切」（SC-06 に無い）と、工程の案内「次へ：発表順確定」（H-47 の先行方針：H-44 の決着まで本実装に出さない）。
+// 必須の資料枠が 0 件の発表会は、件数を出さず「必須の資料枠が無い」と示す（SC-03 のサマリの H-66 の②と同じ考え方。2026-11-05 に #184 で了承）。
+// チームが 0 件のときは件数を出さず、空状態（H-9）だけを出す（関数は、必須の枠があれば total: 0 を返すが、それを「すべて提出済み」と読ませない）。
+// 任意枠の未提出は強調しない（H-15 の先行方針。関数の印は必須の未提出にだけ付く）。
+// 「未提出のみ表示」は、画面に状態を持たせず、?incomplete=1 のリンクで切り替える（サーバーで行を絞る。判定は行の hasRequiredMissing）。
 // 概要枠は提出物のリンクを持たない（概要は提出ではなく概要の行の有無で見る）ので、リンクは出ない。
 
-export default async function SubmissionsPage({ params }: { params: Promise<{ announcementId: string }> }) {
+export default async function SubmissionsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ announcementId: string }>;
+  searchParams: Promise<{ incomplete?: string }>;
+}) {
   const { announcementId } = await params;
+  const { incomplete } = await searchParams;
+  const onlyIncomplete = incomplete === "1";
   const user = await requireSessionUser(`/announcements/${announcementId}/submissions`);
   // URL の ID は、形と integer の範囲を確かめてから DB に渡す（範囲外を渡すと Prisma が例外を投げ、500 になる）。
   const id = parseId(announcementId);
@@ -50,6 +64,9 @@ export default async function SubmissionsPage({ params }: { params: Promise<{ an
     throw e;
   }
 
+  const rows = onlyIncomplete ? matrix.rows.filter((row) => row.hasRequiredMissing) : matrix.rows;
+  const base = `/announcements/${occasion.id}/submissions`;
+
   return (
     <div className="mx-auto max-w-6xl">
       <Breadcrumbs
@@ -60,11 +77,32 @@ export default async function SubmissionsPage({ params }: { params: Promise<{ an
           { label: "提出状況一覧" },
         ]}
       />
-      <PageHeader title="提出状況一覧" meta={title} />
+      <PageHeader
+        title="提出状況一覧"
+        meta={title}
+        actions={
+          <Link href={onlyIncomplete ? base : `${base}?incomplete=1`} className={buttonClassName("secondary")}>
+            {onlyIncomplete ? "すべて表示" : "未提出のみ表示"}
+          </Link>
+        }
+      />
 
-      {matrix.rows.length === 0 ? (
+      {matrix.rows.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+          {matrix.requiredMissing.kind === "no_required_slots" ? (
+            <span>必須の資料枠が無い</span>
+          ) : (
+            <>
+              <span>必須枠の未提出</span>
+              <Badge tone={matrix.requiredMissing.total > 0 ? "rose" : "emerald"}>{matrix.requiredMissing.total}件</Badge>
+            </>
+          )}
+        </div>
+      )}
+
+      {rows.length === 0 ? (
         <div className="mt-4">
-          <EmptyState message="チームがまだ登録されていません。" />
+          <EmptyState message={matrix.rows.length === 0 ? "チームがまだ登録されていません。" : "未提出のチームはありません。"} />
         </div>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-900/5">
@@ -81,16 +119,19 @@ export default async function SubmissionsPage({ params }: { params: Promise<{ an
               </tr>
             </thead>
             <tbody>
-              {matrix.rows.map((row) => (
+              {rows.map((row) => (
                 <tr key={row.team.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/60">
                   <td className="px-4 py-3 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
                       <PhaseBadge phase={occasion.kind as AnnouncementPhase} />
-                      <span>{row.team.name}</span>
+                      <span className={row.hasRequiredMissing ? "font-semibold text-rose-700" : undefined}>{row.team.name}</span>
                     </div>
                   </td>
                   {row.cells.map((cell) => (
-                    <td key={cell.slotId} className="px-4 py-3">
+                    <td
+                      key={cell.slotId}
+                      className={`px-4 py-3 ${cell.isRequiredMissing ? "bg-rose-50 ring-1 ring-inset ring-rose-200" : ""}`}
+                    >
                       {cell.status === "missing" ? (
                         <StatusBadge status="未提出" />
                       ) : (

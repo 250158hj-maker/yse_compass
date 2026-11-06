@@ -4,9 +4,10 @@ import type { UserRole } from "@/lib/auth/callbacks";
 // 対応: docs/requirements.md §3-8（チーム・メンバー管理）。チーム作成・メンバー割り当ての操作主体は先生（decisions.md 2026-09-04・#6）。
 // 先行方針で組んでいる（06 の列は現行のまま。決着したら変わる箇所は、各項の先行方針に書かれた範囲）:
 //   H-40 名簿は 1 人ずつ入力・リーダーは作成後の指定も可（NULL 可）／H-41 メンバーの削除と移動は作らない（追加は許す）／
-//   H-43 作品名は先生のみ／H-46 選べるクラスは既存のクラスに限り、クラスの作成はここに持たせない／
+//   H-43 作品名は先生のみ／
 //   H-54 「当年度」は未アーカイブの年度のうち year が最大のもの／H-55 編集は年度の状態で塞がない（作成だけ未アーカイブの年度に限る）／
 //   H-56 同姓同名を禁じず、長さの上限を置かない（リーダーは氏名でなくメンバー行で指す）。
+// 決着済み（decisions.md 2026-11-02）: チーム登録は年度セットアップの後で、選べるクラスは、チームを作る年度の既存のクラスに限る。クラスの作成はここに持たせない。
 // 認可の一次防衛線はここに置く（画面や Server Action が先に弾いても、ここでも必ず確かめる）。読み取りも同じ（decisions.md 2026-09-06・H-16）。
 //   読み取りの先行方針（H-60・Stage 1・安全側）: 先生は全年度、生徒は未アーカイブの年度だけ読める。決着したら変わるのは readableBy だけ。
 
@@ -142,7 +143,7 @@ export async function createTeam(db: Db, actor: Actor, input: CreateTeamInput) {
           name,
           work: { create: { title: optionalText(input.workTitle) } },
           members: { create: memberNames.map((n) => ({ name: n })) },
-          // 新しいチームには発表が 1 件も無いので、不足分は全部。年度セットアップ側の補充は、発表会より先にチームができる経路が生じる（H-46 の決着）まで要らない（decisions.md 2026-09-21・years.ts）。
+          // 新しいチームには発表が 1 件も無いので、不足分は全部。年度セットアップ側の補充は要らない。チーム登録は年度セットアップの後なので、発表会より先にチームができる経路が無い（decisions.md 2026-11-02 の【変更】の行。2026-09-21 の presentations の行は変わらない・years.ts）。
           presentations: { create: klass.fiscalYear.eventOccasions.map((o) => ({ eventOccasionId: o.id })) },
         },
         select: { id: true, members: { select: { id: true, name: true }, orderBy: { id: "asc" } } },

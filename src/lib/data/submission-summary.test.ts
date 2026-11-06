@@ -4,6 +4,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { addMaterialSlot } from "@/lib/data/slots";
 import { getSubmissionSummaries } from "@/lib/data/submission-summary";
 import { submitMaterial } from "@/lib/data/submissions";
+import { saveSummary } from "@/lib/data/summaries";
 import { createTeam } from "@/lib/data/teams";
 import { setupFiscalYear, YearError, type Actor } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
@@ -11,7 +12,7 @@ import { describeDb } from "@/test/describe-db";
 // DB を使うテスト。流儀は submission-matrix.test.ts と同じ（各テストはトランザクションの中で動かし、最後に取り消す）。
 // 年度は 9900 番台を使う。未アーカイブの年度のうち year が最大のものが「当年度」（H-54 の先行方針）なので、実在の年度より常に新しくなる。
 
-type Db = Parameters<typeof getSubmissionSummaries>[0] & Parameters<typeof submitMaterial>[0] & Parameters<typeof setupFiscalYear>[0] & Parameters<typeof createTeam>[0] & Parameters<typeof addMaterialSlot>[0] & Pick<PrismaClient, "user" | "$transaction">;
+type Db = Parameters<typeof getSubmissionSummaries>[0] & Parameters<typeof submitMaterial>[0] & Parameters<typeof saveSummary>[0] &Parameters<typeof setupFiscalYear>[0] & Parameters<typeof createTeam>[0] & Parameters<typeof addMaterialSlot>[0] & Pick<PrismaClient, "user" | "$transaction">;
 
 class Rollback extends Error {}
 
@@ -93,6 +94,34 @@ describeDb("getSubmissionSummaries（SC-03 の提出状況サマリ）", () => {
       expect((await getSubmissionSummaries(db, teacher))![0]).toMatchObject({ kind: "counted", submittedTeams: 0 });
       await db.summary.create({ data: { teamId: a.teamId, eventOccasionId: s.occasionId, firstSubmittedAt: WHEN, lastSubmittedAt: WHEN } });
       expect((await getSubmissionSummaries(db, teacher))![0]).toMatchObject({ kind: "counted", submittedTeams: 1 });
+    });
+  });
+
+  // 上の 2 件は summaries の行を直接作っている。ここは SC-10 の保存（saveSummary）を通して、サマリの数が動くことを確かめる（3.3.2 の結合）。
+  it("概要を saveSummary で保存すると、提出済みのチームが 1 つ増える。差し替えでは増えない", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9904);
+      const [a] = s.teams;
+      await submitMaterial(db, a.actor, a.teamId, s.presentationId, URL);
+      expect((await getSubmissionSummaries(db, teacher))![0]).toEqual({ occasionId: s.occasionId, kind: "counted", submittedTeams: 0, totalTeams: 2 });
+
+      await saveSummary(db, a.actor, a.teamId, s.occasionId, { introduction: "はじめに" });
+      expect((await getSubmissionSummaries(db, teacher))![0]).toEqual({ occasionId: s.occasionId, kind: "counted", submittedTeams: 1, totalTeams: 2 });
+
+      await saveSummary(db, a.actor, a.teamId, s.occasionId, { introduction: "書き直したはじめに", closing: "終わりに" });
+      expect((await getSubmissionSummaries(db, teacher))![0]).toMatchObject({ kind: "counted", submittedTeams: 1, totalTeams: 2 });
+    });
+  });
+
+  it("概要の保存が断られたときは、数えない（全欄が空・他チームの生徒の保存）", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9905);
+      const [a, b] = s.teams;
+      await submitMaterial(db, a.actor, a.teamId, s.presentationId, URL);
+
+      await expect(saveSummary(db, a.actor, a.teamId, s.occasionId, {})).rejects.toMatchObject({ name: "SubmissionError", code: "empty_summary" });
+      await expect(saveSummary(db, b.actor, a.teamId, s.occasionId, { introduction: "他チームの代理" })).rejects.toMatchObject({ name: "SubmissionError", code: "forbidden" });
+      expect((await getSubmissionSummaries(db, teacher))![0]).toMatchObject({ kind: "counted", submittedTeams: 0, totalTeams: 2 });
     });
   });
 

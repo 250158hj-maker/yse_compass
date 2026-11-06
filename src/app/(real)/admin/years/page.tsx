@@ -23,7 +23,7 @@ export default async function AdminYearsPage() {
   } catch (e) {
     if (e instanceof YearError && e.code === "forbidden") {
       return (
-        <div>
+        <div className="mx-auto max-w-6xl">
           <Breadcrumbs items={[{ label: "ホーム", href: "/" }, { label: "年度管理" }]} />
           <PageHeader title="年度管理" />
           <div className="mt-6">
@@ -38,7 +38,7 @@ export default async function AdminYearsPage() {
   const previousYear = years[0]?.year ?? null;
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl">
       <Breadcrumbs items={[{ label: "ホーム", href: "/" }, { label: "年度管理" }]} />
       {/* 年度を開始したら、前年度が変わりクラス名の初期値も変わる。フォームを作り直す。 */}
       <YearsHeader key={years[0]?.id ?? "none"} defaultClassNames={defaultClassNames} previousYear={previousYear} />

@@ -563,12 +563,12 @@ export default function HomePage() {
 
         {!teacher && ownTeam && (
           <>
-            {/* 進捗は上の資料枠の見出しに出すので、ここは自チーム詳細(SC-14)への入口に徹する */}
+            {/* 進捗は上の資料枠の見出しに出す。チーム詳細(SC-14)は本実装の画面で、モックのチーム ID では開けないので、一覧(/teams)へ向ける。SC-02(ホーム)の置き換えで作り直す */}
             <StatTile
-              href={`/teams/${ownTeam.id}`}
+              href="/teams"
               label={`自チーム(${ownTeam.name})`}
-              value="発表会ごとの提出状況・メンバー"
-              caption="自チームの詳細を見る"
+              value="チーム一覧から自チームを開く"
+              caption="メンバーを確認する"
               icon={<TeamIcon />}
               iconColor="bg-brand-50 text-brand-600"
             />

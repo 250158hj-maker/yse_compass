@@ -24,8 +24,8 @@ beforeEach(() => {
 
 describe("signInWithGoogleAction", () => {
   it("Google のサインインを、整えた戻り先で呼ぶ", async () => {
-    expect(await signInWithGoogleAction("/real/teams")).toEqual({ ok: true });
-    expect(signIn).toHaveBeenCalledWith("google", { redirectTo: "/real/teams" });
+    expect(await signInWithGoogleAction("/teams")).toEqual({ ok: true });
+    expect(signIn).toHaveBeenCalledWith("google", { redirectTo: "/teams" });
   });
 
   it("戻り先が空・外部・ループなら、既定の戻り先で呼ぶ", async () => {
@@ -38,9 +38,9 @@ describe("signInWithGoogleAction", () => {
   });
 
   it("Auth.js が付ける同じサイトの絶対 URL の戻り先は、道に直して呼ぶ。別のサイトのものは既定にする", async () => {
-    await signInWithGoogleAction("http://localhost:3000/real/teams");
-    await signInWithGoogleAction("http://evil.example/real/teams");
-    expect(vi.mocked(signIn).mock.calls.map((c) => c[1])).toEqual([{ redirectTo: "/real/teams" }, { redirectTo: "/announcements" }]);
+    await signInWithGoogleAction("http://localhost:3000/teams");
+    await signInWithGoogleAction("http://evil.example/teams");
+    expect(vi.mocked(signIn).mock.calls.map((c) => c[1])).toEqual([{ redirectTo: "/teams" }, { redirectTo: "/announcements" }]);
   });
 
   it("ヘッダーが偽装されても、Auth.js へ渡すのは常に道だけ", async () => {
@@ -53,8 +53,8 @@ describe("signInWithGoogleAction", () => {
   // ここで確かめるのは、Action が見るヘッダーから組む origin の側だけ。公開の名前が決まったら（H-23・H-28）、AUTH_URL と合わせて見直す。
   it("プロキシの後ろでは、転送されたホストとプロトコルで、同じサイトかを確かめる", async () => {
     requestHeaders({ host: "internal:3000", "x-forwarded-host": "compass.example", "x-forwarded-proto": "https" });
-    await signInWithGoogleAction("https://compass.example/real/teams");
-    expect(signIn).toHaveBeenCalledWith("google", { redirectTo: "/real/teams" });
+    await signInWithGoogleAction("https://compass.example/teams");
+    expect(signIn).toHaveBeenCalledWith("google", { redirectTo: "/teams" });
   });
 
   it("引数の形が違う（文字列でも null でもない）なら invalid_input で、サインインを呼ばない", async () => {
@@ -65,7 +65,7 @@ describe("signInWithGoogleAction", () => {
 
   it("サインインが出すリダイレクトの例外を、握りつぶさない", async () => {
     vi.mocked(signIn).mockRejectedValue(new RedirectSignal("NEXT_REDIRECT"));
-    await expect(signInWithGoogleAction("/real/teams")).rejects.toMatchObject({ digest: "NEXT_REDIRECT" });
+    await expect(signInWithGoogleAction("/teams")).rejects.toMatchObject({ digest: "NEXT_REDIRECT" });
   });
 });
 

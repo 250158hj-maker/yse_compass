@@ -3,9 +3,9 @@ import { DEFAULT_SIGN_IN_REDIRECT, safeRedirectPath } from "@/lib/auth/redirect"
 
 describe("safeRedirectPath（サインイン後の戻り先）", () => {
   it("サイト内の道は、そのまま通す（検索のパラメータも残す）", () => {
-    expect(safeRedirectPath("/real/teams")).toBe("/real/teams");
+    expect(safeRedirectPath("/teams")).toBe("/teams");
     expect(safeRedirectPath("/announcements/3")).toBe("/announcements/3");
-    expect(safeRedirectPath("/real/teams?year=2026")).toBe("/real/teams?year=2026");
+    expect(safeRedirectPath("/teams?year=2026")).toBe("/teams?year=2026");
   });
 
   it("空・文字列でない値は、既定の戻り先にする", () => {
@@ -35,13 +35,13 @@ describe("safeRedirectPath（サインイン後の戻り先）", () => {
 
   it("同じサイトの絶対 URL は、origin を渡したときだけ、道に直して受ける（Auth.js が付ける形）", () => {
     const origin = "http://localhost:3000";
-    expect(safeRedirectPath("http://localhost:3000/real/teams", origin)).toBe("/real/teams");
-    expect(safeRedirectPath("http://localhost:3000/real/teams?year=2026", origin)).toBe("/real/teams?year=2026");
+    expect(safeRedirectPath("http://localhost:3000/teams", origin)).toBe("/teams");
+    expect(safeRedirectPath("http://localhost:3000/teams?year=2026", origin)).toBe("/teams?year=2026");
     // origin が違う・無いものは、既定にする。
-    expect(safeRedirectPath("http://localhost:3000/real/teams")).toBe(DEFAULT_SIGN_IN_REDIRECT);
-    expect(safeRedirectPath("http://evil.example/real/teams", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
-    expect(safeRedirectPath("http://localhost:3000.evil.example/real/teams", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
-    expect(safeRedirectPath("https://localhost:3000/real/teams", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    expect(safeRedirectPath("http://localhost:3000/teams")).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    expect(safeRedirectPath("http://evil.example/teams", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    expect(safeRedirectPath("http://localhost:3000.evil.example/teams", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
+    expect(safeRedirectPath("https://localhost:3000/teams", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
     // 同じ origin でも、ループになる道・外部を指す形になる道は、既定にする。
     expect(safeRedirectPath("http://localhost:3000/login", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
     expect(safeRedirectPath("http://localhost:3000//evil.example", origin)).toBe(DEFAULT_SIGN_IN_REDIRECT);
@@ -52,12 +52,12 @@ describe("safeRedirectPath（サインイン後の戻り先）", () => {
     for (const bad of [
       "https://localhost:3000@evil.example/",
       "http://localhost:3000@evil.example/",
-      "http://localhost:3001/real/teams",
+      "http://localhost:3001/teams",
       "http://localhost:3000/\\evil.example",
     ]) {
       expect(safeRedirectPath(bad, origin), bad).toBe(DEFAULT_SIGN_IN_REDIRECT);
     }
-    expect(safeRedirectPath("HTTP://LOCALHOST:3000/real/teams", origin)).toBe("/real/teams");
+    expect(safeRedirectPath("HTTP://LOCALHOST:3000/teams", origin)).toBe("/teams");
     // エンコードした // は展開されず、同じサイトの道として残る。
     expect(safeRedirectPath("/%2F%2Fevil.example")).toBe("/%2F%2Fevil.example");
     expect(safeRedirectPath("http://localhost:3000/%2F%2Fevil.example", origin)).toBe("/%2F%2Fevil.example");

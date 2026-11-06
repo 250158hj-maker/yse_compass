@@ -18,25 +18,23 @@ type Team = {
 };
 
 // 先生の編集。削除と他チームへの移動は作らない（H-41）。誤りは氏名の編集で直す。
-export function TeamEditor({ team }: { team: Team }) {
+// モックの 2 列の枠に合わせて、チーム情報（左の列）とメンバー（右の列）を別の部品にしてある。
+export function MembersEditor({ team }: { team: Team }) {
   return (
-    <>
-      <TeamInfoForm team={team} />
-      <Card>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">メンバー</h2>
-        {team.leaderMemberId === null && <InlineNotice tone="warning">リーダーが決まっていません。下で指定してください。</InlineNotice>}
-        <ul className="mt-3 space-y-2">
-          {team.members.map((m) => (
-            <MemberRow key={m.id} member={m} teamId={team.id} isLeader={m.id === team.leaderMemberId} />
-          ))}
-        </ul>
-        <AddMemberForm teamId={team.id} />
-      </Card>
-    </>
+    <Card>
+      <h2 className="mb-3 text-lg font-semibold text-slate-900">メンバー</h2>
+      {team.leaderMemberId === null && <InlineNotice tone="warning">リーダーが決まっていません。下で指定してください。</InlineNotice>}
+      <ul className="mt-3 space-y-2">
+        {team.members.map((m) => (
+          <MemberRow key={m.id} member={m} teamId={team.id} isLeader={m.id === team.leaderMemberId} />
+        ))}
+      </ul>
+      <AddMemberForm teamId={team.id} />
+    </Card>
   );
 }
 
-function TeamInfoForm({ team }: { team: Team }) {
+export function TeamInfoForm({ team }: { team: Team }) {
   const { run, pending, error } = useTeamAction();
   const [name, setName] = useState(team.name);
   const [workTitle, setWorkTitle] = useState(team.workTitle);

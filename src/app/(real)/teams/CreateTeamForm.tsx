@@ -56,7 +56,7 @@ export function CreateTeamForm({ years, initialYearId }: { years: YearOption[]; 
     setFormError(null);
     run(
       () => createTeamAction({ classId, name, workTitle, members: filled.map((m) => m.name), leaderIndex }),
-      (team) => router.push(`/real/teams/${team.id}`),
+      (team) => router.push(`/teams/${team.id}`),
     );
   }
 

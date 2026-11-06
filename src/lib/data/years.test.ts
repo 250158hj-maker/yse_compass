@@ -42,7 +42,7 @@ async function expectError(promise: Promise<unknown>, code: string) {
 }
 
 // 実際の年度と重ならない year で作る。
-describeDb("setupFiscalYear（requirements.md §3-1・H-57 の先行方針）", () => {
+describeDb("setupFiscalYear（requirements.md §3-1・decisions.md 2026-11-02 のクラスの入力の行・H-57 の先行方針）", () => {
   it("年度・クラス・4 発表会・定番の資料枠を一括で作る", async () => {
     await inTransaction(async (db) => {
       const { id, year } = await setupFiscalYear(db, teacher, { year: 9001, classNames });
@@ -144,7 +144,7 @@ describeDb("setupFiscalYear（requirements.md §3-1・H-57 の先行方針）", 
   });
 });
 
-describeDb("listClassNameDefaults（H-57：前年度のクラスを初期値に出す）", () => {
+describeDb("listClassNameDefaults（decisions.md 2026-11-02 のクラスの入力の行：前年度のクラスを初期値に出す）", () => {
   it("year が最大の年度のクラスを、名前の昇順で返す", async () => {
     await inTransaction(async (db) => {
       await setupFiscalYear(db, teacher, { year: 9101, classNames: ["IG21"] });

@@ -4,10 +4,11 @@ import { isId } from "@/lib/ids";
 
 // 対応: docs/requirements.md §3-1（年度一括セットアップが「作成」の正規入口）・design/04-screen.md SC-19。
 // 先行方針で組んでいる（06 の列は現行のまま。決着したら変わる箇所は、各項の先行方針に書かれた範囲）:
-//   H-57 年度は先生が整数で入力する。クラス名は前年度のクラスを初期値に出し（前年度が無ければ空）、確定の前に先生が編集できる。
-//        クラスが 0 件のときは確定させない。同じ year はエラーで拒む（UNIQUE）。セットアップの後のクラスの追加・修正は、H-46 ① の決着まで扱わない／
-//   H-27 資料枠の締切は NULL（未設定）で生成する／H-9 年度セットアップとチーム登録は独立した操作で、順序を強制しない／
-//   H-46 クラスは年度セットアップが作る（チーム管理の側には作成を持たせない）。
+//   H-57 年度は先生が整数で入力する。同じ year はエラーで拒む（UNIQUE）／
+//   H-27 資料枠の締切は NULL（未設定）で生成する。
+// 決着済み（decisions.md 2026-11-02）: クラス名は前年度のクラスを初期値に出し（前年度が無ければ空）、確定の前に先生が編集できる。クラスが 0 件のときは確定させない。
+//   クラスは年度セットアップが作る（チーム管理の側には作成を持たせない）。セットアップの後に SC-19 でクラスを足す・名前を直すことも決まったが、ここでは未実装。
+//   チーム登録は年度セットアップの後（H-9 の「順序を強制しない」は 2026-11-02 の【変更】の行で改めた。2 つが別の操作であることと、セットアップがチームを作らないことは変わらない）。
 // 認可の一次防衛線はここに置く（画面や Server Action が先に弾いても、ここでも必ず確かめる）。
 
 type Db = Pick<PrismaClient, "fiscalYear">;
@@ -81,13 +82,13 @@ function hasCode(e: unknown, code: string): boolean {
 
 // 年度・クラス・4 発表会・定番の資料枠を、1 回の作成（Prisma の入れ子の作成は 1 トランザクション）で生成する。
 // チームは作らない（H-9）。発表（presentations）も作らない：チームがまだ無く、チーム作成時（teams.ts の createTeam）に既存の発表会の分を作る（decisions.md 2026-09-21）。
-// 年度セットアップ側で既存のチームの分を補う処理は未実装：H-46 の先行方針ではチームは年度セットアップが作ったクラスにだけ属するので、この時点でチームは無く到達しない。H-46 が決着して、発表会より先にチームができる経路（③に限らず、たとえば①を年度の行もセットアップの外で作れる形で採る場合）が生じたら足す。
+// 年度セットアップ側で既存のチームの分を補う処理は要らない：チーム登録は年度セットアップの後で、チームはセットアップが作ったクラスにだけ属するので、この時点でチームは無い（decisions.md 2026-11-02 の【変更】の行）。
 export async function setupFiscalYear(db: Db, actor: Actor, input: SetupYearInput) {
   assertTeacher(actor);
   // 年度は西暦 4 桁（design/06-data.md 6-3 の fiscal_years.year）。範囲外の値は DB に渡さない（integer の範囲を超えると Prisma が例外を投げる）。
   if (!Number.isInteger(input.year) || input.year < 1000 || input.year > 9999) throw new YearError("invalid_input");
   const classNames = input.classNames.map((n) => n.trim());
-  // クラスが 0 件のときは確定させない（H-57）。空の名前と、同じ名前の重複は、DB の UNIQUE(fiscal_year_id, name) に任せず入力の誤りとして先に返す（year の重複と区別するため）。
+  // クラスが 0 件のときは確定させない（decisions.md 2026-11-02 のクラスの入力の行）。空の名前と、同じ名前の重複は、DB の UNIQUE(fiscal_year_id, name) に任せず入力の誤りとして先に返す（year の重複と区別するため）。
   // NUL 文字（\0）は PostgreSQL が拒み、YearError ではない例外（P2039）になるので、ここで入力の誤りにする。
   if (classNames.length === 0 || classNames.some((n) => n === "" || n.includes("\0")) || new Set(classNames).size !== classNames.length) throw new YearError("invalid_input");
 

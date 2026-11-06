@@ -15,7 +15,7 @@ export default async function RealLayout({ children }: { children: React.ReactNo
           　— 開発中の画面です。モックの画面とは別の URL にあります。
           {session?.user?.role === "teacher" && (
             <>
-              　<Link href="/real/years" className="underline">
+              　<Link href="/admin/years" className="underline">
                 年度管理
               </Link>
             </>

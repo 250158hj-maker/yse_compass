@@ -8,7 +8,7 @@ import { StartYearForm } from "./StartYearForm";
 import { YearRow } from "./YearRow";
 
 // 対応: docs/design/04-screen.md SC-19（年度管理・T 専用）／docs/requirements.md §3-1・§3-7。
-// 先行方針: H-57（年度セットアップの入力）。含めない: 年度ごとの発表会の一覧（SC-03・SC-05）。
+// 年度セットアップの入力: クラス名は decisions.md 2026-11-02 のクラスの入力の行、年度の値と同じ年度の 2 回目は H-57 の先行方針。含めない: 年度ごとの発表会の一覧（SC-03・SC-05）。
 export default async function RealYearsPage() {
   const user = await requireSessionUser("/real/years");
   if (user.role !== "teacher") {

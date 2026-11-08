@@ -10,7 +10,7 @@ export const DEFAULT_SIGN_IN_REDIRECT = "/announcements";
 const MAX_LENGTH = 2048;
 const BASE = "http://redirect.invalid";
 
-// origin は、このサイト自身の origin（例：http://localhost:3000）。Auth.js が戻り先を絶対 URL（http://localhost:3000/real/teams）で付けることがあるので
+// origin は、このサイト自身の origin（例：http://localhost:3000）。Auth.js が戻り先を絶対 URL（http://localhost:3000/teams）で付けることがあるので
 // （/api/auth/signin から入ったときなどを localhost で確かめた）、同じ origin の絶対 URL だけは、道に直して受ける。origin が無ければ、絶対 URL は受けない。
 export function safeRedirectPath(input: unknown, origin?: string): string {
   if (typeof input !== "string" || input === "" || input.length > MAX_LENGTH) return DEFAULT_SIGN_IN_REDIRECT;

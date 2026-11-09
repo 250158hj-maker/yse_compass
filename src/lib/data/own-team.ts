@@ -9,6 +9,7 @@ import type { Actor } from "@/lib/data/years";
 // 先生には自チームが無いので、エラーにせず not_student を返す。生徒でも先生でもない主体は、getCurrentYearOccasions と同じく forbidden（YearError）。
 // 生徒が当年度のチームに結びついていない（H-25 の引き換えの前など）ときは unlinked。結びつきの有無を、画面が「属さない」と区別できる形で返す（#174 の問い 6）。
 // メンバーの userId は返さない：画面が判定に使わないようにするため（#184 の「画面で判定しない」）。
+// メンバーの name は team_members.name（先生が入力した氏名）で、表示名の解決前の値。06 の「結びついた利用者がいればそのフルネーム」の規則（decisions.md 2026-09-21）は、ここでは解決しない（presentation-detail.ts・teams.ts と同じ）。
 
 type Db = Pick<PrismaClient, "fiscalYear" | "eventOccasion" | "teamMember">;
 

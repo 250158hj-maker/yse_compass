@@ -68,6 +68,23 @@ describeDb("getOwnTeam（SC-02 の自チーム）", () => {
     });
   });
 
+  it("同じ年度に別のチームがあっても、それぞれの生徒は自分のチームだけを受け取る", async () => {
+    await inTransaction(async (db) => {
+      const a = await setup(db, 9910);
+      const other = await createTeam(db, teacher, { classId: a.klass.id, name: "T-other-9910", members: ["佐藤"] });
+      const otherUser = await db.user.create({ data: { email: "own-other-9910@example.invalid", name: "佐藤", role: "student" } });
+      await db.teamMember.update({ where: { id: other.members[0].id }, data: { userId: otherUser.id } });
+
+      const mine = await getOwnTeam(db, a.actor);
+      const theirs = await getOwnTeam(db, { userId: String(otherUser.id), role: "student" });
+      if (mine.kind !== "member" || theirs.kind !== "member") throw new Error("どちらも member で返るはず");
+      expect(mine.team.id).toBe(a.team.id);
+      expect(mine.team.members.map((m) => m.name)).toEqual(["山田", "鈴木"]);
+      expect(theirs.team.id).toBe(other.id);
+      expect(theirs.team.members.map((m) => m.name)).toEqual(["佐藤"]);
+    });
+  });
+
   it("リーダーのメンバーだけ isLeader が true になる", async () => {
     await inTransaction(async (db) => {
       const s = await setup(db, 9902);

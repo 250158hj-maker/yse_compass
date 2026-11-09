@@ -10,6 +10,7 @@ import type { Actor } from "@/lib/data/years";
 // 先生は全年度を読める。生徒は未アーカイブの年度だけで、外れたときは「無い」と同じ occasion_not_found にする（open-questions.md H-60 の先行方針。決着したら変わるのはここだけ）。
 // 公開か否かは event_occasions.is_published で判定する（列は足さない）。聴く生徒に返さないときは forbidden（正典に返し方の定めは無い）。
 // 概要は、getOwnSummary と同じ項目（はじめに・作品概要・使用技術・終わりに・自由な欄と、初回・最終の提出日時）を返す（Issue #184・SC-12 の依頼）。公開前に聴く生徒へ返さない線引き（forbidden）は、本文も同じ関数の中なので同じ。作品の説明は出さない（H-49 の先行方針）。
+// 概要の本文の項目（introduction・workOverview・closing・extraSections）は、06 の確定の範囲の外の列で、H-37 の先行方針（L2）で足したもの。H-37 が決着して項目が変わったら、この戻り値も変わる（getOwnSummary と同時に直す）。
 // エラーは submissions.ts の SubmissionError を使う（この層で出すのは forbidden・invalid_input・occasion_not_found）。
 
 type Db = Pick<PrismaClient, "eventOccasion" | "team" | "teamMember" | "summary" | "submission">;

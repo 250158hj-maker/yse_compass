@@ -7,7 +7,7 @@ import { getTeamById } from "@/lib/mock";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
-// モックの人物ログイン（3 人のカード）。モックのままの画面を、これまでどおり見せるために残す（Issue #184・置き換えが済んだら外せる）。
+// モックの人物ログイン（先生と生徒の 2 人のカード）。モックのままの画面を、これまでどおり見せるために残す（Issue #184・置き換えが済んだら外せる）。
 // モックのセッション（SessionContext）に書き込むだけで、Google のサインインとは関係しない。
 
 const iconProps = {
@@ -39,15 +39,6 @@ function UploadIcon() {
   );
 }
 
-function EyeIcon() {
-  return (
-    <svg {...iconProps}>
-      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
-      <circle cx="12" cy="12" r="2.6" />
-    </svg>
-  );
-}
-
 const roleCopy: Record<string, { label: string; tone: BadgeTone; icon: ReactNode; iconColor: string; description: string }> = {
   "user-tominaga": {
     label: "先生",
@@ -57,18 +48,11 @@ const roleCopy: Record<string, { label: string; tone: BadgeTone; icon: ReactNode
     description: "発表会の運営・提出状況の確認・資料公開などの管理操作ができます。",
   },
   "user-mito": {
-    label: "生徒(提出する)",
+    label: "生徒",
     tone: "emerald",
     icon: <UploadIcon />,
     iconColor: "bg-emerald-50 text-emerald-600",
-    description: "自チームの資料提出・概要入力ができ、他チームの発表にコメントできます。",
-  },
-  "user-viewer": {
-    label: "生徒(閲覧する)",
-    tone: "slate",
-    icon: <EyeIcon />,
-    iconColor: "bg-slate-100 text-slate-500",
-    description: "公開された発表を閲覧し、コメント・いいねで反応できます(提出はできません)。",
+    description: "チームに登録された生徒です。自チームの資料提出・概要入力ができ、他チームの発表にコメントできます。",
   },
 };
 
@@ -85,7 +69,7 @@ export function PersonaLogin() {
   return (
     <div className="mt-10">
       <SectionHeading>モック検証用ログイン(下から利用者を選択)</SectionHeading>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {personas.map((persona) => {
           const copy = roleCopy[persona.id];
           const team = persona.teamId ? getTeamById(persona.teamId) : null;

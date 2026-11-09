@@ -79,7 +79,7 @@ function parseInput(input: unknown): ParsedSummary {
 }
 
 // DB の JSON から、{ heading, body } の並びだけを取り出す。形の合わない要素は読み飛ばす（保存は parseExtraSections を通るので、通常は起きない）。
-function toExtraSections(value: Prisma.JsonValue): ExtraSection[] {
+export function toExtraSections(value: Prisma.JsonValue): ExtraSection[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     if (typeof item !== "object" || item === null || Array.isArray(item)) return [];

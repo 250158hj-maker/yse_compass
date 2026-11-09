@@ -2,13 +2,14 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { isId } from "@/lib/ids";
 import { SUMMARY_SLOT_TYPE } from "@/lib/data/slots";
 import { isMemberOf, isReplacedAfterDeadline, SubmissionError } from "@/lib/data/submissions";
+import { toExtraSections } from "@/lib/data/summaries";
 import type { Actor } from "@/lib/data/years";
 
 // 対応: docs/requirements.md §3-5（発表資料閲覧）・design/04-screen.md SC-12（チーム × 発表会）。
 // 公開前の発表会の資料（概要を含む）は、先生と自チームの生徒にだけ返し、聴く生徒には返さない（decisions.md 2026-10-20 の H-45 の行の①）。
 // 先生は全年度を読める。生徒は未アーカイブの年度だけで、外れたときは「無い」と同じ occasion_not_found にする（open-questions.md H-60 の先行方針。決着したら変わるのはここだけ）。
 // 公開か否かは event_occasions.is_published で判定する（列は足さない）。聴く生徒に返さないときは forbidden（正典に返し方の定めは無い）。
-// 概要の本文は 06 でまだ列が無い（H-37）ので、いまある使用技術と日時だけを返す。作品の説明は出さない（H-49 の先行方針）。
+// 概要は、getOwnSummary と同じ項目（はじめに・作品概要・使用技術・終わりに・自由な欄と、初回・最終の提出日時）を返す（Issue #184・SC-12 の依頼）。公開前に聴く生徒へ返さない線引き（forbidden）は、本文も同じ関数の中なので同じ。作品の説明は出さない（H-49 の先行方針）。
 // エラーは submissions.ts の SubmissionError を使う（この層で出すのは forbidden・invalid_input・occasion_not_found）。
 
 type Db = Pick<PrismaClient, "eventOccasion" | "team" | "teamMember" | "summary" | "submission">;
@@ -36,7 +37,7 @@ export async function getPresentationDetail(db: Db, actor: Actor, teamId: number
   });
   const summary = await db.summary.findUnique({
     where: { teamId_eventOccasionId: { teamId, eventOccasionId: occasionId } },
-    select: { techStack: true, firstSubmittedAt: true, lastSubmittedAt: true },
+    select: { introduction: true, workOverview: true, techStack: true, closing: true, extraSections: true, firstSubmittedAt: true, lastSubmittedAt: true },
   });
 
   return {
@@ -51,6 +52,6 @@ export async function getPresentationDetail(db: Db, actor: Actor, teamId: number
       // 締切後に差し替えがあったときだけ最終更新日時を添える（§3-5）。
       lastUpdatedAt: isReplacedAfterDeadline(x.firstSubmittedAt, x.lastSubmittedAt, x.materialSlot.deadline) ? x.lastSubmittedAt : null,
     })),
-    summary,
+    summary: summary && { ...summary, extraSections: toExtraSections(summary.extraSections) },
   };
 }

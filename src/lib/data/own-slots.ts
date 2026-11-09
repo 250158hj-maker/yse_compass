@@ -10,7 +10,9 @@ import type { Actor } from "@/lib/data/years";
 // 概要は、提出（submissions）ではなく概要（summaries）の行の有無で見る（getSubmissionMatrix・提出状況サマリと同じ）。
 // 遅延は初回提出日時で見る（decisions.md 2026-09-29・H-6）。締切が未設定の枠は、遅延の対象外（H-27 の先行方針）。
 // 自チームの生徒だけに返す（先生は forbidden。先生には自チームが無い）。他チームの生徒には、発表会やチームの有無も漏らさない（先に自チームか否かを確かめる）。
-// 年度のアーカイブ済みかどうかでは塞がない（listTeamSubmissions と同じ。アーカイブ済みの年度の発表会へは、画面が getOccasion で来させない）。
+// 年度のアーカイブ済みかどうかでは塞がない（listTeamSubmissions と同じ）。**H-60 の ② の側に仮置き**：自チームの生徒には、アーカイブ済みの年度でも返す。
+// getOccasion・getPresentationDetail は先行方針 ① で、アーカイブ済みの年度を生徒に返さない（外れた行は「無い」と同じ）ので、同じ画面の流れでは、画面が getOccasion で先に止める。
+// H-60 が ① に決まったら、ここでも塞ぐ（直すのはこの関数で、画面ではない）。返すのは自チームの枠の締切と提出の日時だけで、decisions.md 2026-11-02 の ⑥ には当たらない。
 // 認可の一次防衛線はここに置く（画面や Server Action が先に弾いても、ここでも必ず確かめる）。
 
 type Db = Pick<PrismaClient, "team" | "teamMember" | "eventOccasion" | "materialSlot" | "summary">;

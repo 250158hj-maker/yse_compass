@@ -32,6 +32,7 @@
 | 「作るか作らないか」の判断 | `docs/decisions.md` → `docs/requirements.md` §1 |
 | 「なぜこうなっているか」を知りたい | `docs/decisions.md`（根拠の列） |
 | 先生の実運用・一次情報を知りたい | `docs/hearing.md` |
+| **12/18（試作版発表会）に向けて何を作るか** | `docs/decisions.md` 2026-11-06 の成功の定義の行 → `docs/open-questions.md` P-3 → `pm/wbs.md` §8 |
 | **スケジュール・タスクの割り付け** | `pm/README.md` → `pm/wbs.md` |
 
 全ファイルの一覧と役割は **`docs/README.md`**。**進め方（スケジュール・WBS）の文書は `pm/README.md`。**
@@ -51,7 +52,7 @@
 
 3. **`docs/decisions.md` は追記のみ。過去の行を書き換えない。**
    決定を変更するときは**新しい行に【変更】として書き、旧決定を明記する**（2026-07-26 に確立した運用）。履歴を消さない。
-   **ほかの追記のみのファイル**（`docs/README.md` §1-1 で更新のしかたが「追記のみ」のもの）も同じで、**「決着」欄のような状態の更新も、既存の行を直さず、その下に追記する**（前例：`findings.md` F-08 の訂正の追記）。空欄の欄を埋めるのは追記に当たる。冒頭の `最終更新` の行だけは上書きする（§4）。
+   **ほかの追記のみのファイル**（`docs/README.md` §1-1 で更新のしかたが「追記のみ」のもの）も同じで、**「決着」欄のような状態の更新も、既存の行を直さず、その下に追記する**（前例：`findings.md` F-08 の訂正の追記）。空欄の欄を埋めるのは追記に当たる。冒頭の `最終更新` の行は上書きする（§4）。訂正した項目の見出しの末尾への注記は、追記として許す（書式と範囲は `docs/design/00-conventions.md` §3-6）。
 
 4. **決定の完了定義：`docs/decisions.md` に1行入るまで、それは決定ではない。**
    議論で結論が出た時点ではまだ決定ではない。ログに書かれて初めて決定になる。
@@ -127,10 +128,12 @@
 | スタイル | Tailwind CSS 4 | `docs/decisions.md`（2026-09-06） |
 | UI 最適化 | React Compiler（`next.config.ts` の `reactCompiler: true`） | `docs/decisions.md`（2026-09-06） |
 | パッケージマネージャ | pnpm | `docs/decisions.md`（2026-09-06） |
-| 開発環境 | Docker | 企画書 §3-1 |
+| バンドラ | Turbopack（固定） | `docs/decisions.md`（2026-09-04） |
+| PDF 生成 | 純粋 JS の PDF ライブラリ（ヘッドレスブラウザは使わない） | `docs/decisions.md`（2026-09-04） |
+| 開発環境 | Docker（PostgreSQL のみ。Next.js アプリはホスト直起動） | 企画書 §3-1・`docs/decisions.md`（2026-09-04） |
 
 **認証（Auth.js ＋ 学校 Google アカウントで OAuth が通るか）が最大の技術リスク。** 詳細は `docs/requirements.md` §5。
-その手前にあったロール解決（H-10）は **2026-09-05 に先生ホワイトリスト方式で決着**した（`docs/decisions.md`）ので、**残る技術リスクは、OAuth 自体の可否と、本番環境のネットワーク成立性（`docs/open-questions.md` H-23・H-28）の2つ**になっている。
+その手前にあったロール解決（H-10）は **2026-09-05 に先生ホワイトリスト方式で決着**した（`docs/decisions.md`）。**残る技術リスクの現状は `docs/requirements.md` §5 が持つ**（ここに項目を書き写さない）。
 
 ---
 

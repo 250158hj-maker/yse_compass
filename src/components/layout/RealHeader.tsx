@@ -5,10 +5,31 @@ import { usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
 import { signOutAction } from "@/lib/actions/auth";
 
-export type HeaderLink = { href: string; label: string };
+// disabled: 本実装にまだ無い画面。押せないグレーで並べる（リンクにしない）。
+export type HeaderLink = { href: string; label: string; disabled?: boolean };
+
+const UNIMPLEMENTED_TITLE = "準備中（まだ使えません）";
+
+function NavItem({ link, className = "" }: { link: HeaderLink; className?: string }) {
+  if (link.disabled) {
+    return (
+      <span aria-disabled="true" title={UNIMPLEMENTED_TITLE} className={`${className} cursor-not-allowed text-slate-400`}>
+        {link.label}
+        {/* 準備中は、色とツールチップだけに頼らず文字で出す（スマホ幅・キーボード・読み上げでも伝わる。#251 のレビュー） */}
+        <span className="ml-1 text-xs">（準備中）</span>
+      </span>
+    );
+  }
+  return (
+    <Link href={link.href} className={`${className} hover:text-brand-700`}>
+      {link.label}
+    </Link>
+  );
+}
 
 // 本実装の画面のヘッダー。見た目はモックの Header（components/layout/Header.tsx）と同じで、人物は Auth.js のセッション（サーバー側）から受け取る。
-// 画面に出すリンクは、本実装に置き換わった画面だけ（モックのままの画面へのリンクは、押すとログイン画面に戻されるので入れない）。
+// 本実装に置き換わった画面へのリンクは押せる。まだ置き換わっていない画面（モックのまま）へのリンクは、押すとログイン画面に戻されるので、
+// disabled にして押せないグレーで並べる（隠さない：どの機能がまだ無いかが見える）。
 // どのリンクを出すかの判断（先生だけの管理リンクなど）は、呼ぶ側（(real)/layout.tsx）が持つ。ここは表示だけ。
 export function RealHeader({
   userName,
@@ -43,16 +64,12 @@ export function RealHeader({
 
         <nav className="hidden flex-1 flex-wrap items-center gap-x-4 gap-y-1 whitespace-nowrap text-sm text-slate-600 sm:flex">
           {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="hover:text-brand-700">
-              {link.label}
-            </Link>
+            <NavItem key={link.href} link={link} />
           ))}
           {adminLinks.length > 0 && (
             <span className="flex items-center gap-x-4 border-l border-slate-200 pl-4">
               {adminLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="hover:text-brand-700">
-                  {link.label}
-                </Link>
+                <NavItem key={link.href} link={link} />
               ))}
             </span>
           )}
@@ -93,9 +110,7 @@ export function RealHeader({
           <ul className="flex flex-col">
             {navLinks.map((link) => (
               <li key={link.href}>
-                <Link href={link.href} className="block py-2 hover:text-brand-700">
-                  {link.label}
-                </Link>
+                <NavItem link={link} className="block py-2" />
               </li>
             ))}
           </ul>
@@ -103,9 +118,7 @@ export function RealHeader({
             <ul className="mt-1 flex flex-col border-t border-slate-200 pt-1">
               {adminLinks.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="block py-2 hover:text-brand-700">
-                    {link.label}
-                  </Link>
+                  <NavItem link={link} className="block py-2" />
                 </li>
               ))}
             </ul>

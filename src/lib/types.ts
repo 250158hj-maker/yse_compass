@@ -108,8 +108,6 @@ export type SummaryEntry = {
   submittedAt: string;
 };
 
-export type CommentLabel = "感想" | "批評" | "その他";
-
 export type Reply = {
   id: string;
   authorName: string;
@@ -121,7 +119,6 @@ export type Reply = {
 export type Comment = {
   id: string;
   authorName: string;
-  label: CommentLabel;
   body: string;
   likeCount: number;
   postedAt: string;

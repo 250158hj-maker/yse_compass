@@ -1,6 +1,5 @@
 import type {
   AnnouncementPhase,
-  CommentLabel,
   PublishPermissionStatus,
   SubmissionStatus,
 } from "@/lib/types";
@@ -49,16 +48,6 @@ export function StatusBadge({ status }: { status: SubmissionStatus }) {
 // 遅延は第3の状態ではなく導出表示。StatusBadgeとは独立した任意要素として使う(要件定義書 §3-2)。
 export function LateBadge() {
   return <Badge tone="rose">遅延</Badge>;
-}
-
-const commentLabelTone: Record<CommentLabel, BadgeTone> = {
-  感想: "brand",
-  批評: "amber",
-  その他: "slate",
-};
-
-export function CommentLabelBadge({ label }: { label: CommentLabel }) {
-  return <Badge tone={commentLabelTone[label]}>{label}</Badge>;
 }
 
 const publishPermissionTone: Record<PublishPermissionStatus, BadgeTone> = {

@@ -113,7 +113,50 @@ describeDb("getPresentationDetail", () => {
       await submitMaterial(db, s.own.actor, s.own.teamId, s.slotId, URL_A, when);
       const detail = await getPresentationDetail(db, teacher, s.own.teamId, s.occasionId);
       expect(detail.links.map((l) => l.slotType)).toEqual(["動画"]);
-      expect(detail.summary).toEqual({ techStack: "TypeScript", firstSubmittedAt: when, lastSubmittedAt: when });
+      expect(detail.summary).toEqual({ introduction: null, workOverview: null, techStack: "TypeScript", closing: null, extraSections: [], firstSubmittedAt: when, lastSubmittedAt: when });
+    });
+  });
+
+  it("概要の本文（はじめに・作品概要・使用技術・終わりに・自由な欄）を、getOwnSummary と同じ項目で返す", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9939);
+      const when = new Date("2026-11-01T00:00:00Z");
+      await db.summary.create({
+        data: {
+          teamId: s.own.teamId,
+          eventOccasionId: s.occasionId,
+          introduction: "課題と背景",
+          workOverview: "どんな作品か",
+          techStack: "TypeScript, Next.js",
+          closing: "今後の課題",
+          extraSections: [{ heading: "機能一覧", body: "一覧・提出" }],
+          firstSubmittedAt: when,
+          lastSubmittedAt: when,
+        },
+      });
+      const detail = await getPresentationDetail(db, teacher, s.own.teamId, s.occasionId);
+      expect(detail.summary).toEqual({
+        introduction: "課題と背景",
+        workOverview: "どんな作品か",
+        techStack: "TypeScript, Next.js",
+        closing: "今後の課題",
+        extraSections: [{ heading: "機能一覧", body: "一覧・提出" }],
+        firstSubmittedAt: when,
+        lastSubmittedAt: when,
+      });
+    });
+  });
+
+  it("概要の本文は、公開前は聴く生徒に返らず（forbidden）、公開後は返る", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9940);
+      const when = new Date("2026-11-01T00:00:00Z");
+      await db.summary.create({ data: { teamId: s.own.teamId, eventOccasionId: s.occasionId, introduction: "公開前は見せない本文", firstSubmittedAt: when, lastSubmittedAt: when } });
+      await expectError(getPresentationDetail(db, s.other.actor, s.own.teamId, s.occasionId), "forbidden");
+      // 自チームの生徒には、公開前でも返る。
+      expect((await getPresentationDetail(db, s.own.actor, s.own.teamId, s.occasionId)).summary?.introduction).toBe("公開前は見せない本文");
+      await db.eventOccasion.update({ where: { id: s.occasionId }, data: { isPublished: true } });
+      expect((await getPresentationDetail(db, s.other.actor, s.own.teamId, s.occasionId)).summary?.introduction).toBe("公開前は見せない本文");
     });
   });
 

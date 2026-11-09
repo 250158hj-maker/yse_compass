@@ -121,6 +121,8 @@ describeDb("getOwnTeam（SC-02 の自チーム）", () => {
   it("結びついているチームの年度がアーカイブ済みなら、その年度は当年度でないので unlinked", async () => {
     await inTransaction(async (db) => {
       const s = await setup(db, 9908);
+      // 当年度が空にならないよう、より古い未アーカイブの年度を足す（空の DB でも、手元の DB と同じ結果にするため）。
+      await setupFiscalYear(db, teacher, { year: 9800, classNames: ["IG20"] });
       expect((await getOwnTeam(db, s.actor)).kind).toBe("member");
       await setYearArchived(db, teacher, s.fiscalYearId, true);
       expect(await getOwnTeam(db, s.actor)).toEqual({ kind: "unlinked" });

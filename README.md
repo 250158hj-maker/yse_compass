@@ -41,7 +41,7 @@ docker compose down -v     # 停止 + DB データも削除
 | なぜいまの設計がこうなっているか | [`docs/decisions.md`](docs/decisions.md) |
 | まだ決まっていないこと・決まるまでの先行方針 | [`docs/open-questions.md`](docs/open-questions.md) |
 | 技術スタックと採用理由 | [`docs/design/08-architecture.md`](docs/design/08-architecture.md) 8-1 |
-| 基本設計書（01〜10 章） | [`docs/design/`](docs/design/) — **全章が確度「暫定」** |
+| 基本設計書（01〜10 章） | [`docs/design/`](docs/design/) — **確度は章ごとに違う。正は各ファイル冒頭の確度欄** |
 
 > **設計に関する問いの答えは `docs/` にある。** Notion に同じ内容が見つかった場合、**そちらが古い**（2026-08-30 決定・`docs/decisions.md`）。
 > プロダクト定義・機能一覧・スケジュール（Ph.0・凍結）は Notion `YSE COMPASS COMP.` の企画書が正典。

@@ -5,7 +5,7 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-11-05（蒲山）
+> **最終更新**：2026-11-09（蒲山）
 
 > [!note] 確定の範囲（2026-10-19・10-20・10-27 のレビュー対象）
 > **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
@@ -471,7 +471,7 @@ erDiagram
 | presentation_id | int | NOT NULL | — | FK → presentations.id | アンカーは発表単位（2026-07-24） |
 | user_id | int | NOT NULL | — | FK → users.id | 実名表示（`../requirements.md` §3-9） |
 | parent_comment_id | int | NULL | — | FK → comments.id | 発表チームの返信をスレッドとして辿る（§3-9） |
-| label | varchar | NULL | — | CHECK（感想／批評／その他の3値） | 感想／批評／その他。絞り込みに使う。付けなければ NULL（ラベルなし）で、「その他」とは別の状態。**`../requirements.md` §3-9 は、ラベルなしのコメントを許すかを明記していない。06 の設計判断**（ラベルなしの行を絞り込みでどう扱うかは画面側で決める。列の定義は変わらない） |
+| label | varchar | NULL | — | CHECK（感想／批評／その他の3値） | 感想／批評／その他。**最初の実装では付けない**（`../decisions.md` 2026-11-05 の【変更】の行。`../requirements.md` §3-9 も「付けない」としている）ので、実装は値を入れず、NULL（ラベルなし）で保存する。**列と CHECK は当面残す**（NULL 可なので、値を入れなければ動き、移行は要らない。残すか消すかは `../open-questions.md` H-70 で扱い、いまは決めない）。値を入れる場合の 3 値は変えない。NULL（ラベルなし）は「その他」とは別の状態。NULL 可は **06 の設計判断**（列の定義は変わらない） |
 | body | text | NOT NULL | — | — | コメント本文（`../requirements.md` §3-9「コメントを投稿」） |
 | created_at | timestamptz | NOT NULL | now() | — | 投稿日時。コメント一覧の並び順に使う。新着の反映はリアルタイム不要で、再取得でよい（§3-9） |
 | edited_at | timestamptz | NULL | — | — | **編集日時**。NULL は未編集で、値があれば「編集済み」と表示する（`../decisions.md` 2026-10-26・T-2 の決定①）。編集の履歴は持たず、最後の編集日時だけを持つ（履歴を残すかは決定が決めない点。残すと決まったら列か表を足す）。06 の設計判断（列の形） |
@@ -503,10 +503,10 @@ erDiagram
 | **回種別**（`event_occasions.kind`） | 企画 → 設計 → 試作 → 最終（この順序で並び順・概要集・アーカイブの文脈表示に使う） | `../glossary.md` §2（2026-07-24） |
 | **資料枠種類**（`material_slots.slot_type`） | 概要／プレゼン資料（全4発表会に1件ずつ） | `../requirements.md` §3-1「定番の資料枠」・`../decisions.md` 2026-10-09 |
 | **ロール**（`users.role`） | 先生 ／ 生徒 | `../glossary.md` §3（2026-09-05・H-10） |
-| **コメントラベル**（`comments.label`） | 感想 ／ 批評 ／ その他 | `../requirements.md` §3-9（企画書 §5-2 継承） |
+| **コメントラベル**（`comments.label`） | 感想 ／ 批評 ／ その他（最初の実装では付けない。列と CHECK は当面残す） | `../requirements.md` §3-9 の「できないこと」（企画書 §5-2 から継承したが、最初の実装では入れない：`../decisions.md` 2026-11-05 の【変更】の行） |
 | **公開許可の状態**（`works.publication_consent`・**順序なし**） | 未設定 ／ 許可 ／ 拒否（`unset` / `approved` / `rejected`） | `../requirements.md` §3-7・`04-screen.md` SC-18（2026-09-11・H-22） |
 
-> **クラス・資料枠種類は CHECK 制約で固定しない。** 年度セットアップが生成する運用データであり（`../decisions.md` 2026-09-04）、学校側の事情（学科新設・組数変更）で来年度以降に値が増減しうるため、コードの列挙は「初期投入値」であって「取りうる値の全集合を保証する制約」ではない。**回種別・ロール・コメントラベルは仕様上閉じた集合**なので CHECK 制約を張る。
+> **クラス・資料枠種類は CHECK 制約で固定しない。** 年度セットアップが生成する運用データであり（`../decisions.md` 2026-09-04）、学校側の事情（学科新設・組数変更）で来年度以降に値が増減しうるため、コードの列挙は「初期投入値」であって「取りうる値の全集合を保証する制約」ではない。**回種別・ロールは仕様上閉じた集合**なので CHECK 制約を張る。コメントラベルも 3 値の閉じた集合として CHECK を張ってあり、最初の実装では使わないが、列とともに当面残す（`comments.label` の行と H-70）。
 
 ---
 
@@ -564,7 +564,7 @@ erDiagram
 | 種別 | 数 | 対象 | 6-3 の位置 |
 | --- | --- | --- | --- |
 | `DEFERRABLE INITIALLY DEFERRED` | 1 | `presentations` の `UNIQUE(event_occasion_id, display_order)` | `presentations` |
-| `CHECK` 制約 | 5 | `users.role`／`event_occasions.kind`／`comments.label`／`works.publication_consent`／`works.consent_set_by` と `publication_consent` の相関（`(publication_consent = 'unset') = (consent_set_by IS NULL)`） | `users`・`event_occasions`・`comments`・`works` |
+| `CHECK` 制約 | 5 | `users.role`／`event_occasions.kind`／`comments.label`（最初の実装では使わないが、当面残す）／`works.publication_consent`／`works.consent_set_by` と `publication_consent` の相関（`(publication_consent = 'unset') = (consent_set_by IS NULL)`） | `users`・`event_occasions`・`comments`・`works` |
 | 部分インデックス | 2 | 概要枠の部分ユニーク（`material_slots (event_occasion_id) WHERE slot_type = '概要'`）／`works` の `WHERE publication_consent = 'approved'`（6-5） | `material_slots`・6-5 |
 | 列の型の変更の移行（`USING`） | 1 本（6 列） | `material_slots.deadline`／`submissions`・`summaries` の `first_submitted_at`・`last_submitted_at`／`comments.created_at` を `timestamp` から `timestamptz` へ。各列に `USING "列" AT TIME ZONE 'UTC'` を付ける | `material_slots`・`submissions`・`summaries`・`comments` |
 

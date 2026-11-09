@@ -10,7 +10,8 @@ export function toJstInputValue(iso: string | null): string {
   return new Date(ms + JST_OFFSET_MS).toISOString().slice(0, 16);
 }
 
-// 入力欄の値（日本時間）→ Date。空は null（未設定）。形が合わないときも null にせず、無効な Date を返して、関数に invalid_input で拒ませる。
+// 入力欄の値（日本時間）→ Date。空は null（未設定）。形が合わない値は、無効な Date になる。無効な Date は、Server Action の引数にする時点で null に変わるので、
+// 関数の invalid_input では拒まれず、「締切なし」として保存される。datetime-local は、空か正しい形の値しか出さないので、実際に起きるのは極端な入力（年が 6 桁など）に限る。
 export function fromJstInputValue(value: string): Date | null {
   if (value === "") return null;
   return new Date(`${value}:00+09:00`);

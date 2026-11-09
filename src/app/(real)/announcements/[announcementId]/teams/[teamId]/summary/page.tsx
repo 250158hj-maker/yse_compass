@@ -96,7 +96,7 @@ export default async function SummaryPage({ params }: { params: Promise<{ announ
         <InlineNotice tone="info">概要はシステム統一レイアウトで概要集に束ねられます。フォント・レイアウトの個別調整はできません。</InlineNotice>
       </div>
 
-      {summary && <p className="mt-2 text-xs text-slate-400">最終提出 {formatDateTime(summary.lastSubmittedAt.toISOString())}</p>}
+      {summary && <p className="mt-2 text-xs text-slate-400">最終更新 {formatDateTime(summary.lastSubmittedAt.toISOString())}</p>}
 
       <SummaryForm
         teamId={teamIdNum}

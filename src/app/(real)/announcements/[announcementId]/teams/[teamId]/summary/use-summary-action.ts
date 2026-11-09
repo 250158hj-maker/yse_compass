@@ -24,5 +24,10 @@ export function useSummaryAction() {
     });
   }
 
-  return { run, pending, error };
+  // 入力が変わったら、前回のエラー表示を消す（直したのに赤いまま残らないようにする）。
+  function clearError() {
+    setError(null);
+  }
+
+  return { run, pending, error, clearError };
 }

@@ -36,7 +36,7 @@ export function SummaryForm({
   initial: SummaryInitial;
   submitted: boolean;
 }) {
-  const { run, pending, error } = useSummaryAction();
+  const { run, pending, error, clearError } = useSummaryAction();
   const [core, setCore] = useState<Record<CoreFieldKey, string>>({
     introduction: initial.introduction,
     workOverview: initial.workOverview,
@@ -50,6 +50,7 @@ export function SummaryForm({
 
   function edited() {
     setDone(null);
+    clearError();
   }
 
   return (

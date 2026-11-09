@@ -12,7 +12,7 @@ import {
 import { readStorage, removeStorage, writeStorage } from "@/lib/demo/storage";
 
 // デモ用の「いま」を 1 か所に持つ。先生の筋の導出(lib/demo/teacher-derived.ts)はここだけを時刻の源にし、
-// 本物の時計は読まない。時刻は止まっていて、帯(DemoClockBar)のプリセットを押したときだけ進む・戻る。
+// 本物の時計は読まない。時刻は止まっていて、プリセットを切り替えたときだけ進む・戻る（切り替える帯の UI は外したので、いまは画面から切り替える手段が無い）。
 
 const STORAGE_KEY = "yse-compass-demo-clock-v1";
 

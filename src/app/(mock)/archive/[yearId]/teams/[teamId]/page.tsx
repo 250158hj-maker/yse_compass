@@ -3,7 +3,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { Badge, CommentLabelBadge, PhaseBadge } from "@/components/ui/Badge";
+import { Badge, PhaseBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateTime } from "@/lib/format";
 import { getAnnouncementsByYear, getSubmission, getTeamById, getYearById, materialHref } from "@/lib/mock";
@@ -104,7 +104,6 @@ export default async function ArchiveWorkDetailPage({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-slate-900">{comment.authorName}</span>
-                          <CommentLabelBadge label={comment.label} />
                         </div>
                         <span className="text-xs text-slate-400">{formatDateTime(comment.postedAt)}</span>
                       </div>

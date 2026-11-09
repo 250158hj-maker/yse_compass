@@ -37,7 +37,6 @@ export const submissions: Submission[] = [
       {
         id: "cmt-k-1",
         authorName: "田中一郎",
-        label: "感想",
         body: "提出状況が一目で分かるの、すごく便利そうです。うちのチームにも欲しい。",
         likeCount: 4,
         postedAt: "2026-07-17T10:05:00+09:00",
@@ -54,7 +53,6 @@ export const submissions: Submission[] = [
       {
         id: "cmt-k-2",
         authorName: "冨永先生",
-        label: "批評",
         body: "運営側の課題をよく捉えられている。本番環境の検討状況も次回教えてほしい。",
         likeCount: 6,
         postedAt: "2026-07-17T11:00:00+09:00",
@@ -89,7 +87,6 @@ export const submissions: Submission[] = [
       {
         id: "cmt-k-3",
         authorName: "蒲山由梨花",
-        label: "感想",
         body: "備品予約、うちのクラスでも困ってたので助かります!",
         likeCount: 2,
         postedAt: "2026-07-17T12:00:00+09:00",
@@ -289,7 +286,6 @@ export const submissions: Submission[] = [
       {
         id: "cmt-25f-1",
         authorName: "水戸匠",
-        label: "感想",
         body: "マッチング結果の見せ方が分かりやすくて良いと思いました。",
         likeCount: 3,
         postedAt: "2026-02-09T10:00:00+09:00",

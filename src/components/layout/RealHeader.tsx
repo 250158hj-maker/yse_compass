@@ -13,8 +13,10 @@ const UNIMPLEMENTED_TITLE = "準備中（まだ使えません）";
 function NavItem({ link, className = "" }: { link: HeaderLink; className?: string }) {
   if (link.disabled) {
     return (
-      <span aria-disabled="true" title={UNIMPLEMENTED_TITLE} className={`${className} cursor-not-allowed text-slate-300`}>
+      <span aria-disabled="true" title={UNIMPLEMENTED_TITLE} className={`${className} cursor-not-allowed text-slate-400`}>
         {link.label}
+        {/* 準備中は、色とツールチップだけに頼らず文字で出す（スマホ幅・キーボード・読み上げでも伝わる。#251 のレビュー） */}
+        <span className="ml-1 text-xs">（準備中）</span>
       </span>
     );
   }

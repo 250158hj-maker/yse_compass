@@ -8,6 +8,7 @@ import { roleLabels } from "@/lib/types";
 // ヘッダーのリンクのうち、本実装に置き換わった画面だけが押せる。モックのままの画面（アーカイブ・公開許可管理・先生の登録・解除）は、
 // disabled のグレーで並べる。置き換わった PR で、disabled を外し、リンク先を本実装の URL にする。
 const NAV_LINKS: HeaderLink[] = [
+  { href: "/", label: "ホーム" },
   { href: "/announcements", label: "発表会一覧" },
   { href: "/teams", label: "チーム一覧" },
   { href: "/archive", label: "アーカイブ", disabled: true },

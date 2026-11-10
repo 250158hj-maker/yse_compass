@@ -9,7 +9,7 @@ import type { Material, SummaryEntry } from "@/lib/types";
 //   - どのチームの summary でも、使用技術を足すと SC-10 の候補タグの並びが変わる
 //     (SummaryFormClient.tsx は submissions 全件の techUsed を数えている)
 //   - 概要・プレゼン資料の status を「提出済み」にすると、水戸のホームの必須枠の未提出件数・リング、
-//     発表会一覧の「提出完了 n/3 チーム」が変わる(app/page.tsx・announcements/page.tsx は status を直に読む)
+//     発表会一覧の「提出完了 n/3 チーム」が変わる(モックの画面が status を直に読んでいた)
 // ので、既存のレコードには触らず、先生用の導出(lib/demo/teacher-derived.ts)だけがここを読む。
 // ここに無い発表会・チーム・資料は、submissions.ts の値(firstSubmittedAt・summary)をそのまま使う。
 

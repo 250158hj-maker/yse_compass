@@ -23,7 +23,7 @@ import { isValidUrl } from "@/lib/url";
 // 公開前の資料を聴く生徒に返さない線引きは関数が持つ（forbidden）。拒否されたときは、案内だけを出す。
 // 出すもの: 見出し（発表会・チーム名・作品名・クラス・リーダー・メンバー）、提出済みの資料のリンク（初回提出日時。締切後に差し替えがあれば最終更新日時。別タブで開く）、概要（はじめに・作品概要・自由な欄・開発環境・終わりに。入力のある項目だけ。初回提出日時）。
 // 含めない（関数がまだ無い、または列が無い）:
-//   - コメント・返信・編集と削除・いいね（発表へのいいねを含む）：関数が無い（pm/wbs.md 3.3.3）。ボタンだけ置くと、押しても保存されない。関数ができたら、第 2 段階で足す。
+//   - コメント・返信・編集と削除・いいね（発表へのいいねを含む）：関数が無い（pm/wbs.md 3.3.3）。ボタンだけ置くと、押しても保存されない。関数ができたら足す。
 //   - 作品の説明：DB に列が無い（H-49 の先行方針）。
 //   - 資料の「未提出」の行：関数は、提出済みのリンクだけを返す（04 の SC-12 のとおり）。
 // 概要の項目は、H-37 の先行方針（L2）のとおり（getPresentationDetail の戻り値は、H-37 が決着して項目が変わったら変わる）。並びは概要集の節の並び（05 の 5-2-3）。
@@ -150,7 +150,7 @@ export default async function PresentationDetailPage({ params }: { params: Promi
               {summarySections(detail.summary).map((s, i) => (
                 <div key={i}>
                   <h3 className="text-sm font-medium text-slate-900">{s.heading}</h3>
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{s.body}</p>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700">{s.body}</p>
                 </div>
               ))}
             </div>

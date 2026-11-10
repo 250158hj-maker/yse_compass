@@ -26,7 +26,7 @@ import { SubmitCard } from "./SubmitCard";
 //   - 「最終更新日時」の併記：締切後に差し替えたかを返す値が、関数から返らない。画面で計算しない。
 //   - 年度アーカイブ後の読み取り専用：アーカイブ済み年度の発表会は、生徒には「無い」と同じ結果で返る（getOccasion の線引き）ので、この画面に来られない。
 //   - 概要の枠：listTeamSubmissions が概要枠を除いて返す。概要は SC-10 で入力する。
-// 入口：04 では SC-02（ホーム）に集約されている。SC-02 を置き換える PR で足すまで、この画面へは URL を直接開く。
+// 入口：04 では SC-02（ホーム）に集約されている。ホームの資料枠のカードの「プレゼン資料を提出」ボタンから来る（SC-02 を本実装に置き換えた PR で足した）。
 
 export default async function SubmitPage({ params }: { params: Promise<{ announcementId: string; teamId: string }> }) {
   const { announcementId, teamId } = await params;

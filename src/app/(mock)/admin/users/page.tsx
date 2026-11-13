@@ -11,14 +11,34 @@ import { InlineNotice } from "@/components/ui/InlineNotice";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { fieldClassName } from "@/components/ui/FormField";
 import { useSession } from "@/context/SessionContext";
-import { useTeacherRoster } from "@/context/TeacherDemoContext";
+import { users } from "@/lib/mock";
 import type { AppUser } from "@/lib/types";
 
 // SC-20 先生の登録・解除(先生のみ。admin/layout.tsx の RoleGate で生徒には出さない)。
 // 正典: decisions.md 2026-09-06(H-11 決着)・04-screen.md SC-20。ロールは先生/生徒の単層。
+// 名簿の状態は、この画面の中で持つ(デモ用の時刻の仕組み〔TeacherDemoContext〕と localStorage に依らない。水戸さんの決定案 #274 の ⑨)。
+// 画面を開き直すと、モックの初期値(users のロール)に戻る。
+// - 先生の追加はこの画面だけ。登録できるのは一度サインインした利用者だけ(H-26 の先行方針「初回サインイン後の昇格のみ」)。
+//   モックでは users のうち、いま先生でない人が候補。メールを入力して事前登録する手段は持たない。
+// - 自分自身は解除できない。これでホワイトリストは空にならないので、「最後の 1 人か」を判定する分岐は持たない(04-screen.md SC-20「できないこと」)。
+// - ログイン中のロール(SessionContext のペルソナ)は変えない。ここで先生に上げた生徒でログインしても生徒のまま。
+const BASE_TEACHER_IDS = users.filter((u) => u.role === "teacher").map((u) => u.id);
+
 export default function TeacherRosterPage() {
   const { currentUser } = useSession();
-  const { teachers, candidates, canUnregister, register, unregister } = useTeacherRoster();
+  // 先生として登録されている利用者の id(登録順)。
+  const [ids, setIds] = useState(BASE_TEACHER_IDS);
+  const teachers = ids.map((id) => users.find((u) => u.id === id)).filter((u): u is AppUser => !!u);
+  // 先生として登録できる利用者(サインイン済みで、いま先生でない人)。
+  const candidates = users.filter((u) => !ids.includes(u.id));
+  // 解除できるか(自分自身は解除できない)。
+  const canUnregister = (userId: string) => userId !== currentUser?.id && ids.includes(userId);
+  const register = (userId: string) =>
+    setIds((prev) => (prev.includes(userId) || !users.some((u) => u.id === userId) ? prev : [...prev, userId]));
+  const unregister = (userId: string) => {
+    if (!canUnregister(userId)) return;
+    setIds((prev) => prev.filter((id) => id !== userId));
+  };
   const [selectedId, setSelectedId] = useState("");
   const [removing, setRemoving] = useState<AppUser | null>(null);
   const [notice, setNotice] = useState<string | null>(null);

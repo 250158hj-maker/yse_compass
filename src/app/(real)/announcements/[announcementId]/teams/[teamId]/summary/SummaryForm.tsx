@@ -13,6 +13,7 @@ import {
   extraHeadingLabel,
   type CoreFieldKey,
 } from "@/lib/summary-fields";
+import { SummaryPreview, type PreviewHeader } from "./SummaryPreview";
 import { useSummaryAction } from "./use-summary-action";
 
 export type SummaryInitial = Record<CoreFieldKey, string> & {
@@ -29,12 +30,14 @@ export function SummaryForm({
   maxExtraSections,
   initial,
   submitted,
+  previewHeader,
 }: {
   teamId: number;
   occasionId: number;
   maxExtraSections: number;
   initial: SummaryInitial;
   submitted: boolean;
+  previewHeader: PreviewHeader;
 }) {
   const { run, pending, error, clearError } = useSummaryAction();
   const [core, setCore] = useState<Record<CoreFieldKey, string>>({
@@ -54,6 +57,7 @@ export function SummaryForm({
   }
 
   return (
+    <>
     <form
       className="mt-6 flex flex-col"
       onSubmit={(e) => {
@@ -159,5 +163,7 @@ export function SummaryForm({
         {submitted ? "概要を更新する" : "概要を提出する"}
       </Button>
     </form>
+    <SummaryPreview header={previewHeader} core={core} extras={extras.map((x) => ({ heading: x.heading, body: x.body }))} />
+    </>
   );
 }

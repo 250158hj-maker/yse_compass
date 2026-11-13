@@ -110,7 +110,7 @@ export type MissingRequired = {
   teams: Team[];
 };
 
-// 必須の資料枠のうち、いまの時点で未提出の件数(SC-06 の「必須枠の未提出」と同じ数え方。H-15)。
+// 必須の資料枠のうち、いまの時点で未提出の件数(SC-06 の「必須枠の未提出」と同じ数え方。decisions.md 2026-11-06 の H-15 の行)。
 export function countMissingRequired(announcement: Announcement, teams: Team[], nowMs: number): MissingRequired {
   const required = announcement.materialSlots.filter((s) => s.required);
   let count = 0;

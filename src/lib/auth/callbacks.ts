@@ -2,22 +2,22 @@ import type { NextAuthConfig, Profile } from "next-auth";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // 対応: docs/requirements.md §3-6（ロールの解決は先生ホワイトリスト方式・decisions.md 2026-09-05／2026-09-06）、
-// docs/open-questions.md H-26（先生は role = 'teacher' の行で表す・users は現行の定義のまま）・H-30（JWT・Adapter なし）・
-// H-31（初回サインインで users の行を作る）・H-32（email を一意キーにする）。
-// 先行方針で組んでいる。決着したら変わる箇所は、ロールをトークンに載せる jwt と、行を作る findOrCreateUser。
+// docs/open-questions.md H-26（先生は role = 'teacher' の行で表す・users は現行の定義のまま）・H-30（JWT・Adapter なし）。
+// decisions.md 2026-11-06 の H-31 の行（初回サインインで users の行を作る）・H-32 の行（email を一意キーにする）で決着済み。
+// H-26・H-30 は先行方針で組んでいる。それらが決着したら変わる箇所は、ロールをトークンに載せる jwt と、行を作る findOrCreateUser。
 
 export type UserRole = "teacher" | "student";
 
 type Db = Pick<PrismaClient, "user">;
 
-// users.name は NOT NULL で、名前は OAuth のプロフィールからしか得られない（H-26）。email は一意キー（H-32）。
+// users.name は NOT NULL で、名前は OAuth のプロフィールからしか得られない（H-26）。email は一意キー（decisions.md 2026-11-06 の H-32 の行）。
 // ロール照合の入力（email）を信頼する前提として、Google が確認済みのものだけを受け付ける（07-interface.md 7-2）。
 function readProfile(profile: Profile | undefined): { email: string; name: string } | null {
   if (!profile?.email || !profile.name || profile.email_verified !== true) return null;
   return { email: profile.email, name: profile.name };
 }
 
-// 行が無ければ生徒として作る（H-31）。先生は、運用開始時に DB へ直接投入された role = 'teacher' の行（2026-09-06 H-11）。
+// 行が無ければ生徒として作る（decisions.md 2026-11-06 の H-31 の行）。先生は、運用開始時に DB へ直接投入された role = 'teacher' の行（2026-09-06 H-11）。
 // 投入する email は、Google が返す表記と大文字小文字まで一致させる（違うと別の行が作られ、先生が生徒として扱われる）。
 // 既存の行の name・role は上書きしない（先生の登録・解除は SC-20 の操作だけが変える）。
 export async function findOrCreateUser(db: Db, profile: { email: string; name: string }) {

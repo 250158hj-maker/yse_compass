@@ -63,7 +63,9 @@ export function PersonaLogin() {
 
   function handleSelect(id: string) {
     setCurrentUserId(id);
-    router.push("/");
+    // "/" は本実装のホーム（SC-02）に置き換わり、Google のセッションが無いと /login へ戻される。モックの人物で入ったときは、
+    // まだモックのままの画面（アーカイブ）へ送る。モックの画面が全部置き換わったら、この人物ログインごと外す。
+    router.push("/archive");
   }
 
   return (

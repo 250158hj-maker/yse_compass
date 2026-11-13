@@ -6,13 +6,16 @@ import { CardLink } from "@/components/ui/Card";
 import { PhaseBadge, Badge } from "@/components/ui/Badge";
 import { requireSessionUser } from "@/lib/auth/session";
 import { getCurrentYearOccasions } from "@/lib/data/occasions";
+import { getSubmissionSummaries } from "@/lib/data/submission-summary";
 import { formatOccasionDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { SUBMISSION_SUMMARY_HINT, submissionSummaryText } from "@/lib/submission-summary-text";
 import type { AnnouncementPhase } from "@/lib/types";
 
 // 対応: docs/design/04-screen.md SC-03（発表会一覧・当年度・全員）／docs/requirements.md §3-1・§3-7。Issue #184（モックの画面を本番仕様にする）の 1 枚目。
-// 見た目はモックのまま、データは data 層（getCurrentYearOccasions）、ユーザーは requireSessionUser から読む。画面で権限や集計の判定をしない。
-// 含めない: 各件の「締切」（H-61 の決着で SC-03 に出さないことにした：docs/decisions.md 2026-10-23）、「提出状況サマリ」（同じ決着で定義した。取得層にまだ無く、3.2.3 で足す。足すまでは出さない）。
+// 見た目はモックのまま、データは data 層（getCurrentYearOccasions・getSubmissionSummaries）、ユーザーは requireSessionUser から読む。画面で権限や集計の判定をしない。
+// 各件に、提出状況サマリ（必須の資料がすべて提出済みのチームの数／全チームの数。docs/decisions.md 2026-10-23・H-61、2026-10-30・H-66 の ②）を出す。先生と、チームを持つ生徒だけ。数えられないとき（チーム 0 件・必須の資料枠が 0 件）は、数を出さず、理由を示す。文言は lib/submission-summary-text.ts（SC-02（先生）と共通）。
+// 含めない: 各件の「締切」（H-61 の決着で SC-03 に出さないことにした：docs/decisions.md 2026-10-23）。
 // 「＋新規作成」は置かない：発表会は年度セットアップだけが作る（§3-1）。
 // 発表会の名前は、種別（企画／設計／試作／最終）から作る表示で、正式な名前は決まっていない（H-63 の決着まで）。SC-04 の見出しも、同じ作り方にそろえてある。
 
@@ -38,7 +41,10 @@ function CalendarIcon() {
 
 export default async function AnnouncementsPage() {
   const user = await requireSessionUser("/announcements");
-  const current = await getCurrentYearOccasions(prisma, { userId: user.id, role: user.role });
+  const actor = { userId: user.id, role: user.role };
+  const current = await getCurrentYearOccasions(prisma, actor);
+  // 提出状況サマリ。先生と、当年度のチームを持つ生徒にだけ返る（それ以外は null）。数える・0 件かどうかの判定は関数が行い、画面は結果を写すだけ。
+  const summaries = current ? await getSubmissionSummaries(prisma, actor) : null;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -81,6 +87,11 @@ export default async function AnnouncementsPage() {
                   <dd>{o.eventDate ? formatOccasionDate(o.eventDate) : "未定"}</dd>
                 </div>
               </dl>
+              {summaries?.some((s) => s.occasionId === o.id) && (
+                <p className="mt-2 text-sm text-slate-700" title={SUBMISSION_SUMMARY_HINT}>
+                  {submissionSummaryText(summaries.find((s) => s.occasionId === o.id))}
+                </p>
+              )}
             </CardLink>
           ))}
         </div>

@@ -32,7 +32,7 @@
 | 「作るか作らないか」の判断 | `docs/decisions.md` → `docs/requirements.md` §1 |
 | 「なぜこうなっているか」を知りたい | `docs/decisions.md`（根拠の列） |
 | 先生の実運用・一次情報を知りたい | `docs/hearing.md` |
-| **12/18（試作版発表会）に向けて何を作るか** | `docs/decisions.md` 2026-11-06 の成功の定義の行 → `docs/open-questions.md` P-3 → `pm/wbs.md` §8 |
+| **12/18（試作版発表会）に向けて何を作るか** | `docs/decisions.md` 2026-11-06 の成功の定義の行 → 同 2026-11-10 の順番と線引きの行 → `pm/wbs.md` §8 |
 | **スケジュール・タスクの割り付け** | `pm/README.md` → `pm/wbs.md` |
 
 全ファイルの一覧と役割は **`docs/README.md`**。**進め方（スケジュール・WBS）の文書は `pm/README.md`。**

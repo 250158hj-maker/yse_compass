@@ -10,13 +10,41 @@ export type HeaderLink = { href: string; label: string; disabled?: boolean };
 
 const UNIMPLEMENTED_TITLE = "準備中（まだ使えません）";
 
-function NavItem({ link, className = "" }: { link: HeaderLink; className?: string }) {
+// 鍵の印。横に並べるヘッダーで、「（準備中）」の文字の代わりに置く（文字だと幅が足りず、全画面でも 2 段になるため）。
+function LockIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="ml-1 inline-block h-3.5 w-3.5 align-[-2px]"
+    >
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+// compact: 横に並べるヘッダー用。「（準備中）」を、鍵の印+ツールチップ+読み上げ用の文字にする。
+// 縦に並べるスマホのメニューは幅に余裕があるので、これまでどおり文字で出す。
+function NavItem({ link, className = "", compact = false }: { link: HeaderLink; className?: string; compact?: boolean }) {
   if (link.disabled) {
     return (
       <span aria-disabled="true" title={UNIMPLEMENTED_TITLE} className={`${className} cursor-not-allowed text-slate-400`}>
         {link.label}
-        {/* 準備中は、色とツールチップだけに頼らず文字で出す（スマホ幅・キーボード・読み上げでも伝わる。#251 のレビュー） */}
-        <span className="ml-1 text-xs">（準備中）</span>
+        {/* 準備中は、色だけに頼らず、鍵の印・ツールチップ・文字（読み上げ・スマホ幅）で出す（#251 のレビュー・decisions.md 2026-11-09 の④） */}
+        {compact ? (
+          <>
+            <LockIcon />
+            <span className="sr-only">（準備中）</span>
+          </>
+        ) : (
+          <span className="ml-1 text-xs">（準備中）</span>
+        )}
       </span>
     );
   }
@@ -64,12 +92,12 @@ export function RealHeader({
 
         <nav className="hidden flex-1 flex-wrap items-center gap-x-4 gap-y-1 whitespace-nowrap text-sm text-slate-600 sm:flex">
           {navLinks.map((link) => (
-            <NavItem key={link.href} link={link} />
+            <NavItem key={link.href} link={link} compact />
           ))}
           {adminLinks.length > 0 && (
             <span className="flex items-center gap-x-4 border-l border-slate-200 pl-4">
               {adminLinks.map((link) => (
-                <NavItem key={link.href} link={link} />
+                <NavItem key={link.href} link={link} compact />
               ))}
             </span>
           )}

@@ -8,27 +8,26 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { requireSessionUser } from "@/lib/auth/session";
 import { getCurrentYearOccasions } from "@/lib/data/occasions";
+import { listOwnSlots } from "@/lib/data/own-slots";
 import { getOwnTeam } from "@/lib/data/own-team";
-import { getSubmissionSummaries, type OccasionSubmissionSummary } from "@/lib/data/submission-summary";
-import { listTeamSubmissions } from "@/lib/data/submissions";
+import { getSubmissionSummaries } from "@/lib/data/submission-summary";
 import { getTimetable } from "@/lib/data/timetable";
 import { formatDateTime, formatOccasionDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { SUBMISSION_SUMMARY_HINT, submissionSummaryText } from "@/lib/submission-summary-text";
 import type { AnnouncementPhase } from "@/lib/types";
 import { isValidUrl } from "@/lib/url";
 
 // 対応: docs/design/04-screen.md SC-02（ホーム）／docs/decisions.md 2026-10-09（提出する生徒の導線はホームに集約）・2026-10-10（H-34）・2026-10-30（H-66 の②）。Issue #184（モックの画面を本番仕様にする）。
-// データは data 層（getCurrentYearOccasions・getOwnTeam・listTeamSubmissions・getSubmissionSummaries・getTimetable）、ユーザーは requireSessionUser から読む。
-// 画面で、自チームの探索・遅延・提出率・「いま発表中」の判定をしない（関数が返す値をそのまま写す）。
+// データは data 層（getCurrentYearOccasions・getOwnTeam・listOwnSlots・getSubmissionSummaries・getTimetable）、ユーザーは requireSessionUser から読む。
+// 画面で、自チームの探索・遅延・必須の未提出・提出率・「いま発表中」の判定をしない（関数が返す値をそのまま写す）。
 // 出すもの:
-//   - 生徒（自チームに結びついている人）: 自チーム、発表会ごとのカード（資料枠の行〔必須／任意・締切・提出状況・遅延・締切超過・テンプレート〕と、「プレゼン資料を提出」「概要を入力」の 2 ボタン）。
+//   - 生徒（自チームに結びついている人）: 自チーム、発表会ごとのカード（資料枠の行〔概要の枠を含む。必須／任意・締切・提出状況・遅延・締切超過・必須の未提出の強調・締切後に差し替えたときの最終更新・テンプレート〕と、「プレゼン資料を提出」「概要を入力」の 2 ボタン）。
 //   - 生徒（結びついていない人）: 結びつけを先生に頼む案内と、発表会一覧へのリンク。
 //   - 先生: 発表会ごとの提出率（SC-03 と同じ関数の結果）と、発表会一覧・チーム一覧・年度管理への導線。
 //   - 全員: 「いま発表中のチーム」（current_presentation_id が設定されている発表会について。H-44 の先行方針）。行き先は発表詳細（SC-12）。
 // 含めない（関数が無い、または数え方・規則が未決）:
 //   - 「必須枠の未提出 N件」の集計と、締切間近・未提出の残数・先生の「次にやること」（H-66 の①・H-47 の先行方針：実装しない）。
-//   - 資料枠の行の、概要の枠（締切・必須を返す関数 listOwnSlots は蒲山さんが作成中）。ボタン「概要を入力」は置く。
-//   - 「最終更新日時」の併記：締切後に差し替えたかを返す値が、listTeamSubmissions から返らない（画面で計算しない）。
 //   - 直近の発表会への導線：「直近」の決め方が資料に無い。発表会一覧（SC-03）への導線で代える。
 //   - 先生の「タイムテーブルを見る」（SC-07）と、公開・アーカイブ操作への直接の導線：行き先の画面が本実装に置き換わるたびに、その PR で足す。
 //   - 発表会の状態（締切後など）によるボタンの無効化：04 が決めていない。
@@ -43,13 +42,6 @@ function OccasionCardHeader({ kind, eventDate }: { kind: string; eventDate: Date
       <span className="text-xs text-slate-500">開催日 {eventDate ? formatOccasionDate(eventDate) : "未定"}</span>
     </div>
   );
-}
-
-function summaryText(s: OccasionSubmissionSummary | undefined): string {
-  if (!s) return "";
-  if (s.kind === "no_teams") return "チームが未登録のため、提出率は出せません。";
-  if (s.kind === "no_required_slots") return "必須の資料枠が無いため、提出率は出せません。";
-  return `必須の資料がすべて提出済みのチーム ${s.submittedTeams} / ${s.totalTeams}`;
 }
 
 export default async function HomePage() {
@@ -139,7 +131,7 @@ export default async function HomePage() {
             <div className="flex flex-col gap-4">
               {await Promise.all(
                 current.occasions.map(async (o) => {
-                  const slots = await listTeamSubmissions(prisma, actor, own.team.id, o.id);
+                  const slots = await listOwnSlots(prisma, actor, own.team.id, o.id);
                   return (
                     <Card key={o.id}>
                       <OccasionCardHeader kind={o.kind} eventDate={o.eventDate} />
@@ -148,7 +140,10 @@ export default async function HomePage() {
                       ) : (
                         <ul className="mt-3 divide-y divide-slate-100">
                           {slots.map((s) => (
-                            <li key={s.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm">
+                            <li
+                              key={s.slotId}
+                              className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm ${s.isRequiredMissing ? "rounded-md bg-rose-50 px-3" : ""}`}
+                            >
                               <div className="flex flex-col gap-0.5">
                                 <span className="flex items-center gap-2 font-medium text-slate-900">
                                   {s.slotType}
@@ -156,12 +151,13 @@ export default async function HomePage() {
                                 </span>
                                 <span className="text-xs text-slate-400">
                                   締切 {s.deadline ? formatDateTime(s.deadline.toISOString()) : "未設定"}
-                                  {s.submission && `・初回提出 ${formatDateTime(s.submission.firstSubmittedAt.toISOString())}`}
+                                  {s.firstSubmittedAt && `・初回提出 ${formatDateTime(s.firstSubmittedAt.toISOString())}`}
+                                  {s.showLastUpdated && s.lastSubmittedAt && `・最終更新 ${formatDateTime(s.lastSubmittedAt.toISOString())}`}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <StatusBadge status={s.submission ? "提出済み" : "未提出"} />
-                                {s.submission?.isLate && <LateBadge />}
+                                <StatusBadge status={s.submitted ? "提出済み" : "未提出"} />
+                                {s.isLate && <LateBadge />}
                                 {s.warnLate && <Badge tone="rose">締切超過</Badge>}
                                 {/* テンプレート参照は、書くときに http(s) だけを受けている（slots.ts）が、リンクにする前にもう一度確かめる。 */}
                                 {s.templateUrl && isValidUrl(s.templateUrl) && (
@@ -199,7 +195,9 @@ export default async function HomePage() {
               {current.occasions.map((o) => (
                 <Card key={o.id}>
                   <OccasionCardHeader kind={o.kind} eventDate={o.eventDate} />
-                  <p className="mt-3 text-sm text-slate-700">{summaryText(summaries?.find((s) => s.occasionId === o.id))}</p>
+                  <p className="mt-3 text-sm text-slate-700" title={SUBMISSION_SUMMARY_HINT}>
+                    {submissionSummaryText(summaries?.find((s) => s.occasionId === o.id))}
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Link href={`/announcements/${o.id}`} className={buttonClassName("secondary")}>
                       発表会の詳細

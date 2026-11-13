@@ -10,10 +10,11 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { getCurrentYearOccasions } from "@/lib/data/occasions";
 import { listOwnSlots } from "@/lib/data/own-slots";
 import { getOwnTeam } from "@/lib/data/own-team";
-import { getSubmissionSummaries, type OccasionSubmissionSummary } from "@/lib/data/submission-summary";
+import { getSubmissionSummaries } from "@/lib/data/submission-summary";
 import { getTimetable } from "@/lib/data/timetable";
 import { formatDateTime, formatOccasionDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { SUBMISSION_SUMMARY_HINT, submissionSummaryText } from "@/lib/submission-summary-text";
 import type { AnnouncementPhase } from "@/lib/types";
 import { isValidUrl } from "@/lib/url";
 
@@ -41,13 +42,6 @@ function OccasionCardHeader({ kind, eventDate }: { kind: string; eventDate: Date
       <span className="text-xs text-slate-500">開催日 {eventDate ? formatOccasionDate(eventDate) : "未定"}</span>
     </div>
   );
-}
-
-function summaryText(s: OccasionSubmissionSummary | undefined): string {
-  if (!s) return "";
-  if (s.kind === "no_teams") return "チームが未登録のため、提出率は出せません。";
-  if (s.kind === "no_required_slots") return "必須の資料枠が無いため、提出率は出せません。";
-  return `必須の資料がすべて提出済みのチーム ${s.submittedTeams} / ${s.totalTeams}`;
 }
 
 export default async function HomePage() {
@@ -201,7 +195,9 @@ export default async function HomePage() {
               {current.occasions.map((o) => (
                 <Card key={o.id}>
                   <OccasionCardHeader kind={o.kind} eventDate={o.eventDate} />
-                  <p className="mt-3 text-sm text-slate-700">{summaryText(summaries?.find((s) => s.occasionId === o.id))}</p>
+                  <p className="mt-3 text-sm text-slate-700" title={SUBMISSION_SUMMARY_HINT}>
+                    {submissionSummaryText(summaries?.find((s) => s.occasionId === o.id))}
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Link href={`/announcements/${o.id}`} className={buttonClassName("secondary")}>
                       発表会の詳細

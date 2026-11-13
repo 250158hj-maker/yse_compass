@@ -75,7 +75,7 @@ describeDb("signIn（requirements.md §3-6・07-interface.md 7-2）", () => {
   });
 });
 
-describeDb("jwt（H-30・H-31・H-32 の先行方針）", () => {
+describeDb("jwt（H-30 の先行方針と、decisions.md 2026-11-06 の H-31・H-32 の行）", () => {
   it("初回の生徒は role=student で、users に行ができる（name はプロフィールの値）", async () => {
     await inTransaction(async (db) => {
       const cb = createCallbacks(db, domain);

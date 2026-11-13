@@ -193,7 +193,34 @@ describeDb("listTeamSubmissions（SC-09）", () => {
       await submitMaterial(db, s.own.actor, s.own.teamId, s.slotId, URL_A, new Date("2026-11-06T00:00:00Z"));
       const after = await listTeamSubmissions(db, s.own.actor, s.own.teamId, s.occasionId, new Date("2026-11-07T00:00:00Z"));
       const video = after.find((x) => x.slotType === "動画");
-      expect(video).toMatchObject({ submission: { url: URL_A, isLate: true }, warnLate: false });
+      expect(video).toMatchObject({ submission: { url: URL_A, isLate: true, showLastUpdated: false }, warnLate: false });
+    });
+  });
+
+  it("showLastUpdated は、締切後に差し替えがあったときだけ真になる", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9913, new Date("2026-11-05T14:59:00Z"));
+      const videoRow = async () => (await listTeamSubmissions(db, s.own.actor, s.own.teamId, s.occasionId)).find((x) => x.slotType === "動画")?.submission;
+      await submitMaterial(db, s.own.actor, s.own.teamId, s.slotId, URL_A, new Date("2026-11-01T00:00:00Z"));
+      expect(await videoRow()).toMatchObject({ showLastUpdated: false });
+      await submitMaterial(db, s.own.actor, s.own.teamId, s.slotId, URL_B, new Date("2026-11-02T00:00:00Z"));
+      expect(await videoRow()).toMatchObject({ showLastUpdated: false });
+      await submitMaterial(db, s.own.actor, s.own.teamId, s.slotId, URL_A, new Date("2026-11-06T00:00:00Z"));
+      expect(await videoRow()).toMatchObject({ isLate: false, showLastUpdated: true });
+    });
+  });
+
+  it("showLastUpdated は、初回が締切後（遅延）で差し替えていなければ偽。締切が無い枠は、いつ差し替えても偽", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9914, new Date("2026-11-05T14:59:00Z"));
+      await submitMaterial(db, s.own.actor, s.own.teamId, s.slotId, URL_A, new Date("2026-11-06T00:00:00Z"));
+      const rows = await listTeamSubmissions(db, s.own.actor, s.own.teamId, s.occasionId);
+      expect(rows.find((x) => x.slotType === "動画")?.submission).toMatchObject({ isLate: true, showLastUpdated: false });
+      const noDeadline = rows.find((x) => x.slotType === "プレゼン資料")!;
+      await submitMaterial(db, s.own.actor, s.own.teamId, noDeadline.id, URL_A, new Date("2026-11-01T00:00:00Z"));
+      await submitMaterial(db, s.own.actor, s.own.teamId, noDeadline.id, URL_B, new Date("2027-01-01T00:00:00Z"));
+      const after = await listTeamSubmissions(db, s.own.actor, s.own.teamId, s.occasionId);
+      expect(after.find((x) => x.slotType === "プレゼン資料")?.submission).toMatchObject({ showLastUpdated: false });
     });
   });
 

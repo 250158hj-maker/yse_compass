@@ -25,12 +25,13 @@ import { SummaryForm } from "./SummaryForm";
 // 追加:
 //   - 保存できたら、「概要を提出しました。」（更新は「概要を更新しました。」）を出す。SC-09 と同じ形（docs/decisions.md 2026-11-06 の SC-09 の行を、SC-10 にも広げる）。
 //   - 遅延の印（関数の isLate）。SC-09・SC-06 と同じ扱い。
+//   - 統一レイアウトのプレビュー（04 の SC-10「できること」）：概要集の 1 ページの形（05 の 5-2-1〜5-2-3。仮置き）で、入力した本文を HTML で見せる。入力に合わせて更新する。
 // 含めない:
-//   - 統一レイアウトのプレビュー：04 の SC-10 の「できること」にあるが、12/18 の範囲では目標に下げられている（Issue #174）。05 の 5-2 の確定待ち。
+//   - 提出時の 1 ページの判定：12/18 の範囲から外す案（水戸さんの決定案 #274 の ①。決定行が入るまで決定ではない）。プレビューも、収まるかの判定はしない。
 //   - 概要の画像：載せないことになった（Issue #174）。関数も扱わない（H-52・H-53）。
 //   - 使用技術の「一覧から選ぶ形＋その他」（decisions.md 2026-10-22・T-3）：保存の型（summaries.tech_stack）と一覧の項目が決まっていない（06 の主担当に委ねられている）。関数は文章 1 つを受けるので、文章で入力する。
 //   - 年度アーカイブ後の読み取り専用：アーカイブ済み年度の発表会は、生徒には「無い」と同じ結果で返るので、この画面に来られない。
-// 入口：04 では SC-02（ホーム）に集約されている。SC-02 を置き換える PR で足すまで、この画面へは URL を直接開く。
+// 入口：04 では SC-02（ホーム）に集約されている。ホームの資料枠のカードの「概要を入力」ボタンから来る。
 
 export default async function SummaryPage({ params }: { params: Promise<{ announcementId: string; teamId: string }> }) {
   const { announcementId, teamId } = await params;
@@ -103,6 +104,12 @@ export default async function SummaryPage({ params }: { params: Promise<{ announ
         occasionId={occasion.id}
         maxExtraSections={MAX_EXTRA_SECTIONS}
         submitted={summary !== null}
+        previewHeader={{
+          title: team.work?.title ?? team.name,
+          className: team.class.name,
+          teamName: team.name,
+          memberNames: team.members.map((m) => m.name),
+        }}
         initial={{
           introduction: summary?.introduction ?? "",
           workOverview: summary?.workOverview ?? "",

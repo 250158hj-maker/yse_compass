@@ -16,7 +16,7 @@ const NAV_LINKS: HeaderLink[] = [
 const ADMIN_LINKS: HeaderLink[] = [
   { href: "/admin/years", label: "年度管理" },
   { href: "/admin/publish-permissions", label: "公開許可管理", disabled: true },
-  { href: "/admin/users", label: "先生の登録・解除", disabled: true },
+  { href: "/admin/users", label: "先生の登録・解除" },
 ];
 
 export default async function RealGroupLayout({

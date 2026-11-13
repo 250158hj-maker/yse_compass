@@ -24,7 +24,9 @@ import { PublishToggle } from "./PublishToggle";
 // 含めない:
 //   - 「提出締切」（H-61 の決着で SC-04 の概要に出さないことにした：docs/decisions.md 2026-10-23。締切は資料枠ごとに、先生の一覧で見る）。
 //   - 工程表と「いまここ」（H-47 の先行方針：H-44 の決着まで本実装に出さない。モックの先生のハブにある）。
-//   - 先生の導線のうち、発表会編集・タイムテーブル編集・概要集生成・タイムテーブルでの進行と、全員向けの「タイムテーブルへの導線」（04 SC-04 の共通）：行き先の画面が本実装に置き換わるたびに、その PR で足す（全員向けのタイムテーブルへの導線は、SC-07 を置き換える PR）。提出状況一覧（SC-06）への導線は、SC-06 を置き換えた PR で、見出しの右のボタンとして足した（先生だけ）。
+//   - 先生の導線のうち、概要集生成（SC-11）：行き先の画面が、まだモックなので、押せない形（「準備中」）で置いた（decisions.md 2026-11-09）。SC-11 を本実装に置き換える PR で、押せる形に戻す。タイムテーブル編集・タイムテーブルでの進行は、SC-07・SC-08 を置き換えた PR で足した。提出状況一覧（SC-06）への導線は、SC-06 を置き換えた PR で、見出しの右のボタンとして足した（先生だけ）。
+// 追加：発表会編集（SC-05）へのボタンを、見出しの右に置いた（先生だけ。SC-05 を本実装に置き換えた PR で足した）。
+// 追加：全員向けのタイムテーブル（SC-07）へのボタンを、見出しの右に置いた（SC-07 を本実装に置き換えた PR で足した。04 の SC-04 の共通）。
 // 追加：発表（チーム）一覧の各行は、発表詳細（SC-12）へのリンクにした（SC-12 を本実装に置き換えた PR で、モックの見た目の押せるカードに戻した）。
 // 発表会の名前は、種別（企画／設計／試作／最終）から作る表示で、正式な名前は決まっていない（H-63 の決着まで）。
 
@@ -67,14 +69,31 @@ export default async function AnnouncementDetailPage({ params }: { params: Promi
           </>
         }
         actions={
-          isTeacher ? (
-            <>
-              <Link href={`/announcements/${occasion.id}/submissions`} className={buttonClassName("secondary")}>
-                提出状況一覧
-              </Link>
-              <PublishToggle occasionId={occasion.id} isPublished={occasion.isPublished} />
-            </>
-          ) : undefined
+          <>
+            <Link href={`/announcements/${occasion.id}/timetable`} className={buttonClassName("secondary")}>
+              タイムテーブル
+            </Link>
+            {isTeacher && (
+              <>
+                <Link href={`/announcements/${occasion.id}/edit`} className={buttonClassName("secondary")}>
+                  発表会編集
+                </Link>
+                <Link href={`/announcements/${occasion.id}/submissions`} className={buttonClassName("secondary")}>
+                  提出状況一覧
+                </Link>
+                {/* 概要集生成（SC-11）は、まだモックの画面。押すとログイン画面に戻されるので、リンクにせず、押せない形で置く（色だけに頼らず「準備中」と文字で出す）。 */}
+                <span
+                  aria-disabled="true"
+                  title="準備中（まだ使えません）"
+                  className="inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-400"
+                >
+                  概要集生成
+                  <span className="text-xs">（準備中）</span>
+                </span>
+                <PublishToggle occasionId={occasion.id} isPublished={occasion.isPublished} />
+              </>
+            )}
+          </>
         }
       />
 

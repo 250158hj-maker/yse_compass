@@ -129,7 +129,10 @@ export async function listTeamSubmissions(db: Db, actor: Actor, teamId: number, 
     const submission = submissions[0];
     return {
       ...slot,
-      submission: submission ? { ...submission, isLate: isLate(submission.firstSubmittedAt, slot.deadline) } : null,
+      // showLastUpdated: 締切後に差し替えがあった（最終更新日時を添える。requirements.md §3-2 の提出状況一覧〔SC-06〕と §3-5 の発表資料閲覧〔SC-12〕。SC-09〔§3-4〕に併記の定めは無い）。画面は日時を比べず、この印で決める。
+      submission: submission
+        ? { ...submission, isLate: isLate(submission.firstSubmittedAt, slot.deadline), showLastUpdated: isReplacedAfterDeadline(submission.firstSubmittedAt, submission.lastSubmittedAt, slot.deadline) }
+        : null,
       warnLate: !submission && slot.deadline !== null && now.getTime() > slot.deadline.getTime(),
     };
   });

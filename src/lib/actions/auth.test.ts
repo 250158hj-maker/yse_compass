@@ -33,14 +33,14 @@ describe("signInWithGoogleAction", () => {
     await signInWithGoogleAction(undefined);
     await signInWithGoogleAction("https://evil.example/");
     await signInWithGoogleAction("/login");
-    for (const call of vi.mocked(signIn).mock.calls) expect(call).toEqual(["google", { redirectTo: "/announcements" }]);
+    for (const call of vi.mocked(signIn).mock.calls) expect(call).toEqual(["google", { redirectTo: "/" }]);
     expect(signIn).toHaveBeenCalledTimes(4);
   });
 
   it("Auth.js が付ける同じサイトの絶対 URL の戻り先は、道に直して呼ぶ。別のサイトのものは既定にする", async () => {
     await signInWithGoogleAction("http://localhost:3000/teams");
     await signInWithGoogleAction("http://evil.example/teams");
-    expect(vi.mocked(signIn).mock.calls.map((c) => c[1])).toEqual([{ redirectTo: "/teams" }, { redirectTo: "/announcements" }]);
+    expect(vi.mocked(signIn).mock.calls.map((c) => c[1])).toEqual([{ redirectTo: "/teams" }, { redirectTo: "/" }]);
   });
 
   it("ヘッダーが偽装されても、Auth.js へ渡すのは常に道だけ", async () => {

@@ -1,10 +1,11 @@
 // 対応: Issue #185（H-64）。サインイン後の戻り先を、サイト内の安全な道へ整える。
 // 外から来る値（URL の callbackUrl）は信用しない。外部サイト・`//` で始まるもの・バックスラッシュ・サインインの画面や Auth.js の入口（ループ）は、既定の戻り先にする。
 // Auth.js も外部への転送は止めるが、Action でも自前で確かめる（decisions.md 2026-09-06 の多層防御ではなく、入口の入力を整える層）。
-// 既定の戻り先は、混在中は 1 つに固定する：鈴木さんが最初に置き換える SC-03（発表会一覧）の `/announcements`（Issue #185・水戸さんの回答。H-64 の決着の PR が決定にする）。
-// ロールで分けるのは、置き換えが進んでから見直す。
+// 既定の戻り先は、SC-02（ホーム。実装ルートは /）の 1 つに固定する（decisions.md 2026-11-13 の【変更】。2026-10-30 の【既定の戻り先】の行き先だけを、SC-03 の /announcements から変えた）。
+// ホームは先生・チームに結びついた生徒・結びついていない生徒を自分で出し分けるので、ロールで分けない。
+// 「移行中の設定として」「ロールで分けるのは、置き換えが進んでから見直す」は、2026-11-13 の行も変えない（2026-10-30 の行のとおり残る）。
 
-export const DEFAULT_SIGN_IN_REDIRECT = "/announcements";
+export const DEFAULT_SIGN_IN_REDIRECT = "/";
 
 // 長さの上限は、URL として現実的な範囲に収めるため（巨大な値で処理を重くしない）。
 const MAX_LENGTH = 2048;
@@ -41,9 +42,6 @@ export function safeRedirectPath(input: unknown, origin?: string): string {
   const path = url.pathname + url.search;
   // `/a/../..//host` のように、`..` を畳んだ結果が `//host`（外部を指す形）になることがある。入口の検査だけでは足りないので、整えた結果も同じ検査にかける。
   if (path.startsWith("//") || path.startsWith("/\\") || new URL(path, BASE).origin !== BASE) return DEFAULT_SIGN_IN_REDIRECT;
-  // サイトの根（/）は、戻り先が無いのと同じ扱い：Auth.js が戻り先なしのときに付ける値。
-  // SC-02（ホーム。実装ルートは /）は本実装に置き換わったが、既定の戻り先（/announcements）は据え置いている（H-64 の決着まで）。
-  // この扱いを外すか（既定を / にするか）は、H-64 の決着のときに決める（外すと、正しく / へ戻りたい人も、既定に送られなくなる）。
-  if (path === "/") return DEFAULT_SIGN_IN_REDIRECT;
+  // サイトの根（/）は、既定の戻り先と同じなので、特別な扱いは要らない（Auth.js が戻り先なしのときに付ける値も、そのまま / になる）。
   return path;
 }

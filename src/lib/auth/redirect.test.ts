@@ -63,17 +63,17 @@ describe("safeRedirectPath（サインイン後の戻り先）", () => {
     expect(safeRedirectPath("http://localhost:3000/%2F%2Fevil.example", origin)).toBe("/%2F%2Fevil.example");
   });
 
-  it("サイトの根（/）は、戻り先が無いのと同じ扱い（Auth.js が戻り先なしのときに付ける値）", () => {
-    expect(safeRedirectPath("/")).toBe(DEFAULT_SIGN_IN_REDIRECT);
-    expect(safeRedirectPath("http://localhost:3000", "http://localhost:3000")).toBe(DEFAULT_SIGN_IN_REDIRECT);
-    expect(safeRedirectPath("http://localhost:3000/", "http://localhost:3000")).toBe(DEFAULT_SIGN_IN_REDIRECT);
+  it("サイトの根（/）は、そのまま / へ戻る（既定の戻り先と同じ。Auth.js が戻り先なしのときに付ける値）", () => {
+    expect(safeRedirectPath("/")).toBe("/");
+    expect(safeRedirectPath("http://localhost:3000", "http://localhost:3000")).toBe("/");
+    expect(safeRedirectPath("http://localhost:3000/", "http://localhost:3000")).toBe("/");
   });
 
   it("長すぎる値は、既定にする", () => {
     expect(safeRedirectPath("/" + "a".repeat(2048))).toBe(DEFAULT_SIGN_IN_REDIRECT);
   });
 
-  it("既定の戻り先は /announcements（混在中は 1 つに固定。H-64）", () => {
-    expect(DEFAULT_SIGN_IN_REDIRECT).toBe("/announcements");
+  it("既定の戻り先は /（SC-02 のホーム。decisions.md 2026-11-13）", () => {
+    expect(DEFAULT_SIGN_IN_REDIRECT).toBe("/");
   });
 });

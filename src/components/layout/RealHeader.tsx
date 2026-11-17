@@ -86,7 +86,8 @@ export function RealHeader({
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-x-4 px-6 py-3">
-        <Link href="/announcements" className="shrink-0 whitespace-nowrap text-lg font-bold text-brand-700">
+        {/* ロゴは、ホーム（/）への入口（decisions.md 2026-11-17。モックのヘッダーも同じ）。 */}
+        <Link href="/" className="shrink-0 whitespace-nowrap text-lg font-bold text-brand-700">
           YSE Compass
         </Link>
 

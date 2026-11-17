@@ -60,6 +60,8 @@ export function RosterClient({ teachers, candidates }: { teachers: Teacher[]; ca
             <Card key={user.id} className="flex flex-wrap items-center justify-between gap-3 shadow-sm shadow-slate-900/5">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-semibold text-slate-900">{user.name}</p>
+                {/* 同姓同名の先生を見分けるため、メールアドレスも小さく出す（同一性のキーは email：decisions.md 2026-11-06 の H-32 の行）。 */}
+                <span className="text-xs text-slate-400">{user.email}</span>
                 {user.isSelf && <Badge tone="brand">あなた</Badge>}
               </div>
               {user.canUnregister ? (
@@ -114,7 +116,7 @@ export function RosterClient({ teachers, candidates }: { teachers: Teacher[]; ca
           run(() => unregisterTeacherAction(target.id), `${target.name}さんの先生の登録を解除しました。`);
         }}
         title="先生の登録を解除しますか?"
-        description={removing ? `${removing.name}さんを先生から解除します。` : ""}
+        description={removing ? `${removing.name}（${removing.email}）さんを先生から解除します。` : ""}
         confirmLabel="解除する"
         confirmVariant="danger"
       />

@@ -9,7 +9,7 @@ import { MaterialLink } from "@/components/ui/MaterialLink";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { requireSessionUser } from "@/lib/auth/session";
-import { listPresentationComments } from "@/lib/data/comments";
+import { CommentError, listPresentationComments } from "@/lib/data/comments";
 import { getOccasion } from "@/lib/data/occasions";
 import { getPresentationDetail } from "@/lib/data/presentation-detail";
 import { SubmissionError } from "@/lib/data/submissions";
@@ -110,7 +110,15 @@ export default async function PresentationDetailPage({ params }: { params: Promi
   }
 
   // 発表を見られることは、上の getPresentationDetail が確かめている。コメントといいねは、同じ線引きで読む。
-  const comments = await listPresentationComments(prisma, actor, teamIdNum, occasion.id);
+  // 上の getPresentationDetail は、発表（presentations の行）の有無までは見ない。行が無いとき、また 2 つの呼び出しの間に年度がアーカイブされたときは、occasion_not_found になる。
+  // 上の SubmissionError の扱いと揃えて、見つからない画面にする（資料と概要を含めた画面全体をエラーにしない）。
+  let comments;
+  try {
+    comments = await listPresentationComments(prisma, actor, teamIdNum, occasion.id);
+  } catch (e) {
+    if (e instanceof CommentError && e.code === "occasion_not_found") notFound();
+    throw e;
+  }
 
   return (
     <div className="mx-auto max-w-4xl">

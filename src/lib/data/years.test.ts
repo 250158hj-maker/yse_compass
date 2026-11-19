@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
-import { EVENT_KINDS, listClassNameDefaults, listFiscalYears, setupFiscalYear, setYearArchived, YearError, type Actor } from "@/lib/data/years";
+import { EVENT_KINDS, listClassNameDefaults, listFiscalYears, setupFiscalYear, setYearArchived, updateFiscalYear, YearError, type Actor } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
 
 // DB を使うテスト。流儀は auth/callbacks.test.ts と同じ（各テストはトランザクションの中で動かし、最後に取り消す）。
@@ -169,15 +169,15 @@ describe("listClassNameDefaults（前年度が無い）", () => {
 });
 
 describeDb("listFiscalYears（SC-19：年度の一覧と状態）", () => {
-  it("year の新しい順に、年度と状態を返す", async () => {
+  it("year の新しい順に、年度と状態とクラス（名前の昇順）を返す", async () => {
     await inTransaction(async (db) => {
       const older = await setupFiscalYear(db, teacher, { year: 9401, classNames: ["IG21"] });
-      const newer = await setupFiscalYear(db, teacher, { year: 9402, classNames: ["IG21"] });
+      const newer = await setupFiscalYear(db, teacher, { year: 9402, classNames: ["IG22", "IG21"] });
       await setYearArchived(db, teacher, older.id, true);
       const mine = (await listFiscalYears(db, teacher)).filter((y) => y.year >= 9401 && y.year <= 9402);
-      expect(mine).toEqual([
-        { id: newer.id, year: 9402, isArchived: false },
-        { id: older.id, year: 9401, isArchived: true },
+      expect(mine.map((y) => ({ id: y.id, year: y.year, isArchived: y.isArchived, classes: y.classes.map((c) => c.name) }))).toEqual([
+        { id: newer.id, year: 9402, isArchived: false, classes: ["IG21", "IG22"] },
+        { id: older.id, year: 9401, isArchived: true, classes: ["IG21"] },
       ]);
     });
   });
@@ -233,6 +233,108 @@ describeDb("setYearArchived（§3-7：アーカイブと解除。可逆）", () 
       await expectError(setYearArchived(db, teacher, 3_000_000_000, true), "invalid_input");
       await expectError(setYearArchived(db, teacher, 1, "yes" as never), "invalid_input");
       await expectError(setYearArchived(db, teacher, 2_147_483_647, true), "year_not_found");
+    });
+  });
+});
+
+describeDb("updateFiscalYear（誤って登録した年度の訂正：年度の数字・クラス名の直しと追加。削除は持たない）", () => {
+  async function classesOf(db: Parameters<Parameters<typeof inTransaction>[0]>[0], fiscalYearId: number) {
+    return db.schoolClass.findMany({ where: { fiscalYearId }, orderBy: { name: "asc" }, select: { id: true, name: true } });
+  }
+
+  it("年度の数字を直せる。クラス・発表会・資料枠はそのまま残る", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9701, classNames: ["IG21"] });
+      const before = await classesOf(db, id);
+      const result = await updateFiscalYear(db, teacher, id, { year: 9702, classes: before });
+      expect(result).toEqual({ id, year: 9702 });
+      expect(await classesOf(db, id)).toEqual(before);
+      expect(await db.eventOccasion.count({ where: { fiscalYearId: id } })).toBe(EVENT_KINDS.length);
+      expect(await db.materialSlot.count({ where: { eventOccasion: { fiscalYearId: id } } })).toBe(EVENT_KINDS.length * 2);
+    });
+  });
+
+  it("クラス名を直し（id は変わらない）、新しいクラスを足せる。前後の空白は除く", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9703, classNames: ["IG21", "BD21"] });
+      const [bd, ig] = await classesOf(db, id);
+      await updateFiscalYear(db, teacher, id, { year: 9703, classes: [{ id: bd.id, name: " BD22 " }, { id: ig.id, name: ig.name }, { name: " GS21 " }] });
+      const after = await classesOf(db, id);
+      expect(after.map((c) => c.name)).toEqual(["BD22", "GS21", "IG21"]);
+      expect(after.find((c) => c.name === "BD22")?.id).toBe(bd.id);
+    });
+  });
+
+  it("入力に含まれない既存のクラスは消さない（クラスの削除は持たない）。チームが結びついていても名前を直せる", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9704, classNames: ["IG21", "BD21"] });
+      const [bd, ig] = await classesOf(db, id);
+      const team = await db.team.create({ data: { classId: ig.id, name: "訂正のテスト" }, select: { id: true } });
+      await updateFiscalYear(db, teacher, id, { year: 9704, classes: [{ id: ig.id, name: "IG23" }] });
+      expect((await classesOf(db, id)).map((c) => c.name)).toEqual(["BD21", "IG23"]);
+      expect((await db.team.findUniqueOrThrow({ where: { id: team.id } })).classId).toBe(ig.id);
+      expect(bd.id).toBeDefined();
+    });
+  });
+
+  it("アーカイブ済みの年度でも直せる（状態で塞がない・保留中の先行方針）。アーカイブの状態は変わらない", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9705, classNames: ["IG21"] });
+      await setYearArchived(db, teacher, id, true);
+      await updateFiscalYear(db, teacher, id, { year: 9706, classes: await classesOf(db, id) });
+      expect(await db.fiscalYear.findUniqueOrThrow({ where: { id }, select: { year: true, isArchived: true } })).toEqual({ year: 9706, isArchived: true });
+    });
+  });
+
+  it("生徒は forbidden。何も変わらない", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9707, classNames: ["IG21"] });
+      await expectError(updateFiscalYear(db, student, id, { year: 9708, classes: [{ name: "IG22" }] }), "forbidden");
+      expect((await db.fiscalYear.findUniqueOrThrow({ where: { id } })).year).toBe(9707);
+      expect((await classesOf(db, id)).map((c) => c.name)).toEqual(["IG21"]);
+    });
+  });
+
+  it("年度・ID の形が不正、クラス名が空・重複・NUL を含むときは invalid_input。何も変わらない", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9709, classNames: ["IG21"] });
+      const classes = await classesOf(db, id);
+      await expectError(updateFiscalYear(db, teacher, id, { year: 999, classes }), "invalid_input");
+      await expectError(updateFiscalYear(db, teacher, id, { year: 10000, classes }), "invalid_input");
+      await expectError(updateFiscalYear(db, teacher, id, { year: 9709.5, classes }), "invalid_input");
+      await expectError(updateFiscalYear(db, teacher, 0, { year: 9710, classes }), "invalid_input");
+      await expectError(updateFiscalYear(db, teacher, id, { year: 9710, classes: [{ id: 0, name: "IG21" }] }), "invalid_input");
+      await expectError(updateFiscalYear(db, teacher, id, { year: 9710, classes: [{ id: classes[0].id, name: "  " }] }), "invalid_input");
+      await expectError(updateFiscalYear(db, teacher, id, { year: 9710, classes: [{ id: classes[0].id, name: "A" }, { name: "A" }] }), "invalid_input");
+      await expectError(updateFiscalYear(db, teacher, id, { year: 9710, classes: [{ name: "A\0B" }] }), "invalid_input");
+      expect((await db.fiscalYear.findUniqueOrThrow({ where: { id } })).year).toBe(9709);
+    });
+  });
+
+  it("他の年度と同じ年度にすると duplicate_year。自分の今の年度のままなら成功する", async () => {
+    await inTransaction(async (db) => {
+      await setupFiscalYear(db, teacher, { year: 9711, classNames: ["IG21"] });
+      const { id } = await setupFiscalYear(db, teacher, { year: 9712, classNames: ["IG21"] });
+      expect(await updateFiscalYear(db, teacher, id, { year: 9712, classes: await classesOf(db, id) })).toEqual({ id, year: 9712 });
+      await expectError(updateFiscalYear(db, teacher, id, { year: 9711, classes: [] }), "duplicate_year");
+    });
+  });
+
+  it("無い年度・他の年度のクラスの id は year_not_found（DB のエラーなので最後）", async () => {
+    await inTransaction(async (db) => {
+      const a = await setupFiscalYear(db, teacher, { year: 9713, classNames: ["IG21"] });
+      const b = await setupFiscalYear(db, teacher, { year: 9714, classNames: ["IG21"] });
+      const [bClass] = await classesOf(db, b.id);
+      await expectError(updateFiscalYear(db, teacher, 2_147_483_647, { year: 9715, classes: [] }), "year_not_found");
+      await expectError(updateFiscalYear(db, teacher, a.id, { year: 9713, classes: [{ id: bClass.id, name: "乗っ取り" }] }), "year_not_found");
+    });
+  });
+
+  it("入力に無い既存のクラスと同じ名前を足すと duplicate_class（DB のエラーなので最後）", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9716, classNames: ["IG21", "BD21"] });
+      const [, ig] = await classesOf(db, id);
+      await expectError(updateFiscalYear(db, teacher, id, { year: 9716, classes: [{ id: ig.id, name: "IG22" }, { name: "BD21" }] }), "duplicate_class");
     });
   });
 });

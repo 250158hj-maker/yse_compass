@@ -7,7 +7,7 @@ import { isId } from "@/lib/ids";
 //   H-57 年度は先生が整数で入力する。同じ year はエラーで拒む（UNIQUE）／
 //   H-27 資料枠の締切は NULL（未設定）で生成する。
 // 決着済み（decisions.md 2026-11-02）: クラス名は前年度のクラスを初期値に出し（前年度が無ければ空）、確定の前に先生が編集できる。クラスが 0 件のときは確定させない。
-//   クラスは年度セットアップが作る（チーム管理の側には作成を持たせない）。セットアップの後に SC-19 でクラスを足す・名前を直すことも決まったが、ここでは未実装。
+//   クラスは年度セットアップが作る（チーム管理の側には作成を持たせない）。セットアップの後に SC-19 でクラスを足す・名前を直すことも決まっており、updateFiscalYear が受け持つ（削除は決めていないので持たない）。
 //   チーム登録は年度セットアップの後（H-9 の「順序を強制しない」は 2026-11-02 の【変更】の行で改めた。2 つが別の操作であることと、セットアップがチームを作らないことは変わらない）。
 // 認可の一次防衛線はここに置く（画面や Server Action が先に弾いても、ここでも必ず確かめる）。
 
@@ -17,7 +17,7 @@ type Db = Pick<PrismaClient, "fiscalYear">;
 export type ActorUserId = string;
 export type Actor = { userId: ActorUserId; role: UserRole };
 
-export type YearErrorCode = "forbidden" | "invalid_input" | "duplicate_year" | "year_not_found";
+export type YearErrorCode = "forbidden" | "invalid_input" | "duplicate_year" | "duplicate_class" | "year_not_found";
 
 export class YearError extends Error {
   constructor(readonly code: YearErrorCode) {
@@ -38,6 +38,14 @@ const STANDARD_SLOTS = [
 ] as const;
 
 export type SetupYearInput = { year: number; classNames: string[] };
+// id があるクラスは名前を直し、id が無いクラスは足す。入力に含まれない既存のクラスは、そのまま残す（削除は持たない）。
+export type UpdateYearInput = { year: number; classes: { id?: number; name: string }[] };
+
+// 年度は西暦 4 桁（design/06-data.md 6-3 の fiscal_years.year）。範囲外の値は DB に渡さない（integer の範囲を超えると Prisma が例外を投げる）。
+const isValidYear = (year: unknown) => Number.isInteger(year) && (year as number) >= 1000 && (year as number) <= 9999;
+
+// クラス名の規則：空でない・同じ名前の重複は無い。NUL 文字（\0）は PostgreSQL が拒み、YearError ではない例外（P2039）になるので、ここで入力の誤りにする。
+const isValidClassNames = (names: string[]) => names.every((n) => n !== "" && !n.includes("\0")) && new Set(names).size === names.length;
 
 function assertTeacher(actor: Actor) {
   if (actor.role !== "teacher") throw new YearError("forbidden");
@@ -58,7 +66,10 @@ export async function listClassNameDefaults(db: Db, actor: Actor): Promise<strin
 // SC-19「年度の一覧と状態（進行中／アーカイブ済み）」。新しい年度が先。SC-19 は先生専用なので、ロールで止める。
 export async function listFiscalYears(db: Db, actor: Actor) {
   assertTeacher(actor);
-  return db.fiscalYear.findMany({ orderBy: { year: "desc" }, select: { id: true, year: true, isArchived: true } });
+  return db.fiscalYear.findMany({
+    orderBy: { year: "desc" },
+    select: { id: true, year: true, isArchived: true, classes: { select: { id: true, name: true }, orderBy: { name: "asc" } } },
+  });
 }
 
 // 年度のアーカイブ／解除（requirements.md §3-7・SC-19）。先生の明示操作で、時刻や条件による自動遷移は持たない（設計原則）。
@@ -85,12 +96,10 @@ function hasCode(e: unknown, code: string): boolean {
 // 年度セットアップ側で既存のチームの分を補う処理は要らない：チーム登録は年度セットアップの後で、チームはセットアップが作ったクラスにだけ属するので、この時点でチームは無い（decisions.md 2026-11-02 の【変更】の行）。
 export async function setupFiscalYear(db: Db, actor: Actor, input: SetupYearInput) {
   assertTeacher(actor);
-  // 年度は西暦 4 桁（design/06-data.md 6-3 の fiscal_years.year）。範囲外の値は DB に渡さない（integer の範囲を超えると Prisma が例外を投げる）。
-  if (!Number.isInteger(input.year) || input.year < 1000 || input.year > 9999) throw new YearError("invalid_input");
+  if (!isValidYear(input.year)) throw new YearError("invalid_input");
   const classNames = input.classNames.map((n) => n.trim());
   // クラスが 0 件のときは確定させない（decisions.md 2026-11-02 のクラスの入力の行）。空の名前と、同じ名前の重複は、DB の UNIQUE(fiscal_year_id, name) に任せず入力の誤りとして先に返す（year の重複と区別するため）。
-  // NUL 文字（\0）は PostgreSQL が拒み、YearError ではない例外（P2039）になるので、ここで入力の誤りにする。
-  if (classNames.length === 0 || classNames.some((n) => n === "" || n.includes("\0")) || new Set(classNames).size !== classNames.length) throw new YearError("invalid_input");
+  if (classNames.length === 0 || !isValidClassNames(classNames)) throw new YearError("invalid_input");
 
   try {
     return await db.fiscalYear.create({
@@ -105,6 +114,42 @@ export async function setupFiscalYear(db: Db, actor: Actor, input: SetupYearInpu
     });
   } catch (e) {
     if (hasCode(e, "P2002")) throw new YearError("duplicate_year");
+    throw e;
+  }
+}
+
+// 年度の訂正：年度の数字と、クラスの名前の直し・追加（decisions.md 2026-11-02 のクラスの入力の行。誤って登録したときの手当て）。
+// 年度そのものの削除はしない（運用の方針）。クラスの削除も、チームが結びつくため決めていないので持たない。
+// 1 回の更新（Prisma の入れ子の更新は 1 トランザクション）で、途中までの反映を残さない。
+// アーカイブ済みの年度を編集できるかは決めていない（保留）：状態で塞がず、H-55 の先行方針（編集の操作を年度の状態で塞がない）に揃える。
+// 発表会・資料枠・チームには触れない（年度の数字は fiscal_years.year だけが持ち、他の表は id で結びつく）。
+export async function updateFiscalYear(db: Db, actor: Actor, fiscalYearId: number, input: UpdateYearInput) {
+  assertTeacher(actor);
+  if (!isId(fiscalYearId) || !isValidYear(input.year) || input.classes.some((c) => c.id !== undefined && !isId(c.id))) throw new YearError("invalid_input");
+  const classes = input.classes.map((c) => ({ id: c.id, name: c.name.trim() }));
+  if (!isValidClassNames(classes.map((c) => c.name))) throw new YearError("invalid_input");
+
+  // year の重複は、先に確かめて duplicate_class と区別する（P2002 は year とクラス名のどちらの UNIQUE でも同じコードのため）。
+  const taken = await db.fiscalYear.findFirst({ where: { year: input.year, NOT: { id: fiscalYearId } }, select: { id: true } });
+  if (taken) throw new YearError("duplicate_year");
+
+  try {
+    return await db.fiscalYear.update({
+      where: { id: fiscalYearId },
+      data: {
+        year: input.year,
+        classes: {
+          // where に別の年度のクラスの id が来ても、この年度のクラスでなければ P2025 になる。
+          update: classes.flatMap((c) => (c.id === undefined ? [] : [{ where: { id: c.id }, data: { name: c.name } }])),
+          create: classes.flatMap((c) => (c.id === undefined ? [{ name: c.name }] : [])),
+        },
+      },
+      select: { id: true, year: true },
+    });
+  } catch (e) {
+    if (hasCode(e, "P2025")) throw new YearError("year_not_found");
+    // 年度の重複は上で除いたので、残る UNIQUE の違反は、入力に無い既存のクラスと名前が重なったとき。
+    if (hasCode(e, "P2002")) throw new YearError("duplicate_class");
     throw e;
   }
 }

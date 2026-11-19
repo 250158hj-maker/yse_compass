@@ -121,7 +121,7 @@ export async function setupFiscalYear(db: Db, actor: Actor, input: SetupYearInpu
 // 年度の訂正：年度の数字と、クラスの名前の直し・追加（decisions.md 2026-11-02 のクラスの入力の行。誤って登録したときの手当て）。
 // 年度そのものの削除はしない（運用の方針）。クラスの削除も、チームが結びつくため決めていないので持たない。
 // 1 回の更新（Prisma の入れ子の更新は 1 トランザクション）で、途中までの反映を残さない。
-// アーカイブ済みの年度を編集できるかは決めていない（保留）：状態で塞がず、H-55 の先行方針（編集の操作を年度の状態で塞がない）に揃える。
+// アーカイブ済みの年度を編集できるかは未決（H-79 (b)・保留）だが、先行方針として、アーカイブ済みの年度にも編集を付けている（状態で塞がない。H-55 の先行方針に揃える）。ふさぐと決まったら、ここで isArchived を見て拒む。
 // 発表会・資料枠・チームには触れない（年度の数字は fiscal_years.year だけが持ち、他の表は id で結びつく）。
 export async function updateFiscalYear(db: Db, actor: Actor, fiscalYearId: number, input: UpdateYearInput) {
   assertTeacher(actor);

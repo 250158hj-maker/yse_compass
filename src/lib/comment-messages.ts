@@ -3,7 +3,7 @@ import type { CommentActionResult } from "@/lib/actions/comments";
 type Code = Extract<CommentActionResult<unknown>, { ok: false }>["code"];
 
 // コメント・いいね（SC-12）の失敗を、画面に出す日本語にする。コードの種類は lib/data/comments.ts の CommentErrorCode と Action の unauthenticated。
-// invalid_input の「1〜2,000 字」は H-76 の先行方針の値（字数は仮）。決着して変わったら、ここも直す。
+// invalid_input の「1〜2,000 字」は decisions.md 2026-11-19 で決めた本文の字数。字数を変えるときは、lib/data/comments.ts の MAX_COMMENT_LENGTH と、ここを一緒に直す。
 const messages: Record<Code, string> = {
   unauthenticated: "サインインが切れています。もう一度サインインしてください。",
   forbidden: "この操作はできません。",

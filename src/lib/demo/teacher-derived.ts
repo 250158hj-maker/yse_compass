@@ -228,9 +228,9 @@ export function deriveTeacherNextAction(input: {
   orderConfirmed: boolean;
   bookletGenerated: boolean;
   presentingTeamId: string | null;
-  // 当日に先生が発表を開始したか(TeacherDemoContext の presentationsStarted)。
+  // 当日に先生が発表を開始したか(消したデモ用の共有状態の presentationsStarted に当たる値)。
   presentationsStarted: boolean;
-  // 当日に「次の発表へ」で最後のチームを終えたか(TeacherDemoContext の finished)。
+  // 当日に「次の発表へ」で最後のチームを終えたか(消したデモ用の共有状態の finished に当たる値)。
   presentationsFinished: boolean;
   isPublished: boolean;
 }): TeacherNextAction {

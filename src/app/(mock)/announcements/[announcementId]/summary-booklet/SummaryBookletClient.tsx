@@ -11,23 +11,29 @@ import { InlineNotice } from "@/components/ui/InlineNotice";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RoleGate, TeacherOnlyNotice } from "@/components/session/RoleGate";
 import { NextStep, backToHub } from "@/components/flow/NextStep";
-import { useBooklet, useTimetable } from "@/context/TeacherDemoContext";
-import { teamSlotsInOrder } from "@/lib/demo/teacher-derived";
-import { getYearById } from "@/lib/mock";
+import { DEFAULT_DEMO_CLOCK_PRESET_ID, getDemoClockPreset } from "@/lib/demo/clock";
+import { applySchedule, defaultSchedule } from "@/lib/demo/schedule";
+import { buildBookletEntries, sortSlots, teamSlotsInOrder } from "@/lib/demo/teacher-derived";
+import { getTimetableFor, getYearById } from "@/lib/mock";
 import { getTeacherDemoBookletPdf } from "@/lib/mock/teacher-demo";
 import type { Announcement } from "@/lib/types";
 
 // SC-11 概要集生成。
 // 生成後は概要集の中身を画面に描き直さず、「生成の結果」(ファイル名・ページ数・入ったチーム・スキップしたチーム)だけを出す。日時と「生成済み」は出さない(04 SC-11・H-7・H-8)。
 // 読む人が見るのは配られた PDF で、中身の描画は PDF の 1 か所に持つ(requirements §3-3「確認・修正せずそのまま配布」)。
-// 並びは SC-08 で保存した発表順(useTimetable の slots)、中身はデモ用の時刻の時点で提出済みの概要(useBooklet)。
-// 「生成」した事実は先生の共有状態に記録し(markGenerated)、ハブの工程表が読む。
+// 並びはモックのタイムテーブルの発表順、中身は固定の「いま」(既定の 10/12 受付中。decisions.md 2026-11-10 の⑨)の時点で提出済みの概要。
+// デモ用の時刻の仕組み(先生の画面の共有状態・時刻の切り替え)は消したので、「生成した」は、この画面の中だけで持つ（開き直すと、生成前に戻る）。
 // 発表会が終わった後でも、いつでも何度でも生成できる(04 SC-11)。未提出のチームは確認ダイアログを経てスキップする。
 // 概要を出したチームが 1 つも無いときだけは中身が空になるので、生成・作り直しのボタンを押せなくし、状態だけを出す。
 // ［別タブで開く］［ダウンロード］とページ数は、PDF を用意した発表会(getTeacherDemoBookletPdf)で、入るチームがあるときだけ出す。
 export function SummaryBookletClient({ announcement: a }: { announcement: Announcement }) {
-  const { entries, missing, generatedAt, markGenerated } = useBooklet(a.id);
-  const { slots } = useTimetable(a.id);
+  // 固定の「いま」。モックのデータ(10/12 受付中)と矛盾しない値（lib/demo/clock.ts の既定のプリセット）。
+  const nowMs = new Date(getDemoClockPreset(DEFAULT_DEMO_CLOCK_PRESET_ID).at).getTime();
+  const baseSlots = getTimetableFor(a.id)?.slots ?? [];
+  const slots = applySchedule(sortSlots(baseSlots), defaultSchedule(baseSlots));
+  const { entries, missing } = buildBookletEntries(a, slots, nowMs);
+  const [generated, setGenerated] = useState(false);
+  const markGenerated = () => setGenerated(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const teamSlots = teamSlotsInOrder(slots);
@@ -67,13 +73,13 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
         />
 
         <div className="mt-4 flex flex-col gap-3">
-          {canGenerate && !generatedAt && missing.length > 0 && (
+          {canGenerate && !generated && missing.length > 0 && (
             <InlineNotice tone="warning">
               {missing.length}チームが概要未提出です({missing.map((t) => t.name).join("、")})。
               生成する場合はスキップされます。
             </InlineNotice>
           )}
-          {!generatedAt && (
+          {!generated && (
             <div className="flex flex-wrap gap-2">
               <Button variant="primary" onClick={handleGenerateClick} disabled={!canGenerate}>
                 概要集を生成する
@@ -83,7 +89,7 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
           )}
         </div>
 
-        {generatedAt && (
+        {generated && (
           <Card className="mt-4 shadow-sm shadow-slate-900/5">
             <p className="text-sm font-semibold break-all text-slate-900">{fileName}</p>
             {pdf && <p className="mt-1 text-xs text-slate-400">{pdf.pages} ページ</p>}
@@ -142,7 +148,7 @@ export function SummaryBookletClient({ announcement: a }: { announcement: Announ
         )}
 
         <NextStep
-          next={generatedAt ? { href: `/announcements/${a.id}/timetable`, label: "次へ：当日進行 →" } : null}
+          next={generated ? { href: `/announcements/${a.id}/timetable`, label: "次へ：当日進行 →" } : null}
           back={backToHub(a.id)}
         />
 

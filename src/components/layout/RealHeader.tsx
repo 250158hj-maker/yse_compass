@@ -86,7 +86,9 @@ export function RealHeader({
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-x-4 px-6 py-3">
-        <Link href="/announcements" className="shrink-0 whitespace-nowrap text-lg font-bold text-brand-700">
+        {/* ロゴは、ホーム（/）への入口（decisions.md 2026-11-17。モックのヘッダーも同じ）。 */}
+        {/* 読み上げの名前で行き先を示す（ナビから「ホーム」が消え、入口がこのリンクだけになったため。見える文字を先頭に含める：WCAG 2.5.3。#303 のレビューの推奨） */}
+        <Link href="/" aria-label="YSE Compass（ホームへ）" className="shrink-0 whitespace-nowrap text-lg font-bold text-brand-700">
           YSE Compass
         </Link>
 

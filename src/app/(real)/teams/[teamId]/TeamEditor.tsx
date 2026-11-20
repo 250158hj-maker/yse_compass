@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -69,41 +69,120 @@ export function TeamInfoForm({ team }: { team: Team }) {
   );
 }
 
+// 1 行 = 氏名と印だけ。右端の三本線を押すと、行の下に「名前を変える」「リーダーにする」が開く（押すと ✕ に変わる）。
+// 氏名を直すときだけ、その行が入力欄に変わる。書き換えて保存していない間は「未保存」の印を出す。
 function MemberRow({ member, teamId, isLeader }: { member: { id: number; name: string }; teamId: number; isLeader: boolean }) {
   const { run, pending, error } = useTeamAction();
   const [name, setName] = useState(member.name);
-  const nameRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const menuId = useId();
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const unsaved = name.trim() !== member.name;
-  // 氏名の欄は form にして、Enter でも保存できるようにする。書き換えて保存していない間は「未保存」の印を出す。
+
+  function closeAll() {
+    setOpen(false);
+    setEditing(false);
+    setName(member.name);
+    toggleRef.current?.focus();
+  }
+
   return (
-    <li>
-      <form
-        className="flex flex-wrap items-center gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          // 押したボタンは処理中と成功のあとに無効になり、フォーカスが body に落ちるので、成功したら氏名欄へ戻す。
-          if (unsaved) run(() => renameMemberAction(member.id, name), () => nameRef.current?.focus());
-        }}
-      >
-        <input
-          ref={nameRef}
-          aria-label={`${member.name} の氏名`}
-          className={`${fieldClassName} max-w-xs`}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <Button type="submit" className="whitespace-nowrap" disabled={pending || !unsaved}>
-          氏名を直す
-        </Button>
-        {unsaved && <span className="text-xs text-amber-700">未保存</span>}
-        {isLeader ? (
-          <Badge tone="amber">リーダー</Badge>
+    <li
+      className="rounded-md border border-slate-200 px-3 py-2"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && (open || editing)) closeAll();
+      }}
+    >
+      <div className="flex items-center gap-2">
+        {editing ? (
+          <form
+            className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (unsaved) {
+                run(
+                  () => renameMemberAction(member.id, name),
+                  () => {
+                    setEditing(false);
+                    setOpen(false);
+                    toggleRef.current?.focus();
+                  },
+                );
+              }
+            }}
+          >
+            <input
+              autoFocus
+              aria-label={`${member.name} の氏名`}
+              className={`${fieldClassName} min-w-0 max-w-xs flex-1`}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Button type="submit" className="whitespace-nowrap" disabled={pending || !unsaved}>
+              保存
+            </Button>
+            <Button type="button" className="whitespace-nowrap" disabled={pending} onClick={closeAll}>
+              やめる
+            </Button>
+            {unsaved && <span className="text-xs text-amber-700">未保存</span>}
+          </form>
         ) : (
-          <Button type="button" className="whitespace-nowrap" disabled={pending} onClick={() => run(() => setLeaderAction(teamId, member.id), () => nameRef.current?.focus())}>
-            リーダーにする
-          </Button>
+          <>
+            <span className="min-w-0 flex-1 truncate text-sm text-slate-900">{member.name}</span>
+            {isLeader && <Badge tone="amber">リーダー</Badge>}
+          </>
         )}
-      </form>
+        <button
+          ref={toggleRef}
+          type="button"
+          aria-label={`${member.name} のメニュー`}
+          aria-expanded={open}
+          aria-controls={menuId}
+          disabled={editing}
+          onClick={() => setOpen((v) => !v)}
+          className="relative h-9 w-9 shrink-0 rounded-md text-brand-600 hover:bg-slate-50 disabled:opacity-40"
+        >
+          <span aria-hidden="true" className={`absolute left-2 top-[11px] h-0.5 w-5 bg-current transition-transform duration-300 motion-reduce:transition-none ${open ? "translate-y-[7px] rotate-45" : ""}`} />
+          <span aria-hidden="true" className={`absolute left-2 top-[18px] h-0.5 w-5 bg-current transition-opacity duration-200 motion-reduce:transition-none ${open ? "opacity-0" : ""}`} />
+          <span aria-hidden="true" className={`absolute left-2 top-[25px] h-0.5 w-5 bg-current transition-transform duration-300 motion-reduce:transition-none ${open ? "-translate-y-[7px] -rotate-45" : ""}`} />
+        </button>
+      </div>
+      <div
+        id={menuId}
+        className={`grid transition-[grid-template-rows] duration-300 motion-reduce:transition-none ${open && !editing ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+        inert={!open || editing}
+      >
+        <div className="overflow-hidden">
+          <ul className="mt-2 divide-y divide-slate-200 rounded-md bg-sky-50 text-sm">
+            <li>
+              <button type="button" className="w-full px-3 py-2.5 text-left text-slate-700 hover:bg-sky-100" onClick={() => setEditing(true)}>
+                名前を変える
+              </button>
+            </li>
+            {!isLeader && (
+              <li>
+                <button
+                  type="button"
+                  disabled={pending}
+                  className="w-full px-3 py-2.5 text-left text-slate-700 hover:bg-sky-100 disabled:text-slate-300"
+                  onClick={() =>
+                    run(
+                      () => setLeaderAction(teamId, member.id),
+                      () => {
+                        setOpen(false);
+                        toggleRef.current?.focus();
+                      },
+                    )
+                  }
+                >
+                  リーダーにする
+                </button>
+              </li>
+            )}
+          </ul>
+        </div>
+      </div>
       {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
     </li>
   );

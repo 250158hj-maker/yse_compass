@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getSubmissionMatrix } from "@/lib/data/submission-matrix";
 import { getPresentationDetail } from "@/lib/data/presentation-detail";
 import { listOccasionPresentations } from "@/lib/data/presentation-list";
-import { getOwnSummary, saveSummary, type SummaryInput } from "@/lib/data/summaries";
+import { getOwnSummary, getSummaryImages, saveSummary, type SummaryInput } from "@/lib/data/summaries";
 import { SubmissionError, listTeamSubmissions, submitMaterial, type SubmissionErrorCode } from "@/lib/data/submissions";
 import type { Actor } from "@/lib/data/years";
 
@@ -52,6 +52,12 @@ export async function saveSummaryAction(teamId: number, occasionId: number, inpu
 
 export async function getOwnSummaryAction(teamId: number, occasionId: number) {
   return run(isId(teamId) && isId(occasionId), (actor) => getOwnSummary(prisma, actor, teamId, occasionId));
+}
+
+// 概要の画像（取り込み済みの JPEG のバイト列）。Buffer ではなく Uint8Array にして返す（画面への受け渡しの形を単純にするため）。
+// 画面との間で、画像のバイト列を Server Action の引数・戻り値として受け渡せるかは、画面の側の実装と一緒に確かめる（このファイルのテストは、関数の呼び出しまでで、画面との送受信は通らない）。
+export async function getSummaryImagesAction(teamId: number, occasionId: number) {
+  return run(isId(teamId) && isId(occasionId), async (actor) => (await getSummaryImages(prisma, actor, teamId, occasionId)).map((image) => ({ displayOrder: image.displayOrder, imageData: new Uint8Array(image.imageData) })));
 }
 
 export async function listOccasionPresentationsAction(occasionId: number) {

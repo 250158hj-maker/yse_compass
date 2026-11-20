@@ -22,7 +22,8 @@ export type SubmissionErrorCode =
   | "occasion_not_found"
   | "summary_slot"
   | "year_archived"
-  | "empty_summary";
+  | "empty_summary"
+  | "invalid_image";
 
 export class SubmissionError extends Error {
   constructor(readonly code: SubmissionErrorCode) {

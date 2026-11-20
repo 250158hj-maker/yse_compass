@@ -1,8 +1,9 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import sharp from "sharp";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { PrismaClient } from "@/generated/prisma/client";
-import { getOwnSummaryAction, getPresentationDetailAction, getSubmissionMatrixAction, listOccasionPresentationsAction, listTeamSubmissionsAction, saveSummaryAction, submitMaterialAction } from "@/lib/actions/submissions";
+import { getOwnSummaryAction, getPresentationDetailAction, getSummaryImagesAction, getSubmissionMatrixAction, listOccasionPresentationsAction, listTeamSubmissionsAction, saveSummaryAction, submitMaterialAction } from "@/lib/actions/submissions";
 import { createTeam } from "@/lib/data/teams";
 import { setupFiscalYear } from "@/lib/data/years";
 import { describeDb } from "@/test/describe-db";
@@ -186,6 +187,29 @@ describeDb("提出の Server Action", () => {
       expect(await listOccasionPresentationsAction(s.occasionId)).toEqual({ ok: true, data: { kind: "not_published" } });
       signInAs({ id: "1", role: "teacher" });
       expect(await listOccasionPresentationsAction(s.occasionId)).toMatchObject({ ok: true, data: { kind: "list", presentations: [{ teamId: s.teamId }] } });
+    });
+  });
+});
+
+describeDb("概要の画像の Server Action", () => {
+  it("画像つきで保存でき、取得できる。形の合わない画像は invalid_image、未サインインは unauthenticated、先生は保存できない", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9866);
+      const image = await sharp({ create: { width: 300, height: 200, channels: 3, background: "#336699" } }).jpeg().toBuffer();
+      signInAs(null);
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [image] })).toEqual({ ok: false, code: "unauthenticated" });
+      expect(await getSummaryImagesAction(s.teamId, s.occasionId)).toEqual({ ok: false, code: "unauthenticated" });
+      signInAs({ id: s.studentId, role: "student" });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [Buffer.from("画像ではない")] })).toEqual({ ok: false, code: "invalid_image" });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [image] })).toMatchObject({ ok: true, data: { introduction: "a" } });
+      const got = await getSummaryImagesAction(s.teamId, s.occasionId);
+      expect(got).toMatchObject({ ok: true, data: [{ displayOrder: 1 }] });
+      // 戻り値は Buffer ではなく Uint8Array で返す。
+      if (got.ok) expect(Buffer.isBuffer(got.data[0].imageData)).toBe(false);
+      expect(await getSummaryImagesAction("1" as never, s.occasionId)).toEqual({ ok: false, code: "invalid_input" });
+      signInAs({ id: "1", role: "teacher" });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [image] })).toEqual({ ok: false, code: "forbidden" });
+      expect(await getSummaryImagesAction(s.teamId, s.occasionId)).toMatchObject({ ok: true, data: [{ displayOrder: 1 }] });
     });
   });
 });

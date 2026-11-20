@@ -136,6 +136,15 @@ describeDb("setupFiscalYear（requirements.md §3-1・decisions.md 2026-11-02 �
     });
   });
 
+  it("クラス名は 50 字まで。超えると入力の誤りとして返す（何も作らない）", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9031, classNames: ["あ".repeat(50)] });
+      expect((await db.schoolClass.findMany({ where: { fiscalYearId: id } }))[0].name).toHaveLength(50);
+      await expectError(setupFiscalYear(db, teacher, { year: 9032, classNames: ["あ".repeat(51)] }), "invalid_input");
+      expect(await db.fiscalYear.count({ where: { year: 9032 } })).toBe(0);
+    });
+  });
+
   it("同じ年度を 2 回実行すると拒む（H-57 の④）", async () => {
     await inTransaction(async (db) => {
       await setupFiscalYear(db, teacher, { year: 9009, classNames });
@@ -273,7 +282,8 @@ describeDb("updateFiscalYear（誤って登録した年度の訂正：年度の�
       await updateFiscalYear(db, teacher, id, { year: 9704, classes: [{ id: ig.id, name: "IG23" }] });
       expect((await classesOf(db, id)).map((c) => c.name)).toEqual(["BD21", "IG23"]);
       expect((await db.team.findUniqueOrThrow({ where: { id: team.id } })).classId).toBe(ig.id);
-      expect(bd.id).toBeDefined();
+      // 入力に含めなかったクラスは、名前も id も変わらない。
+      expect((await classesOf(db, id)).find((c) => c.name === "BD21")?.id).toBe(bd.id);
     });
   });
 
@@ -311,6 +321,28 @@ describeDb("updateFiscalYear（誤って登録した年度の訂正：年度の�
     });
   });
 
+  it("クラス名は 50 字まで。超えると invalid_input（何も変わらない）", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9717, classNames: ["IG21"] });
+      const [cls] = await classesOf(db, id);
+      await updateFiscalYear(db, teacher, id, { year: 9717, classes: [{ id: cls.id, name: "あ".repeat(50) }] });
+      await expectError(updateFiscalYear(db, teacher, id, { year: 9717, classes: [{ id: cls.id, name: "あ".repeat(51) }] }), "invalid_input");
+      await expectError(updateFiscalYear(db, teacher, id, { year: 9717, classes: [{ name: "い".repeat(51) }] }), "invalid_input");
+      expect((await classesOf(db, id)).map((c) => c.name)).toEqual(["あ".repeat(50)]);
+    });
+  });
+
+  it("名前の入れ替えは、1 件ずつの更新で相手の名前と重なり duplicate_class（扱わない・保存を分ける運用。DB のエラーなので最後）", async () => {
+    await inTransaction(async (db) => {
+      const { id } = await setupFiscalYear(db, teacher, { year: 9718, classNames: ["IG21", "IG22"] });
+      const [ig21, ig22] = await classesOf(db, id);
+      await expectError(
+        updateFiscalYear(db, teacher, id, { year: 9718, classes: [{ id: ig21.id, name: "IG22" }, { id: ig22.id, name: "IG21" }] }),
+        "duplicate_class",
+      );
+    });
+  });
+
   it("他の年度と同じ年度にすると duplicate_year。自分の今の年度のままなら成功する", async () => {
     await inTransaction(async (db) => {
       await setupFiscalYear(db, teacher, { year: 9711, classNames: ["IG21"] });
@@ -336,6 +368,29 @@ describeDb("updateFiscalYear（誤って登録した年度の訂正：年度の�
       const [, ig] = await classesOf(db, id);
       await expectError(updateFiscalYear(db, teacher, id, { year: 9716, classes: [{ id: ig.id, name: "IG22" }, { name: "BD21" }] }), "duplicate_class");
     });
+  });
+});
+
+// 「失敗したら何も変わらない」は、エラーでトランザクションが中止になる関係で、トランザクションの外で確かめる（このテストだけ、データを作って後始末する）。
+describeDb("updateFiscalYear（途中まで反映されない）", () => {
+  it("クラス名が重なって失敗したとき、同じ入力の年度の数字・クラス名の直しも反映されない", async () => {
+    const created = await setupFiscalYear(prisma, teacher, { year: 9791, classNames: ["IG21", "BD21"] });
+    try {
+      const [bd, ig] = await prisma.schoolClass.findMany({ where: { fiscalYearId: created.id }, orderBy: { name: "asc" } });
+      // BD21 は入力に無いので残る。IG21→IG22 は通るが、足す BD21 が既存と重なって失敗する。
+      await expectError(
+        updateFiscalYear(prisma, teacher, created.id, { year: 9792, classes: [{ id: ig.id, name: "IG22" }, { name: "BD21" }] }),
+        "duplicate_class",
+      );
+      expect((await prisma.fiscalYear.findUniqueOrThrow({ where: { id: created.id } })).year).toBe(9791);
+      expect((await prisma.schoolClass.findMany({ where: { fiscalYearId: created.id }, orderBy: { name: "asc" } })).map((c) => c.name)).toEqual(["BD21", "IG21"]);
+      expect(bd.name).toBe("BD21");
+    } finally {
+      await prisma.materialSlot.deleteMany({ where: { eventOccasion: { fiscalYearId: created.id } } });
+      await prisma.eventOccasion.deleteMany({ where: { fiscalYearId: created.id } });
+      await prisma.schoolClass.deleteMany({ where: { fiscalYearId: created.id } });
+      await prisma.fiscalYear.delete({ where: { id: created.id } });
+    }
   });
 });
 

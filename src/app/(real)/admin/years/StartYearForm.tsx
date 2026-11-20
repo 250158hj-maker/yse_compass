@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FormField, fieldClassName } from "@/components/ui/FormField";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { setupYearAction } from "@/lib/actions/years";
+import { MAX_CLASS_NAME_LENGTH } from "@/lib/year-rules";
 import { useYearAction } from "./use-year-action";
 
 type ClassRow = { key: number; name: string; autoFocus?: boolean };
@@ -105,6 +106,7 @@ export function StartYearForm({
                   id={`class-name-${r.key}`}
                   aria-label={`クラス ${i + 1} の名前`}
                   className={fieldClassName}
+                  maxLength={MAX_CLASS_NAME_LENGTH}
                   value={r.name}
                   autoFocus={r.autoFocus}
                   onKeyDown={(e) => nextRowOnEnter(e, i)}

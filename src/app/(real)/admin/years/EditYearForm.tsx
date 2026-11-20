@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { FormField, fieldClassName } from "@/components/ui/FormField";
 import { InlineNotice } from "@/components/ui/InlineNotice";
 import { updateYearAction } from "@/lib/actions/years";
+import { MAX_CLASS_NAME_LENGTH } from "@/lib/year-rules";
 import { useYearAction } from "./use-year-action";
 
 type ClassRow = { key: number; id?: number; name: string };
@@ -62,6 +63,7 @@ export function EditYearForm({ id, year, classes, onDone }: { id: number; year: 
               <input
                 aria-label={`クラス ${i + 1} の名前`}
                 className={fieldClassName}
+                maxLength={MAX_CLASS_NAME_LENGTH}
                 value={r.name}
                 onChange={(e) => setRows(rows.map((x) => (x.key === r.key ? { ...x, name: e.target.value } : x)))}
               />

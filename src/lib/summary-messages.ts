@@ -1,4 +1,5 @@
 import type { SubmissionActionResult } from "@/lib/actions/submissions";
+import { MAX_IMAGE_INPUT_BYTES, MAX_SUMMARY_IMAGES } from "@/lib/summary-image-rules";
 
 type Code = Extract<SubmissionActionResult<unknown>, { ok: false }>["code"];
 
@@ -13,6 +14,7 @@ const messages: Record<Code, string> = {
   summary_slot: "概要の保存で、予期しない状態になりました。画面を読み込み直してください。",
   year_archived: "年度がアーカイブ済みのため、提出・更新はできません。",
   empty_summary: "すべての欄が空です。1 つ以上の欄を入力してください。",
+  invalid_image: `画像を読み込めませんでした。JPEG か PNG で、1 枚 ${MAX_IMAGE_INPUT_BYTES / 1024 / 1024}MB まで、画像は ${MAX_SUMMARY_IMAGES} 枚までです。`,
 };
 
 export function summaryErrorMessage(code: Code): string {

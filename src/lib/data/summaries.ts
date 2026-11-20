@@ -1,13 +1,17 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { isId } from "@/lib/ids";
 import { SUMMARY_SLOT_TYPE } from "@/lib/data/slots";
+import { normalizeSummaryImage } from "@/lib/data/summary-image";
 import { isLate, isMemberOf, SubmissionError } from "@/lib/data/submissions";
 import type { Actor } from "@/lib/data/years";
+import { MAX_SUMMARY_IMAGES } from "@/lib/summary-image-rules";
 
 // 対応: docs/requirements.md §3-3（概要の入力）・design/04-screen.md SC-10（S1 のみ）。
 // 先行方針で組んでいる（06 の列は現行のまま。決着したら変わる箇所は、各項の先行方針に書かれた範囲）:
 //   H-37 概要の本文は L2 の 6 欄（はじめに・作品概要・使用技術・終わりに＋チームが見出しを付ける自由な欄）。字数の上限は実装しない（H-53 の先行方針）／
-//   H-52・H-53 概要の画像はここでは扱わない（画像を組む時期は pm/wbs.md 3.3.2 の行が決める）／
+//   H-52・H-53 概要の画像は summary_images（06 6-3・暫定）に、サーバーが縮めた JPEG だけを保存する（元の画像は保存しない）。枚数・形式・容量・縮小の値は
+//     H-53 ①④ が未決の間の仮置きで、summary-image-rules.ts の 1 か所に置く。画像は本文の欄に数えない（画像だけの保存は empty_summary）。
+//     images を指定しない保存は画像を変えず、配列を渡すとその配列で入れ替える（空の配列は全部消す）。画像だけを変えた保存でも最終更新日時を進める（06 の注）／
 //   H-27 締切が未設定の枠は、遅延の対象外。
 // 提出済みかどうかは、概要の行の有無で見る（提出状況一覧 SC-06 と提出状況サマリが、そう見る）。だから、全欄が空の保存は断る。
 // 保存＝提出（下書きは作らない）。差し替えは上書きで、初回提出日時は変えず、最終更新日時だけ進める。
@@ -15,7 +19,8 @@ import type { Actor } from "@/lib/data/years";
 // 保存できるのは自チームの生徒だけ。先生は保存しない（先生の代理提出は正典に無い）。読み取り（編集フォーム用）も自チームの生徒だけ。
 // 認可の一次防衛線はここに置く（画面や Server Action が先に弾いても、ここでも必ず確かめる）。
 
-type Db = Pick<PrismaClient, "eventOccasion" | "materialSlot" | "summary" | "team" | "teamMember">;
+// $transaction があるのは素の PrismaClient のとき。トランザクションの中（テスト、呼び出し側のまとまり）では無い。
+type Db = Pick<PrismaClient, "eventOccasion" | "materialSlot" | "summary" | "summaryImage" | "team" | "teamMember"> & Partial<Pick<PrismaClient, "$transaction">>;
 
 // 自由な欄（チームが見出しを付ける欄）の件数の上限。H-37 の先行方針。DB の制約にはせず、ここ 1 か所で守る。
 export const MAX_EXTRA_SECTIONS = 2;
@@ -28,6 +33,8 @@ export type SummaryInput = {
   techStack?: string | null;
   closing?: string | null;
   extraSections?: ExtraSection[];
+  // 画像の元のバイト列（JPEG・PNG）。並びの順。未指定は「変えない」、配列は「その配列で入れ替える」。
+  images?: Uint8Array[];
 };
 
 type ParsedSummary = {
@@ -60,6 +67,13 @@ function parseExtraSections(value: unknown): ExtraSection[] {
     if (heading === "") throw new SubmissionError("invalid_input");
     return { heading, body: text((item as Record<string, unknown>).body) };
   });
+}
+
+// 画像の型と枚数だけを、中身を読む前に確かめる（取り込みは認可のあとに行う）。形が合わないものは、本文の形の誤りと分けて invalid_image にする。
+function parseImages(value: unknown): Uint8Array[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > MAX_SUMMARY_IMAGES || !value.every((item) => item instanceof Uint8Array)) throw new SubmissionError("invalid_image");
+  return value;
 }
 
 function parseInput(input: unknown): ParsedSummary {
@@ -105,9 +119,9 @@ function hasCode(e: unknown, code: string): boolean {
 // チームと発表会の年度が合う組み合わせか。無い、または年度が違う組み合わせは、無いのと同じ結果（occasion_not_found）にする。
 async function loadTeamAndOccasion(db: Db, teamId: number, occasionId: number) {
   const team = await db.team.findUnique({ where: { id: teamId }, select: { class: { select: { fiscalYearId: true } } } });
-  const occasion = await db.eventOccasion.findUnique({ where: { id: occasionId }, select: { fiscalYearId: true, fiscalYear: { select: { isArchived: true } } } });
+  const occasion = await db.eventOccasion.findUnique({ where: { id: occasionId }, select: { fiscalYearId: true, isPublished: true, fiscalYear: { select: { isArchived: true } } } });
   if (!team || !occasion || occasion.fiscalYearId !== team.class.fiscalYearId) throw new SubmissionError("occasion_not_found");
-  return { isArchived: occasion.fiscalYear.isArchived };
+  return { isArchived: occasion.fiscalYear.isArchived, isPublished: occasion.isPublished };
 }
 
 // 概要の保存（初回と差し替え）。差し替えでは、4 つの欄と自由な欄をまとめて上書きする（フォームは全欄を送る）。
@@ -115,6 +129,7 @@ export async function saveSummary(db: Db, actor: Actor, teamId: number, occasion
   if (actor.role !== "student") throw new SubmissionError("forbidden");
   if (!isId(teamId) || !isId(occasionId)) throw new SubmissionError("invalid_input");
   const data = parseInput(input);
+  const images = parseImages((input as Record<string, unknown>).images);
   // 自チームか否かを先に確かめる。他チームの生徒に、発表会やチームの有無を漏らさない。
   if (!(await isMemberOf(db, actor, teamId))) throw new SubmissionError("forbidden");
 
@@ -124,15 +139,30 @@ export async function saveSummary(db: Db, actor: Actor, teamId: number, occasion
   const slot = await db.materialSlot.findFirst({ where: { eventOccasionId: occasionId, slotType: SUMMARY_SLOT_TYPE }, select: { deadline: true } });
   if (!slot) throw new SubmissionError("slot_not_found");
 
+  // 画像の取り込み（CPU を使う）は、認可と年度の確認のあと、DB へ書く前に行う。1 枚でも取り込めなければ、本文も保存しない。
+  const normalized = images && (await Promise.all(images.map(normalizeSummaryImage)));
+
   const columns = { ...data, extraSections: data.extraSections as unknown as Prisma.InputJsonValue };
-  try {
+  // 概要の行と画像の入れ替えは、1 つのトランザクションで行う（片方だけ残る状態を作らない）。画像だけを変えた保存でも、最終更新日時は進む（upsert の update）。
+  const write = async (tx: Db) => {
     // 同時に初回の保存が走っても、一意制約（チーム × 発表会）の上で 1 行に収まる。
-    const row = await db.summary.upsert({
+    const { id: summaryId, ...saved } = await tx.summary.upsert({
       where: { teamId_eventOccasionId: { teamId, eventOccasionId: occasionId } },
       create: { teamId, eventOccasionId: occasionId, ...columns, firstSubmittedAt: now, lastSubmittedAt: now },
       update: { ...columns, lastSubmittedAt: now },
-      select: selectColumns,
+      select: { id: true, ...selectColumns },
     });
+    if (normalized) {
+      // 並びの入れ替えは、行を更新せず、消して入れ直す（06 summary_images の注。UNIQUE は DEFERRABLE にしない）。
+      await tx.summaryImage.deleteMany({ where: { summaryId } });
+      if (normalized.length > 0) {
+        await tx.summaryImage.createMany({ data: normalized.map((image, index) => ({ summaryId, displayOrder: index + 1, imageData: new Uint8Array(image) })) });
+      }
+    }
+    return saved;
+  };
+  try {
+    const row = db.$transaction ? await db.$transaction((tx) => write(tx as unknown as Db)) : await write(db);
     return { ...row, extraSections: toExtraSections(row.extraSections), isLate: isLate(row.firstSubmittedAt, slot.deadline) };
   } catch (e) {
     if (hasCode(e, "P2003")) throw new SubmissionError("occasion_not_found");
@@ -153,4 +183,22 @@ export async function getOwnSummary(db: Db, actor: Actor, teamId: number, occasi
   if (!row) return null;
   const slot = await db.materialSlot.findFirst({ where: { eventOccasionId: occasionId, slotType: SUMMARY_SLOT_TYPE }, select: { deadline: true } });
   return { ...row, extraSections: toExtraSections(row.extraSections), isLate: isLate(row.firstSubmittedAt, slot?.deadline ?? null) };
+}
+
+// 概要の画像（概要集・プレビュー・編集フォームが読む）。概要の本文と同じ線引きで返す（decisions.md 2026-10-20 の H-45 の行の①・H-60 の先行方針）：
+// 公開前の発表会は先生と自チームの生徒だけ（聴く生徒には forbidden）。生徒はアーカイブ済みの年度を読めない（「無い」と同じ occasion_not_found）。先生は全年度を読める。
+// 概要が無い・画像が無いときは空の配列。並びの順（display_order の昇順）で返す。画像は、保存した JPEG そのまま（取り込み時に縮小済み）。
+export async function getSummaryImages(db: Db, actor: Actor, teamId: number, occasionId: number) {
+  if (actor.role !== "teacher" && actor.role !== "student") throw new SubmissionError("forbidden");
+  if (!isId(teamId) || !isId(occasionId)) throw new SubmissionError("invalid_input");
+
+  const { isArchived, isPublished } = await loadTeamAndOccasion(db, teamId, occasionId);
+  if (actor.role === "student" && isArchived) throw new SubmissionError("occasion_not_found");
+  if (!isPublished && actor.role === "student" && !(await isMemberOf(db, actor, teamId))) throw new SubmissionError("forbidden");
+
+  return db.summaryImage.findMany({
+    where: { summary: { teamId, eventOccasionId: occasionId } },
+    orderBy: { displayOrder: "asc" },
+    select: { displayOrder: true, imageData: true },
+  });
 }

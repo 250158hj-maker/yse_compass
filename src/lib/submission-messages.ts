@@ -12,6 +12,7 @@ const messages: Record<Code, string> = {
   summary_slot: "概要は、概要入力の画面から提出してください。",
   year_archived: "年度がアーカイブ済みのため、提出・差し替えはできません。",
   empty_summary: "入力を確かめてください。",
+  invalid_image: "概要の画像を確かめてください。",
 };
 
 export function submissionErrorMessage(code: Code): string {

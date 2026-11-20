@@ -194,12 +194,29 @@ model Summary {
   firstSubmittedAt DateTime @map("first_submitted_at") @db.Timestamptz(3)
   lastSubmittedAt  DateTime @map("last_submitted_at") @db.Timestamptz(3)
 
-  team          Team          @relation(fields: [teamId], references: [id])
-  eventOccasion EventOccasion @relation(fields: [eventOccasionId], references: [id])
+  team          Team           @relation(fields: [teamId], references: [id])
+  eventOccasion EventOccasion  @relation(fields: [eventOccasionId], references: [id])
+  images        SummaryImage[]
 
   @@unique([teamId, eventOccasionId])
   @@index([eventOccasionId, teamId])
   @@map("summaries")
+}
+
+/// 対応する語彙：glossary.md §5 概要（概要に挿入する画像は概要の一部）
+/// 06-data.md 6-3 summary_images（H-52 の先行方針で足した暫定のテーブル。確定の範囲の外）。
+/// 画像の実体は、サーバーが向きを直し・縮小し・メタデータを除いた JPEG だけ（元の画像は保存しない。H-53 ④ は未決）。
+/// 枚数の上限は DB の制約にせず、コードの定数で守る。
+model SummaryImage {
+  id           Int   @id @default(autoincrement())
+  summaryId    Int   @map("summary_id")
+  displayOrder Int   @map("display_order")
+  imageData    Bytes @map("image_data")
+
+  summary Summary @relation(fields: [summaryId], references: [id])
+
+  @@unique([summaryId, displayOrder])
+  @@map("summary_images")
 }
 
 /// 対応する語彙：glossary.md §4 発表／発表順

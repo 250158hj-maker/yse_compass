@@ -372,24 +372,33 @@ describeDb("updateFiscalYear（誤って登録した年度の訂正：年度の�
 });
 
 // 「失敗したら何も変わらない」は、エラーでトランザクションが中止になる関係で、トランザクションの外で確かめる（このテストだけ、データを作って後始末する）。
+// 年度は 1791・1792：コミットして他のテストファイルからも見える間、「最大の年度」を返す関数（getCurrentYearOccasions・listClassOptions）の結果に入り込まないよう、他のどの年度より小さい値にする。
+const OUTSIDE_TX_YEARS = [1791, 1792];
+
+// 途中でプロセスを止めると後始末が走らず年度が残り、次の実行が duplicate_year で落ちるので、作る前にも同じ数字の年度を消す。
+async function deleteOutsideTxYears() {
+  const ids = (await prisma.fiscalYear.findMany({ where: { year: { in: OUTSIDE_TX_YEARS } }, select: { id: true } })).map((y) => y.id);
+  await prisma.materialSlot.deleteMany({ where: { eventOccasion: { fiscalYearId: { in: ids } } } });
+  await prisma.eventOccasion.deleteMany({ where: { fiscalYearId: { in: ids } } });
+  await prisma.schoolClass.deleteMany({ where: { fiscalYearId: { in: ids } } });
+  await prisma.fiscalYear.deleteMany({ where: { id: { in: ids } } });
+}
+
 describeDb("updateFiscalYear（途中まで反映されない）", () => {
   it("クラス名が重なって失敗したとき、同じ入力の年度の数字・クラス名の直しも反映されない", async () => {
-    const created = await setupFiscalYear(prisma, teacher, { year: 9791, classNames: ["IG21", "BD21"] });
+    await deleteOutsideTxYears();
+    const created = await setupFiscalYear(prisma, teacher, { year: 1791, classNames: ["IG21", "BD21"] });
     try {
-      const [bd, ig] = await prisma.schoolClass.findMany({ where: { fiscalYearId: created.id }, orderBy: { name: "asc" } });
+      const [, ig] = await prisma.schoolClass.findMany({ where: { fiscalYearId: created.id }, orderBy: { name: "asc" } });
       // BD21 は入力に無いので残る。IG21→IG22 は通るが、足す BD21 が既存と重なって失敗する。
       await expectError(
-        updateFiscalYear(prisma, teacher, created.id, { year: 9792, classes: [{ id: ig.id, name: "IG22" }, { name: "BD21" }] }),
+        updateFiscalYear(prisma, teacher, created.id, { year: 1792, classes: [{ id: ig.id, name: "IG22" }, { name: "BD21" }] }),
         "duplicate_class",
       );
-      expect((await prisma.fiscalYear.findUniqueOrThrow({ where: { id: created.id } })).year).toBe(9791);
+      expect((await prisma.fiscalYear.findUniqueOrThrow({ where: { id: created.id } })).year).toBe(1791);
       expect((await prisma.schoolClass.findMany({ where: { fiscalYearId: created.id }, orderBy: { name: "asc" } })).map((c) => c.name)).toEqual(["BD21", "IG21"]);
-      expect(bd.name).toBe("BD21");
     } finally {
-      await prisma.materialSlot.deleteMany({ where: { eventOccasion: { fiscalYearId: created.id } } });
-      await prisma.eventOccasion.deleteMany({ where: { fiscalYearId: created.id } });
-      await prisma.schoolClass.deleteMany({ where: { fiscalYearId: created.id } });
-      await prisma.fiscalYear.delete({ where: { id: created.id } });
+      await deleteOutsideTxYears();
     }
   });
 });

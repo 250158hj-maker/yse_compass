@@ -27,6 +27,24 @@ export type MatrixCell =
 // 全体の「必須の未提出」。必須の資料枠が 0 件の発表会は、数えられないので、件数ではなく区別を返す。
 export type RequiredMissingSummary = { kind: "no_required_slots" } | { kind: "counted"; total: number };
 
+// 資料枠 1 つ × チーム 1 つのセル。found は、提出（概要枠は概要）の行。無ければ未提出。SC-14 の縦断ビュー（team-occasions.ts）も同じ判定を使う。
+export function toMatrixCell(
+  slot: { id: number; isRequired: boolean; deadline: Date | null },
+  found: { url: string | null; firstSubmittedAt: Date; lastSubmittedAt: Date } | undefined,
+): MatrixCell {
+  if (!found) return { slotId: slot.id, status: "missing", isRequiredMissing: slot.isRequired };
+  return {
+    slotId: slot.id,
+    status: "submitted",
+    isRequiredMissing: false,
+    url: found.url,
+    firstSubmittedAt: found.firstSubmittedAt,
+    lastSubmittedAt: found.lastSubmittedAt,
+    isLate: isLate(found.firstSubmittedAt, slot.deadline),
+    showLastUpdated: isReplacedAfterDeadline(found.firstSubmittedAt, found.lastSubmittedAt, slot.deadline),
+  };
+}
+
 // 発表会 1 つの「チーム × 資料枠」。チームは、その発表会の年度のクラスに属する全チーム（クラス → チームの順）。枠は定番の並び（id の昇順）。
 export async function getSubmissionMatrix(db: Db, actor: Actor, occasionId: number) {
   if (actor.role !== "teacher") throw new SubmissionError("forbidden");
@@ -57,20 +75,9 @@ export async function getSubmissionMatrix(db: Db, actor: Actor, occasionId: numb
   const summaryOf = new Map(summaries.map((x) => [x.teamId, { ...x, url: null as string | null }]));
 
   const rows = teams.map((team) => {
-    const cells = slots.map((slot): MatrixCell => {
+    const cells = slots.map((slot) => {
       const isSummary = slot.slotType === SUMMARY_SLOT_TYPE;
-      const found = isSummary ? summaryOf.get(team.id) : submissionOf.get(`${team.id}:${slot.id}`);
-      if (!found) return { slotId: slot.id, status: "missing", isRequiredMissing: slot.isRequired };
-      return {
-        slotId: slot.id,
-        status: "submitted",
-        isRequiredMissing: false,
-        url: found.url,
-        firstSubmittedAt: found.firstSubmittedAt,
-        lastSubmittedAt: found.lastSubmittedAt,
-        isLate: isLate(found.firstSubmittedAt, slot.deadline),
-        showLastUpdated: isReplacedAfterDeadline(found.firstSubmittedAt, found.lastSubmittedAt, slot.deadline),
-      };
+      return toMatrixCell(slot, isSummary ? summaryOf.get(team.id) : submissionOf.get(`${team.id}:${slot.id}`));
     });
     const requiredMissingCount = cells.filter((cell) => cell.isRequiredMissing).length;
     return {

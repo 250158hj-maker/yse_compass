@@ -6,14 +6,18 @@ import { InlineNotice } from "@/components/ui/InlineNotice";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { requireSessionUser } from "@/lib/auth/session";
+import { SubmissionError } from "@/lib/data/submissions";
+import { listTeamOccasionStatuses } from "@/lib/data/team-occasions";
 import { getTeam } from "@/lib/data/teams";
 import { parseId } from "@/lib/ids";
 import { prisma } from "@/lib/prisma";
+import { OccasionStatusSection } from "./OccasionStatusSection";
 import { MembersEditor, TeamInfoForm } from "./TeamEditor";
 
 // 対応: docs/design/04-screen.md SC-14（チーム詳細）の、チーム情報と先生の編集（チーム名・作品名の編集・メンバー編集・リーダー指定）だけ。Issue #184。
 // 見た目はモックの 2 列の枠（左：チーム情報、右：メンバー）。先生の編集は、同じ枠の中に収める。
-// 含めない: 作品の説明（H-49・DB に列がない）、引き換えの判別と解除（H-25・H-42）、発表会ごとの提出状況（関数がない）、公開許可の設定パネル（時期が未決・H-44）。
+// 発表会ごとの提出状況（縦断ビュー）は、関数 listTeamOccasionStatuses が返した値を OccasionStatusSection に渡す。誰に提出状況を見せるかは関数が決める（decisions.md 2026-11-19）。
+// 含めない: 作品の説明（H-49・DB に列がない）、引き換えの判別と解除（H-25・H-42）、公開許可の設定パネル（時期が未決・H-44）。
 export default async function TeamDetailPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = await params;
   const user = await requireSessionUser(`/teams/${teamId}`);
@@ -23,6 +27,13 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ tea
   if (!team) notFound();
   const { fiscalYear } = team.class;
   const isTeacher = user.role === "teacher";
+  // 関数が「権限なし」「チームなし」を返したときは、この欄だけを出さない（画面で権限を判定しない）。それ以外の例外は、握りつぶさない。
+  let occasions = null;
+  try {
+    occasions = (await listTeamOccasionStatuses(prisma, { userId: user.id, role: user.role }, team.id)).occasions;
+  } catch (e) {
+    if (!(e instanceof SubmissionError && (e.code === "forbidden" || e.code === "occasion_not_found"))) throw e;
+  }
   const editable = {
     id: team.id,
     name: team.name,
@@ -69,6 +80,7 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ tea
             )}
           </div>
         </div>
+        {occasions && <OccasionStatusSection teamId={team.id} occasions={occasions} />}
       </div>
     </div>
   );

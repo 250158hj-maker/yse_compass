@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { PrismaClient } from "@/generated/prisma/client";
-import { setYearArchivedAction, setupYearAction } from "@/lib/actions/years";
+import { setYearArchivedAction, setupYearAction, updateYearAction } from "@/lib/actions/years";
 import { describeDb } from "@/test/describe-db";
 
 // Server Action の薄い層だけを確かめる（規則は lib/data/years.test.ts）。
@@ -125,6 +125,47 @@ describeDb("年度のアーカイブの Server Action", () => {
       expect(await setYearArchivedAction(0, true)).toEqual(bad);
       expect(await setYearArchivedAction(1, "true" as never)).toEqual(bad);
       expect(await setYearArchivedAction(2_147_483_647, true)).toEqual({ ok: false, code: "year_not_found" });
+    });
+  });
+});
+
+describeDb("年度の訂正の Server Action", () => {
+  it("先生は年度の数字・クラス名を直せる", async () => {
+    await inTransaction(async (db) => {
+      signInAs("teacher");
+      const created = await setupYearAction({ year: 9801, classNames: ["IG21"] });
+      if (!created.ok) throw new Error("setup failed");
+      const [cls] = await db.schoolClass.findMany({ where: { fiscalYearId: created.data.id } });
+      const result = await updateYearAction(created.data.id, { year: 9802, classes: [{ id: cls.id, name: "IG22" }, { name: "BD22" }] });
+      expect(result).toMatchObject({ ok: true, data: { year: 9802 } });
+      const names = (await db.schoolClass.findMany({ where: { fiscalYearId: created.data.id }, orderBy: { name: "asc" } })).map((c) => c.name);
+      expect(names).toEqual(["BD22", "IG22"]);
+    });
+  });
+
+  it("未サインインは unauthenticated、生徒は forbidden。何も変わらない", async () => {
+    await inTransaction(async (db) => {
+      signInAs("teacher");
+      const created = await setupYearAction({ year: 9803, classNames: ["IG21"] });
+      if (!created.ok) throw new Error("setup failed");
+      signInAs(null);
+      expect(await updateYearAction(created.data.id, { year: 9804, classes: [] })).toEqual({ ok: false, code: "unauthenticated" });
+      signInAs("student");
+      expect(await updateYearAction(created.data.id, { year: 9804, classes: [] })).toEqual({ ok: false, code: "forbidden" });
+      expect((await db.fiscalYear.findUniqueOrThrow({ where: { id: created.data.id } })).year).toBe(9803);
+    });
+  });
+
+  it("引数の形が不正なら invalid_input", async () => {
+    await inTransaction(async () => {
+      signInAs("teacher");
+      const bad = { ok: false, code: "invalid_input" };
+      expect(await updateYearAction("1" as never, { year: 9805, classes: [] })).toEqual(bad);
+      expect(await updateYearAction(1, null as never)).toEqual(bad);
+      expect(await updateYearAction(1, { year: "9805", classes: [] } as never)).toEqual(bad);
+      expect(await updateYearAction(1, { year: 9805, classes: "IG21" } as never)).toEqual(bad);
+      expect(await updateYearAction(1, { year: 9805, classes: [{ name: 1 }] } as never)).toEqual(bad);
+      expect(await updateYearAction(1, { year: 9805, classes: [{ id: "1", name: "A" }] } as never)).toEqual(bad);
     });
   });
 });

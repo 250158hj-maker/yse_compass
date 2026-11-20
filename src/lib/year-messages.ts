@@ -7,6 +7,7 @@ const messages: Record<Code, string> = {
   forbidden: "この操作は先生だけができます。",
   invalid_input: "入力を確かめてください（年度は西暦 4 桁、クラス名は空にできず、重複もできません）。",
   duplicate_year: "同じ年度がすでにあります。",
+  duplicate_class: "同じ名前のクラスがすでにあります。",
   year_not_found: "年度が見つかりません。画面を読み込み直してください。",
 };
 

@@ -12,7 +12,8 @@ import { YearsHeader } from "./YearsHeader";
 // 見た目はモックのまま（見出しの【+ 年度を開始】・年度のカード・アーカイブのボタン）、データは data 層、ユーザーは requireSessionUser から読む。
 // 先生だけが使える（関数が先生以外を拒む）。拒否されたときは、案内だけを出す。画面で権限の判定をしない。
 // 年度を開始するときの入力（年度・クラス名）は、decisions.md 2026-11-02 のクラスの入力の行と H-57 の先行方針のとおり。
-// 含めない: 年度ごとの発表会の一覧（SC-03・SC-05）、セットアップの後のクラスの追加・修正（関数がまだ無い）。
+// 年度の訂正（数字・クラス名の直しと追加）は YearRow の【編集】。年度とクラスの削除は持たない。
+// 含めない: 年度ごとの発表会の一覧（SC-03・SC-05）。
 export default async function AdminYearsPage() {
   const user = await requireSessionUser("/admin/years");
   const actor = { userId: user.id, role: user.role };
@@ -47,7 +48,7 @@ export default async function AdminYearsPage() {
         {years.length === 0 ? (
           <EmptyState message="まだ年度がありません。右上の【+ 年度を開始】から、最初の年度を開始してください。" />
         ) : (
-          years.map((y) => <YearRow key={y.id} id={y.id} year={y.year} isArchived={y.isArchived} />)
+          years.map((y) => <YearRow key={y.id} id={y.id} year={y.year} isArchived={y.isArchived} classes={y.classes} />)
         )}
       </div>
     </div>

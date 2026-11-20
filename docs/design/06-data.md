@@ -5,7 +5,7 @@
 > **正典**：このファイル（テーブル定義の正典。**語彙の正典は `../glossary.md`**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-11-10（水戸）
+> **最終更新**：2026-11-20（蒲山）
 
 > [!note] 確定の範囲（2026-10-19・10-20・10-27 のレビュー対象）
 > **確定するのは次の部分だけ**（`../../AGENTS.md` 禁則7 の「確定の範囲」）。範囲の外は暫定のままで、決定の根拠として引用しない（禁則6）。
@@ -22,6 +22,7 @@
 >   - `summaries`：`tech_stack` の型（T-3 は決着〔`../decisions.md` 2026-10-22〕したが、型は決まっていない）。**L2 の概要の本文を保存する列（`introduction`・`work_overview`・`closing`・`extra_sections`）**（H-37 の先行方針〔2026-10-26〕で足した。H-37 が決着して項目が変われば、これらの列を直す）
 >   - `presentations`：時刻枠（開始時刻・所要・休憩）を列として持たない前提（H-20）、表の下の「行の生成タイミング」の注（H-46 は ② で決着し、「クラスに属さないチームを許す」案は採らなかった〔`../decisions.md` 2026-11-02〕。「そのチームの年度に」は `team → class → fiscal_year` で引ける。注は、H-9 の「順序を強制しない」の引用を改めた）
 >   - `comments`：**`edited_at`・`is_deleted`**（T-2 の決定〔`../decisions.md` 2026-10-26〕に従って足した列。決定が決めない点〔編集の履歴・編集と削除の期間・先生が削除したときの記録・アーカイブ済み作品への新規コメント・削除後の本文といいねの扱い〕が残るため、確定に含めない）
+>   - `summary_images`：**テーブル全体**（概要の画像。H-52 の先行方針〔`../open-questions.md`〕で足した暫定のテーブル。6-3 の列定義、6-1・6-2 の ER 図の `SUMMARY_IMAGE` と `SUMMARY`–`SUMMARY_IMAGE` の関連、6-5・6-6 の該当の行。H-53 ①④〔枚数・形式・容量・縮小〕が決着したら直す）。上の「全 14 テーブル」には含めない
 > - **確定に含めないもの（共通）**：①列・テーブル・関連の集合の完全さ（確定するのは挙げた列の定義で、挙げていない列・テーブル・関連が無いことまでは保証しない。たとえば H-20 の「タイムテーブルの行」の実体が ER 図に無いことは保証しない）。**ER 図は 6-3 から描いたもので、図に無い制約は 6-3 が正**（複合の UNIQUE、複合外部キーが複合であること〔`teams.leader_member_id`・`event_occasions.current_presentation_id`〕は図に描いていない）　②各テーブルの表の下の注のうち、範囲外の節や未決を指す文　③上流が TODO の根拠：`teams`・`team_members`・`users` の上流（`../requirements.md` §3-8・§3-6）は、できること・受け入れ基準が TODO のまま。この 3 テーブルの根拠は `../glossary.md` と `../decisions.md` に限られ、上流が埋まったとき、確定した列が変わりうる。特に `users.role` の 2 値は、#8（先生ロールの親子二層構造）を採らないことが 2026-11-06 に決着した（`../decisions.md`）が、この決着を 06 の確定の範囲に含めるかは、06 の主担当が別に決める
 > - **範囲外の節**：6-4〜6-7（索引方針の 6-5 を含む）、参照動作（コメントを参照する外部キーの動作。T-2 の決定で形は決まったが、決めない点が残る）
 > - **レビューする論点**：①各列が `../glossary.md`・`../requirements.md` のどの記述に対応するか（根拠の欄）が足りているか　②外部キーの向きと UNIQUE が、語彙の関係（チーム・メンバー・リーダー、資料枠・提出、発表・コメント・いいね）と合っているか　③NULL 可否が運用（先生がチームを作る・年度セットアップが資料枠を生成する）と合っているか　④型・既定値・CHECK が、正典の記述（`../glossary.md`・`../requirements.md`・`../decisions.md`）と合っているか。⑤6-1・6-2 の ER 図が 6-3 と一致し、関連の名前が正典と合っているか（#124。6-1 は属性を持たず、関連の名前とカーディナリティを持つ図なので、6-2 と照らすだけでなく、関連の名前の出典も見る）　⑥未決の先行方針の見直し（#124。H-20・H-26・H-27・H-32・T-2。結論は下の欄に書く）
@@ -132,6 +133,7 @@ erDiagram
     MATERIAL_SLOT ||--o{ SUBMISSION : "対象になる"
     TEAM ||--o{ SUMMARY : "提出する"
     EVENT_OCCASION ||--o{ SUMMARY : "対象になる"
+    SUMMARY ||--o{ SUMMARY_IMAGE : "含む"
     PRESENTATION ||--o{ COMMENT : "アンカーになる"
     USER ||--o{ COMMENT : "投稿する"
     COMMENT |o--o{ COMMENT : "返信する"
@@ -226,6 +228,12 @@ erDiagram
         timestamptz first_submitted_at
         timestamptz last_submitted_at
     }
+    SUMMARY_IMAGE {
+        int id PK
+        int summary_id FK
+        int display_order
+        bytea image_data
+    }
     PRESENTATION {
         int id PK
         int team_id FK
@@ -270,6 +278,7 @@ erDiagram
     MATERIAL_SLOT ||--o{ SUBMISSION : has
     TEAM ||--o{ SUMMARY : has
     EVENT_OCCASION ||--o{ SUMMARY : has
+    SUMMARY ||--o{ SUMMARY_IMAGE : has
     PRESENTATION ||--o{ COMMENT : has
     USER ||--o{ COMMENT : posts
     COMMENT |o--o{ COMMENT : "parent_comment_id"
@@ -441,6 +450,25 @@ erDiagram
 > **年度の整合は DB で守らない**：`team_id` と `event_occasion_id` の年度が違う組み合わせも DB は受け入れる（`submissions` の同名の注と同じ）。アプリ層で守る。
 > **「概要」は資料枠（`material_slots.slot_type = '概要'`）の締切・必須／任意を参照する。** ただし `summaries` は `material_slot_id` を持たない — 概要枠は全発表会に1件ずつ存在する定番枠のため、`event_occasion_id` から一意に引ける（`material_slots` の部分インデックス `WHERE slot_type = '概要'`（6-3 `material_slots`）で整合性を保証する）。
 
+### `summary_images`（概要の画像）
+
+対応する語彙：`../glossary.md` §5 概要（概要に挿入する画像は概要の一部）
+
+| 列名 | 型 | NULL | 既定値 | 制約 | 根拠 |
+| --- | --- | --- | --- | --- | --- |
+| id | serial | NOT NULL | — | PK | — |
+| summary_id | int | NOT NULL | — | FK → summaries.id・UNIQUE(summary_id, display_order) | 画像は概要の一部で、概要 1 件に 0〜2 枚（`../decisions.md` 2026-10-29 の画像の置き場所の行。枚数は H-53 の先行方針）。**確定に含めない** |
+| display_order | int | NOT NULL | — | UNIQUE(summary_id, display_order) の一部 | 並び（左から）。1 から振る。**配置は枚数から導き、保存しない**（`../decisions.md` 2026-10-29 のレイアウトの数え方の行の②）ので、この列が持つのは並びだけ。**確定に含めない** |
+| image_data | bytea | NOT NULL | — | — | 画像の実体。保存するのは、サーバーが取り込み時に向きを直し・縮小し・メタデータを除いた JPEG（`../findings.md` F-17 の sharp の処理）で、**元の画像は保存しない**。形式・縮小の値・受け付ける容量は H-53 ④ が未決なので、この列の中身の規則は先行方針。**確定に含めない** |
+
+> **このテーブルは、H-52 の先行方針（DB の列で組んでよい。列の形は 06 の主担当が決める）で足した暫定のもの**で、確定の範囲に含めない。H-53 ①（枚数と枠）・④（形式・容量・縮小）が決着して画像の持ち方が変われば、直す。足した理由は、画像の保存先が無いと概要入力（SC-10）の画像の保存を作れないため。
+> **列の形（別テーブル）の理由**：①**枚数の上限を DB に焼き込まない。** H-53 の先行方針は、枚数の上限（2）をコードの 1 箇所の定数に置く。`summaries` に画像の列を 2 つ足すと「2 枚」が DB の形になり、H-53 ① で枚数が変わると移行が要る。別テーブルなら、枚数が変わっても列は変わらない。②**概要の行を読むときに、画像のバイト列を読み込まない。** 概要の提出状況や本文は、画像なしで読める。画像が要るのは、概要集・プレビューを組むときだけ。③`summaries` の列を増やさないので、行の存在＝提出済み（6-6）を含む `summaries` の規則に触れない。
+> **枚数の上限は DB の制約にしない**（`display_order` に CHECK を置かない）。上限（H-53 の先行方針で 2）は、コードの 1 箇所の定数で守る。
+> **並びの入れ替えは、行を更新せず、消して入れ直す前提**で、`UNIQUE(summary_id, display_order)` は `DEFERRABLE` にしない（`presentations.display_order` と違う）。行を更新して並べ替える操作が要ると分かったら見直す。
+> **参照動作は、既定のまま**（`summary_id` は NOT NULL の外部キーなので `ON DELETE RESTRICT`・`ON UPDATE CASCADE`。6-7）。概要の削除は持たない（`../decisions.md` 2026-07-26 のデータ保持の行）ので、通常の操作では働かない。
+> **画像のキャプション・代替テキストの列は足さない**（属性が正典に無い：禁則1。`05-output.md` 5-2-7 も「置かない」としている）。
+> **データ保持の根拠の読み直し（H-52 ③）とバックアップの扱い（H-52 ④・G-2）は、この表では決めない。** 画像を DB に置くので、DB のバックアップに画像が入る。1 枚あたりの大きさ・容量の見積りは、H-53 ④ が決まってから出す。
+
 ### `presentations`（発表）
 
 対応する語彙：`../glossary.md` §4 発表／発表順
@@ -517,6 +545,7 @@ erDiagram
 | --- | --- | --- |
 | 発表会ごとの提出状況一覧（チーム×資料枠のマトリクス） | `material_slots(event_occasion_id)` に**明示的に**通常インデックスを張り、これを起点に `submissions(material_slot_id)`・`submissions(team_id)` を結合 | §3-2。**PostgreSQL は外部キー列に自動で索引を作らない**ため、この索引は明示的に `CREATE INDEX` する — 概要枠の部分インデックス（6-3 `material_slots`）とは別物。`event_occasion_id` の非正規化は採らない（6-3 `submissions`）。行数の見積りは正典に無く、p95 ≦ 1 秒への影響は Ph.2 で実測する |
 | 概要の提出状況（同上のマトリクスに合流） | `summaries(event_occasion_id, team_id)` | 同上（`summaries` は `event_occasion_id` を直接持つため結合不要） |
+| 概要の画像の取得（概要 1 件の画像を並びの順に。概要集・プレビューを組むとき） | `summary_images(summary_id, display_order)` の UNIQUE で足りる（`summary_id` が先頭の列なので、外部キー列の索引も兼ねる）。暫定（6-3 `summary_images`） | 外部キー列には索引が自動で作られないが、この UNIQUE が `summary_id` で引く索引になる |
 | タイムテーブル表示（発表順に並べる） | `presentations(event_occasion_id, display_order)` | §3-10・概要集の並び順の源（H-5） |
 | 「いま発表中」の参照 | `event_occasions.current_presentation_id` は単一値参照のため追加索引は不要 | §3-10 |
 | 発表詳細のコメント一覧（スレッド表示） | `comments(presentation_id, created_at)`・`comments(parent_comment_id)` | §3-5・§3-9 |
@@ -539,6 +568,7 @@ erDiagram
 | 遅延（提出状況一覧・§3-2） | `material_slots.deadline IS NOT NULL` かつ `submissions.first_submitted_at > material_slots.deadline`（概要枠は `summaries.first_submitted_at` と `slot_type='概要'` の `material_slots.deadline`）。**締切が未設定の枠は遅延判定の対象外**（H-27 先行方針） | **H-6 決着**（`../decisions.md` 2026-09-29）。**最終更新日時ではなく初回提出日時で判定する**ことで、期限内提出が差し替えで遅延に化ける問題を避ける |
 | 差し替えの有無（提出状況一覧・§3-2・§3-5 で最終更新日時を添えるか） | `material_slots.deadline IS NOT NULL` かつ `submissions.last_submitted_at > material_slots.deadline` かつ `submissions.last_submitted_at <> submissions.first_submitted_at`（概要枠は `summaries` の同名の列と `slot_type='概要'` の `material_slots.deadline`）。**締切が未設定の枠は対象外**（遅延と同じく H-27 先行方針）。**専用の列は持たない** | **H-6 決着**（`../decisions.md` 2026-09-29）。表示の規則は `../requirements.md` §3-2・§3-5（「締切後に差し替えがあれば最終更新日時も添える」）と `04-screen.md` SC-04・SC-06・SC-12。**2 つの日時から導くため、初回提出のときは 2 列に同じ値を入れることが前提**（下の注） |
 | 回種別の並び順 | `event_occasions.kind` をコード定義（6-4）の列挙順で並べる。DB列は持たない | 2026-07-24 |
+| 概要ページの画像の配置 | その概要の `summary_images` の枚数（0・1・2）から導く。配置を表す値は持たない。暫定（6-3 `summary_images`） | `../decisions.md` 2026-10-29 のレイアウトの数え方の行の② |
 | 作品の年度 | `teams.class_id → classes.fiscal_year_id` | `../glossary.md` §6（作品はチーム×年度だが、チームは常に1年度のクラスに属するため独立列が不要） |
 | 資料枠の未提出集計（進捗の分母） | **必須枠（`is_required = true`）のみを分母とする。** 任意枠は未提出でも警告色を使わない | `../decisions.md` 2026-11-06（H-15 の決着。全画面この規則で揃える） |
 | 発表会単位の提出率（SC-02（T）の「提出率」・SC-03 の提出状況サマリ） | `(その発表会の必須資料枠〔is_required = true〕のすべてに提出の行があるチームの数) / (その発表会と同じ年度のチームの数)`。**チーム単位で数える。** 提出の行は、概要枠は `summaries`、他の必須枠は `submissions` にある。チームの年度は `teams.class_id → classes.fiscal_year_id`（上の「作品の年度」と同じ）。**チームが 0 件の発表会と、必須資料枠が 0 件の発表会は、数えない**（値を返さず、どちらの 0 件かを区別して返す。両方が 0 件のときはチームが 0 件として扱う）。判定は、この値を返すデータ層の関数が行う | §3-2・**H-61 決着**（`../decisions.md` 2026-10-23。必須の資料枠のセル単位の提出率を置き換えた）・**H-66 の②決着**（同 2026-10-30。0 件の扱い）。必須枠だけを数えるのは H-15 の決着（同 2026-11-06）に沿う |

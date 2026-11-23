@@ -7,7 +7,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yse_compass}
       POSTGRES_DB: ${POSTGRES_DB:-yse_compass}
     ports:
-      - "5432:5432"
+      # 127.0.0.1 に限る。ホストで動くアプリ（localhost）には届き、LAN やインターネットには出ない。
+      - "127.0.0.1:5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:

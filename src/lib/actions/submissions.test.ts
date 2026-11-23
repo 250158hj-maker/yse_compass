@@ -192,24 +192,54 @@ describeDb("提出の Server Action", () => {
 });
 
 describeDb("概要の画像の Server Action", () => {
+  // images は、画像 1 枚ずつを { data: バイト列 } の箱に入れて渡す。バイト列の配列をそのまま渡すと、React が Server Action の引数を受け取るとき、
+  // 配列の中のバイト列の長さを合計して上限（既定 100 万）に数えるため、2 枚で約 1MB を超えると、関数に届く前に 500 になる（Issue #334）。箱で包むと数えられない。
+  const box = (data: Uint8Array) => ({ data });
+
   it("画像つきで保存でき、取得できる。形の合わない画像は invalid_image、未サインインは unauthenticated、先生は保存できない", async () => {
     await inTransaction(async (db) => {
       const s = await setup(db, 9866);
       const image = await sharp({ create: { width: 300, height: 200, channels: 3, background: "#336699" } }).jpeg().toBuffer();
       signInAs(null);
-      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [image] })).toEqual({ ok: false, code: "unauthenticated" });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [box(image)] })).toEqual({ ok: false, code: "unauthenticated" });
       expect(await getSummaryImagesAction(s.teamId, s.occasionId)).toEqual({ ok: false, code: "unauthenticated" });
       signInAs({ id: s.studentId, role: "student" });
-      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [Buffer.from("画像ではない")] })).toEqual({ ok: false, code: "invalid_image" });
-      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [image] })).toMatchObject({ ok: true, data: { introduction: "a" } });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [box(Buffer.from("画像ではない"))] })).toEqual({ ok: false, code: "invalid_image" });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [box(image)] })).toMatchObject({ ok: true, data: { introduction: "a" } });
       const got = await getSummaryImagesAction(s.teamId, s.occasionId);
       expect(got).toMatchObject({ ok: true, data: [{ displayOrder: 1 }] });
       // 戻り値は Buffer ではなく Uint8Array で返す。
       if (got.ok) expect(Buffer.isBuffer(got.data[0].imageData)).toBe(false);
       expect(await getSummaryImagesAction("1" as never, s.occasionId)).toEqual({ ok: false, code: "invalid_input" });
       signInAs({ id: "1", role: "teacher" });
-      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [image] })).toEqual({ ok: false, code: "forbidden" });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [box(image)] })).toEqual({ ok: false, code: "forbidden" });
       expect(await getSummaryImagesAction(s.teamId, s.occasionId)).toMatchObject({ ok: true, data: [{ displayOrder: 1 }] });
+    });
+  });
+
+  it("2 枚を箱で渡して、順番どおりに保存される。images を渡さない保存は、画像を変えない", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9867);
+      const red = await sharp({ create: { width: 300, height: 200, channels: 3, background: "#ff0000" } }).jpeg().toBuffer();
+      const blue = await sharp({ create: { width: 300, height: 200, channels: 3, background: "#0000ff" } }).jpeg().toBuffer();
+      signInAs({ id: s.studentId, role: "student" });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: [box(red), box(blue)] })).toMatchObject({ ok: true });
+      expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "b" })).toMatchObject({ ok: true, data: { introduction: "b" } });
+      const got = await getSummaryImagesAction(s.teamId, s.occasionId);
+      expect(got).toMatchObject({ ok: true, data: [{ displayOrder: 1 }, { displayOrder: 2 }] });
+    });
+  });
+
+  it("バイト列をそのまま渡す形・箱の中身がバイト列でない形・箱でない値は、invalid_image で断る（何も保存しない）", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9868);
+      const image = await sharp({ create: { width: 300, height: 200, channels: 3, background: "#336699" } }).jpeg().toBuffer();
+      signInAs({ id: s.studentId, role: "student" });
+      // バイト列をそのまま渡す形は、画面から送ると React の上限で通らない場合があるので、関数の側でも受けない（小さい画像で通ってしまい、大きい画像で初めて 500 になるのを避ける）。
+      for (const images of [[image], [box(image), image], [{ data: "文字列" }], [{ data: [1, 2, 3] }], [{}], [null], ["x"], "文字列", { data: image }]) {
+        expect(await saveSummaryAction(s.teamId, s.occasionId, { introduction: "a", images: images as never })).toEqual({ ok: false, code: "invalid_image" });
+      }
+      expect(await db.summary.count({ where: { teamId: s.teamId } })).toBe(0);
     });
   });
 });

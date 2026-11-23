@@ -60,6 +60,18 @@ it("字数があふれたときは、そのチームが複数ページになる�
   expect(pageCount).toBeGreaterThan(1);
 });
 
+it("末尾近くの 1 バイトだけが違う画像も、チームごとに別の画像として入る（findings.md F-17 の画像の渡し方）", async () => {
+  const base = await jpeg("#336699");
+  // 0x80 以上は UTF-8 として不正な並びになり、Buffer.toString() では同じ文字（U+FFFD）にまとまる。
+  const images = Array.from({ length: 5 }, (_, i) => {
+    const copy = Buffer.from(base);
+    copy[copy.length - 10] = 0x80 + i;
+    return copy;
+  });
+  const { pdf } = await renderSummaryBooklet(images.map((image, i) => team({ teamName: `T${i}`, images: [image] })));
+  expect(pdf.toString("latin1").match(/\/Subtype\s*\/Image/g)).toHaveLength(5);
+});
+
 it("20 チーム分の最悪ケース（全欄が上限近く・画像 2 枚・自由な欄 2 件）を 3 秒以内に作る", async () => {
   const a = await jpeg("#336699");
   const b = await jpeg("#993366");

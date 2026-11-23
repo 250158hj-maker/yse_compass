@@ -112,9 +112,11 @@ function TeamPage({ team }: { team: BookletTeam }) {
       {team.images.length > 0 && (
         <View style={styles.imageRow}>
           {team.images.map((data, i) => (
+            // Buffer をそのまま渡す。{ data, format } の形で渡すと、react-pdf 4.9.0 は Buffer.toString() を同じ画像かの判定キーにするため、
+            // 末尾近くの 1 バイトだけが違う画像が 1 枚にまとまる（findings.md F-17。再現はテストにある）。
             // 縮めた JPEG だけを保存している（summary-image.ts）。代替テキストは置かない（5-2-7：属性が正典に無い）。react-pdf の Image は HTML の img ではなく、PDF に alt は載らない。
             // eslint-disable-next-line jsx-a11y/alt-text
-            <Image key={i} style={styles.image} src={{ data: Buffer.from(data), format: "jpg" }} />
+            <Image key={i} style={styles.image} src={Buffer.from(data)} />
           ))}
         </View>
       )}

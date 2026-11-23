@@ -45,9 +45,22 @@ export async function getPresentationDetailAction(teamId: number, occasionId: nu
   return run(isId(teamId) && isId(occasionId), (actor) => getPresentationDetail(prisma, actor, teamId, occasionId));
 }
 
+// 画面から送る画像は、1 枚ずつ { data: バイト列 } の箱に入れる。バイト列の配列（Uint8Array[]）をそのまま送ると、React が Server Action の引数を受け取るとき、
+// 配列の中のバイト列の長さ（バイト数）を合計して、上限（既定 100 万。Next の設定では変えられない）に数えるため、2 枚で約 1MB を超えると、関数に届く前に 500 になる（Issue #334）。
+// オブジェクトで包むと数えられない（React のエラーの文面が勧める「intermediate objects」）。10MB × 2 枚まで通ることを、React の送信（encodeReply）と受け取り（decodeReply）で確かめた。
+export type SummaryActionInput = Omit<SummaryInput, "images"> & { images?: { data: Uint8Array }[] };
+
+// 箱を開けて、データ層が受ける形（Uint8Array の並び）にする。バイト列をそのまま渡す形・箱でない値は、バイト列でない値にして、データ層に invalid_image で断らせる
+// （そのまま通すと、小さい画像では通り、大きい画像で初めて 500 になるため、関数の側でも受けない）。images が配列でないときも、そのまま渡して、データ層に断らせる。
+function unboxImages(input: SummaryActionInput): SummaryInput {
+  const { images, ...rest } = input;
+  if (!Array.isArray(images)) return images === undefined ? rest : { ...rest, images: images as never };
+  return { ...rest, images: images.map((box) => (typeof box === "object" && box !== null ? box.data : undefined) as Uint8Array) };
+}
+
 // 概要の中身（欄・自由な欄）の形と値は、データ層が確かめる。ここでは、入力がオブジェクトであることだけを確かめる。
-export async function saveSummaryAction(teamId: number, occasionId: number, input: SummaryInput) {
-  return run(isId(teamId) && isId(occasionId) && typeof input === "object" && input !== null, (actor) => saveSummary(prisma, actor, teamId, occasionId, input));
+export async function saveSummaryAction(teamId: number, occasionId: number, input: SummaryActionInput) {
+  return run(isId(teamId) && isId(occasionId) && typeof input === "object" && input !== null, (actor) => saveSummary(prisma, actor, teamId, occasionId, unboxImages(input)));
 }
 
 export async function getOwnSummaryAction(teamId: number, occasionId: number) {

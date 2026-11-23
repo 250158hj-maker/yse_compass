@@ -2,7 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { isId } from "@/lib/ids";
 import { renderSummaryBooklet, type BookletTeam } from "@/lib/pdf/summary-booklet";
 import type { Actor } from "@/lib/data/years";
-import type { ExtraSection } from "@/lib/data/summaries";
+import { toExtraSections } from "@/lib/data/summaries";
 
 // 対応: docs/requirements.md §3-3（概要集の生成）・design/04-screen.md SC-11（概要集生成。先生だけ）・decisions.md 2026-10-22（H-7・H-8）・2026-10-26（H-51 (a)）。
 // 入れるチーム・スキップするチームは、発表会の発表（presentations）に載るチームを、概要の提出の有無で分ける。提出済みかどうかは、概要の行の有無で見る（summaries.ts と同じ）。
@@ -28,7 +28,7 @@ export type BookletPlanItem = { teamId: number; teamName: string; workTitle: str
 
 export type BookletPlan = { included: BookletPlanItem[]; skipped: BookletPlanItem[] };
 
-type Loaded = { plan: BookletPlan; teams: Map<number, BookletTeam> };
+type Loaded = { plan: BookletPlan; teams: Map<number, BookletTeam>; fileName: string };
 
 function compareTeamName(a: string, b: string) {
   return a.localeCompare(b, "ja");
@@ -45,7 +45,7 @@ function byBookletOrder(a: BookletPlanItem, b: BookletPlanItem) {
 async function load(db: Db, actor: Actor, occasionId: number): Promise<Loaded> {
   if (actor.role !== "teacher") throw new BookletError("forbidden");
   if (!isId(occasionId)) throw new BookletError("invalid_input");
-  const occasion = await db.eventOccasion.findUnique({ where: { id: occasionId }, select: { id: true } });
+  const occasion = await db.eventOccasion.findUnique({ where: { id: occasionId }, select: { kind: true, fiscalYear: { select: { year: true } } } });
   if (!occasion) throw new BookletError("occasion_not_found");
 
   const rows = await db.presentation.findMany({
@@ -96,12 +96,13 @@ async function load(db: Db, actor: Actor, occasionId: number): Promise<Loaded> {
       workOverview: summary.workOverview,
       techStack: summary.techStack,
       closing: summary.closing,
-      // 保存のときに形を確かめている（summaries.ts の parseExtraSections）。
-      extraSections: summary.extraSections as ExtraSection[],
+      extraSections: toExtraSections(summary.extraSections),
       images: summary.images.map((image) => image.imageData),
     });
   }
-  return { plan: { included: included.toSorted(byBookletOrder), skipped: skipped.toSorted(byBookletOrder) }, teams };
+  // 名前は H-50 の先行方針（<年度>_<発表会名>_概要集.pdf・生成の日時を入れない）。発表会名は、本実装の画面と同じく種別から作る（名称の列は無い：H-63）。
+  const fileName = `${occasion.fiscalYear.year}_${occasion.kind}発表会_概要集.pdf`;
+  return { plan: { included: included.toSorted(byBookletOrder), skipped: skipped.toSorted(byBookletOrder) }, teams, fileName };
 }
 
 // 生成の前の「この順で束ねます」の一覧（入るチーム・スキップするチーム）。
@@ -109,13 +110,13 @@ export async function getSummaryBookletPlan(db: Db, actor: Actor, occasionId: nu
   return (await load(db, actor, occasionId)).plan;
 }
 
-export type SummaryBooklet = BookletPlan & { pdf: Buffer; pageCount: number };
+export type SummaryBooklet = BookletPlan & { pdf: Buffer; pageCount: number; fileName: string };
 
-// 結果の欄（ファイル名・ページ数・入ったチーム・スキップしたチーム）と PDF は、同じ 1 回の読み込みから作る（04 SC-11）。ファイル名は H-50 が未決なので、ここでは決めない。
+// 結果の欄（ファイル名・ページ数・入ったチーム・スキップしたチーム）と PDF は、同じ 1 回の読み込みから作る（04 SC-11）。ファイル名は H-50 の先行方針で仮置き。
 export async function generateSummaryBooklet(db: Db, actor: Actor, occasionId: number, options: { skipConfirmed: boolean }): Promise<SummaryBooklet> {
-  const { plan, teams } = await load(db, actor, occasionId);
+  const { plan, teams, fileName } = await load(db, actor, occasionId);
   if (plan.included.length === 0) throw new BookletError("nothing_to_bundle");
   if (plan.skipped.length > 0 && !options.skipConfirmed) throw new BookletError("skip_not_confirmed");
   const ordered = plan.included.map((item) => teams.get(item.teamId)!);
-  return { ...plan, ...(await renderSummaryBooklet(ordered)) };
+  return { ...plan, ...(await renderSummaryBooklet(ordered)), fileName };
 }

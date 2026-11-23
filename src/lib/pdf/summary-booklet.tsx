@@ -31,6 +31,8 @@ export type BookletTeam = {
 const FONT_FAMILY = "NotoSansJP";
 const FONT_DIR = path.join(process.cwd(), "node_modules", "@expo-google-fonts", "noto-sans-jp");
 
+const NO_LINE_START = /[、。，．・：；？！ー)）」』】〕〉》ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ]/;
+
 let fontRegistered = false;
 function registerFont() {
   if (fontRegistered) return;
@@ -41,8 +43,16 @@ function registerFont() {
       { src: path.join(FONT_DIR, "700Bold", "NotoSansJP_700Bold.ttf"), fontWeight: 700 },
     ],
   });
-  // 日本語は文字の間で折り返せる。既定の音節分けは、長い英数字の連なりを割らずに枠から溢れさせるので、1 文字ずつ割る。
-  Font.registerHyphenationCallback((word) => Array.from(word));
+  // 日本語は文字の間で折り返せる。1 文字ずつの間に空の音節を挟むと、ハイフンを足さずに切れる位置になる（音節どうしの切れ目では textkit が「-」を足す）。
+  // 行頭に置けない文字（閉じ括弧・句読点・小書きの仮名など）は、前の文字にくっつける。文字の集合は仮のもの（5-2-1 の範囲は未決）。開き括弧が行末に来るのは防がない。
+  Font.registerHyphenationCallback((word) => {
+    const units: string[] = [];
+    for (const ch of Array.from(word)) {
+      if (units.length > 0 && NO_LINE_START.test(ch)) units[units.length - 1] += ch;
+      else units.push(ch);
+    }
+    return units.flatMap((u) => [u, ""]);
+  });
   fontRegistered = true;
 }
 
@@ -112,8 +122,8 @@ function TeamPage({ team }: { team: BookletTeam }) {
       {team.images.length > 0 && (
         <View style={styles.imageRow}>
           {team.images.map((data, i) => (
-            // Buffer をそのまま渡す。{ data, format } の形で渡すと、react-pdf 4.9.0 は Buffer.toString() を同じ画像かの判定キーにするため、
-            // 末尾近くの 1 バイトだけが違う画像が 1 枚にまとまる（findings.md F-17。再現はテストにある）。
+            // Buffer をそのまま渡す。{ data, format } の形で渡すと、@react-pdf/layout 5.2.0 の fetchImage が data.toString() を画像のキーにし、
+            // @react-pdf/render 4.7.0 の drawImage が 1 回の描画の中で同じキーの画像を使い回すため、末尾近くの 1 バイトだけが違う画像が 1 枚にまとまる（再現はテストにある）。
             // 縮めた JPEG だけを保存している（summary-image.ts）。代替テキストは置かない（5-2-7：属性が正典に無い）。react-pdf の Image は HTML の img ではなく、PDF に alt は載らない。
             // eslint-disable-next-line jsx-a11y/alt-text
             <Image key={i} style={styles.image} src={Buffer.from(data)} />

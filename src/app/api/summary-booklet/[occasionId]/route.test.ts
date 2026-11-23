@@ -94,7 +94,7 @@ describeDb("概要集の生成の入口（GET /api/summary-booklet/[occasionId]�
       const res = await call(occasionId);
       expect(res.status).toBe(200);
       expect(res.headers.get("Content-Type")).toBe("application/pdf");
-      expect(res.headers.get("Content-Disposition")).toBe('inline; filename="summary-booklet.pdf"');
+      expect(res.headers.get("Content-Disposition")).toBe(`inline; filename="summary-booklet.pdf"; filename*=UTF-8''${encodeURIComponent("9872_企画発表会_概要集.pdf")}`);
       expect(res.headers.get("Cache-Control")).toBe("no-store");
       expect(Buffer.from(await res.arrayBuffer()).subarray(0, 5).toString("latin1")).toBe("%PDF-");
     });
@@ -106,7 +106,17 @@ describeDb("概要集の生成の入口（GET /api/summary-booklet/[occasionId]�
       signInAs("teacher");
       const res = await call(occasionId, "?download=1");
       expect(res.status).toBe(200);
-      expect(res.headers.get("Content-Disposition")).toBe('attachment; filename="summary-booklet.pdf"');
+      expect(res.headers.get("Content-Disposition")).toBe(`attachment; filename="summary-booklet.pdf"; filename*=UTF-8''${encodeURIComponent("9873_企画発表会_概要集.pdf")}`);
+    });
+  });
+
+  it("発表会の ID が「986.0」「9.86e2」のような、数として読めても ID の形でない文字列は 400", async () => {
+    await inTransaction(async (db) => {
+      const occasionId = await setup(db, 9879, { unsubmitted: false });
+      signInAs("teacher");
+      for (const text of [`${occasionId}.0`, `0${occasionId}`, `+${occasionId}`, `${occasionId}e0`]) {
+        expect((await call(text)).status, text).toBe(400);
+      }
     });
   });
 

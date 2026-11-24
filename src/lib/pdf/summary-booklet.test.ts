@@ -60,7 +60,7 @@ it("字数があふれたときは、そのチームが複数ページになる�
   expect(pageCount).toBeGreaterThan(1);
 });
 
-it("末尾近くの 1 バイトだけが違う画像も、チームごとに別の画像として入る（findings.md F-17 の画像の渡し方）", async () => {
+it("末尾近くの 1 バイトだけが違う画像も、チームごとに別の画像として入る", async () => {
   const base = await jpeg("#336699");
   // 0x80 以上は UTF-8 として不正な並びになり、Buffer.toString() では同じ文字（U+FFFD）にまとまる。
   const images = Array.from({ length: 5 }, (_, i) => {

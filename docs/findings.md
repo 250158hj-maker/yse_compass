@@ -396,14 +396,14 @@ Sources:
 
 - ref   : `open-questions.md` G-2（12/18 までの仮置き：2026-11-24 の追記）・H-77 ③／`findings.md` F-12（バックアップ方式の選択肢）／`pm/aws-server-drafts.md` §4（`pg_dump` を S3 へ送る下書き）
 - steps : 開発用の PostgreSQL のコンテナ（`postgres:16-alpine`）に使い捨ての DB を作り、`prisma migrate deploy`（6 件）で表を作り、合成データを入れた（20 チーム・メンバー 60 人・利用者 21 人・概要 20 件・画像 40 枚〔約 224KB のバイト列・計 8,960,000 バイト〕。日本語の本文と JSON を含む）。`pg_dump -Fc` で取り、別のコンテナ（同じイメージ・同じユーザー名と DB 名の空の DB）に `pg_restore --exit-on-error` で戻した（蒲山・2026-11-24。開発 PC の WSL2・PostgreSQL 16.15）
-- what  : **ローカルでは、元と同じに戻った。ただし、AWS・S3・別のバージョンの PostgreSQL では確かめていない。**
+- what  : **ローカルでは、比べた範囲のデータ・シーケンス・索引は元と同じに戻り、CHECK 制約 4 件は式の文字列が違った（下の「違ったもの」）。AWS・S3・別のバージョンの PostgreSQL では確かめていない。**
   - ダンプ：10.3MB（先頭は `PGDMP`。`pg_restore --list` で 157 項目・`TABLE DATA` が 16 項目）。`pg_restore` は終了コード 0・約 0.7 秒
-  - **同じだったもの**：16 表の件数／画像の md5（8,960,000 バイト）と、主な 8 表（teams・team_members・works・users・presentations・event_occasions・classes・summaries）の行の md5／シーケンスの値／索引 41 件の定義／制約の数 46／`prisma migrate status`（「Database schema is up to date」）／データ層の `generateSummaryBooklet` で、元と戻した DB のどちらからも 20 チームの概要集ができた（ページ数・ファイル名が同じ）
+  - **同じだったもの**：16 表の件数／画像の md5（8,960,000 バイト）と、主な 8 表（teams・team_members・works・users・presentations・event_occasions・classes・summaries）の行の md5／シーケンスの値／索引 41 件の定義／制約の数 46／`prisma migrate status`（「Database schema is up to date」。適用の記録だけを見るので、表や列の欠けは分からない）／データ層の `generateSummaryBooklet` で、元と戻した DB のどちらからも 20 チームの概要集ができた（ページ数・ファイル名が同じ）
   - **シーケンスは値そのものが戻った**：新しい行を入れたときの次の ID は、元と戻した DB の両方で 41 だった（取り消した挿入でシーケンスが進んでいたため、行数から数えた 21 とは違う）
-  - **違ったもの**：CHECK 制約 4 件（`comments_label_check`・`event_occasions_kind_check`・`users_role_check`・`works_publication_consent_check`）の式の文字列。戻したあとは `ARRAY[('…'::character varying)::text, …]` の形に書き直される。**意味は同じと見立てる**（`users_role_check` と `event_occasions_kind_check` は、両方で同じ行を弾いた。残りの 2 件は、個別に確かめていない）。**制約の比較を定義の文字列で行うと、違いと誤判定する**
+  - **違ったもの**：CHECK 制約 4 件（`comments_label_check`・`event_occasions_kind_check`・`users_role_check`・`works_publication_consent_check`）の式の文字列。戻したあとは `ARRAY[('…'::character varying)::text, …]` の形に書き直される。**意味は同じ**（私は `users_role_check` と `event_occasions_kind_check` が、両方で同じ行を弾くことを確かめた。レビュー側では、境界の値 18 ケースを入れて、4 件とも違反と許可が元と戻した DB で一致した）。**制約の比較を定義の文字列で行うと、違いと誤判定する**
   - 確かめていないこと：AWS 上のサーバー・S3 を経由した戻し（`aws s3 cp` を含む下書きのスクリプトの通し実行）／別のバージョンの PostgreSQL／所有者（owner）が違うとき／本番に近い量／画像（合成のバイト列は有効な JPEG ではなく、PDF には埋め込まれない。同じバイト列であることは md5 で確かめた）／実際の画面でのサインインと表示
-- why   : **「戻せると確かめた」とは書かない。** 確かめたのは、同じイメージ・同じ役割名・合成データの 1 回で、ダンプと戻しが手順どおり通り、データ・シーケンス・索引・アプリからの読み出しが元と同じだったことまで。AWS・S3 を使う練習（G-2 の仮置き ② の、受付を開ける前の戻し）は残っている。確かめ方としては、件数・画像の md5・シーケンスの値・`prisma migrate status` が使え、制約は定義の文字列ではなく、違反する行を入れて比べるのがよい
-- 決着  : **未決着。** G-2 の仮置きの戻しの練習は、AWS 上のサーバーと S3 で行う分が残っている。世代数・期間・許容できるデータ損失は G-2 で別に決める
+- why   : **「戻せると確かめた」とは書かない。** 確かめたのは、同じイメージ・同じ役割名・合成データの 1 回で、ダンプと戻しが手順どおり通り、16 表の件数・主な 8 表の行・画像・シーケンス・索引の定義・制約の数が元と同じで、概要集のページ数とファイル名が同じだったことまで（残りの表は件数だけ比べた）。G-2 の仮置き ② の戻しの練習（受付を開ける前に、別の場所へ 1 回）は残っている。本項はその練習に数えない（S3 に送ったダンプからの戻しではなく、画面も見ていない）。確かめ方としては、件数・画像の md5・シーケンスの値が使える。`prisma migrate status` は適用の記録だけを見るので、表や列の欠けは分からず（レビューで、使い捨ての DB の `comments` を DROP しても「up to date」と出ることを確かめた）、これだけで「戻せた」の確認にしない。制約は定義の文字列ではなく、違反する行を入れて比べるのがよい
+- 決着  : **未決着。** G-2 の仮置き ② の戻しの練習は残っている（本項は数えない）。世代数・保管期間・許容できるデータ損失は G-2 で別に決める
 
 ### 引き継ぎ予定（着手前スパイクの検証メモ・未決着）
 

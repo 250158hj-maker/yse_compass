@@ -435,6 +435,27 @@ Sources:
 - why   : **「2GB で足りる」とも「足りない」とも書かない。** 確かめたのは、Docker の制限（メモリ・CPU）の中で、ビルドだけを流したときの最大メモリで、OS・Docker・PostgreSQL・動いている `next start`（約 165MB：`pm/aws-server-drafts.md` §2）は入っていない。それらが同時に動くと、2GB では足りなくなる可能性が高い、と見立てる（2 コアで最大 1.65GB、余裕は約 400MB）。H-77 ① の材料としては、メモリ 4GB 以上にするか、ビルドを別の場所で行って成果物だけを置く形を、移行の段取りで比べるのがよい（見立て）。バックアップは、`SIGKILL` だけがダンプを残す。権限が 600 なので他のユーザーには読めないが、学校のメールアドレスと氏名を含むので、古い `yse_compass-*.dump` を消す処理（起動時か次の実行時）を検討する価値がある（見立て）。スクリプトと測定のコマンドは、リポジトリに入れていない
 - 決着  : **未決着。** AWS 上のサーバーでのビルド（メモリの余裕）と、S3 での実際のアップロードと戻しは、移行のときに確かめる（H-77 ①③・G-2 の仮置き ②）。インスタンスの種類と大きさは H-77 ① で決める
 
+### F-26  Caddy（`tls internal`）の背後の `next start` で、サインインの redirect URI は公開ホスト名になるか／PDF の同時生成は、メモリ 2GB・2 コアでどこまで耐えるか（H-77 ①・H-38・H-53 ⑦ の材料。Docker での代用の 1 回目）
+
+- ref   : `open-questions.md` H-77 ①・H-38・H-53 ⑦／`design/08-architecture.md` 8-7-3・8-7-4／`findings.md` F-25（2GB・2 コアのビルド）・F-23（生成時間）・F-11（redirect URI）／`decisions.md` 2026-11-06（生成は 20 チーム分で 3 秒以内）
+- steps : **AWS・EC2・本物のドメインではなく、開発 PC（WSL2・Docker）での代用**（蒲山・2026-11-24）。① `main` の `96cba06` のソース（`.env`・`node_modules`・`.git` を除く）を Docker のボリュームに写し、`pnpm install` と `pnpm build`（CI と同じダミーの環境変数）。同じ Docker のネットワークに、空の PostgreSQL 16・`next start`（`node:24`・`pnpm start`・ダミーの `AUTH_GOOGLE_ID`／`AUTH_GOOGLE_SECRET`・`SCHOOL_WORKSPACE_DOMAIN=example.invalid`）を置き、Caddy v2.11.9（`--network host`・`tls internal`・`reverse_proxy 127.0.0.1:3000`・サイト名 `compass.example.test`。`curl` の `--resolve` で名前を引く）を前に置いた。サインインは、`/api/auth/csrf` で CSRF トークンを取り、`POST /api/auth/signin/google` の `Location`（Google への転送先）にある `redirect_uri` を読んだ（Google にはつないでいない）。`AUTH_URL`・`AUTH_TRUST_HOST` の 3 通りで、アプリを起動し直した。next 16.2.10・next-auth 5.0.0-beta.32。② 同じソースで、`vitest` の中から `renderSummaryBooklet` を、Docker の `--memory` と `--memory-swap`（同じ値・スワップなし）・`--cpus 2` つきで、同時に N 件（`Promise.all`）走らせた。20 チーム・全欄 150 字・自由な欄 2 件・メンバー 4 人・画像 2 枚（チームごとに別の約 227KB のノイズの JPEG〔有効〕）。字体の読み込みを済ませる 1 回のあと、3 回ずつ（32 件のみ、2 回の予定）。メモリは、0.1 秒ごとに読んだ cgroup の `anon` の最大
+- what  : **Caddy は転送ヘッダを正しく渡したが、`AUTH_TRUST_HOST=true` だけでは、redirect URI が公開ホスト名にならなかった。PDF の同時生成は、時間が件数に比例して延び、メモリは 16 件までは 2GB に収まった。ただし、どちらも AWS の実機・本物のドメイン・ルート経由では確かめていない。**
+  - **Caddy**：アプリに渡るヘッダ（ヘッダを返すだけの小さなサーバーで確認）は、`Host` と `X-Forwarded-Host` が `compass.example.test`・`X-Forwarded-Proto` が `https`・`X-Forwarded-For` が `127.0.0.1`。HTTP は 308 で `https://compass.example.test/` へ転送された。証明書は内部の認証局から取得できた。`/api/health/db` は、HTTPS 越しで `{"status":"ok"}`
+  - **`redirect_uri`**（`/api/auth/signin/google` の `Location`。`hd` は `example.invalid`）：
+    - `AUTH_URL`・`AUTH_TRUST_HOST` のどちらも無い：`UntrustedHost`（CSRF のトークンも取れない）
+    - `AUTH_TRUST_HOST=true` だけ：**`https://localhost:3000/api/auth/callback/google`**（公開ホスト名ではない）
+    - `AUTH_URL=https://compass.example.test`：`https://compass.example.test/api/auth/callback/google`
+    - アプリのポートに直接つなぎ、`Host` と `X-Forwarded-Host` を `evil.example.test`・`X-Forwarded-Proto` を `https` にして送ると、`AUTH_TRUST_HOST=true` だけのときは `https://localhost:3000/...` のまま、`AUTH_URL` のときは公開 URL のまま。偽のホスト名は、どちらも `redirect_uri` に出なかった
+    - **原因（Next 側か Auth.js 側か）は調べていない**
+  - **PDF の同時生成**（Docker は 2GB・2 コア。生成の PDF は 21 ページ・約 9.3MB。字体の読み込みを済ませたあとの `anon` が約 410〜465MB）：
+    - 同時 1 件：0.65〜0.70 秒・ピーク 493MB／2 件：1.27〜1.39 秒・570MB／4 件：2.56〜2.75 秒・690MB／8 件：4.76〜5.34 秒・884MB／16 件：9.39〜10.3 秒・1328MB（どれも成功）
+    - 同時 32 件：1 回目は完走（21 秒）したが、2 回目に**メモリ不足で強制終了**（ピーク 2017MB・`oom_kill` 1）
+    - 同時 8 件・1GB：成功（5.1〜5.5 秒・812MB。2 回）
+    - 時間は件数にほぼ比例（1 件あたり約 0.65 秒。生成は 1 つのスレッドで動くので、2 コアでも速くならない）。メモリは、1 件増えるごとに約 55MB
+  - 確かめていないこと：本物のドメイン・DNS・Let's Encrypt の証明書（H-38）／Google での実際のサインインの往復（`redirect_uri_mismatch` になるかは、Google に登録した URL との突き合わせで決まる）／`next start` のルート（ログイン必須・DB の読み込み・複数のリクエストの扱い）／AWS の CPU・I/O／`systemd`／PDF は関数を直接呼んだ値（ルート・DB・日本語の長い本文以外の内容を含まない）／同時生成のメモリの繰り返し（件数ごとに 3 回。32 件は完走が 1 回）／32 件のとき 1 回目のあとにメモリが戻らなかった理由
+- why   : **「`AUTH_TRUST_HOST` では動かない」とも「`AUTH_URL` で動く」とも断定しない。** 確かめたのは、この環境（Docker・ダミーの Google の設定・内部の証明書）で、Google への転送先の `redirect_uri` の文字列まで。この結果から、本番では `AUTH_URL` に公開 URL を入れる必要がある、と見立てる（`AUTH_TRUST_HOST` だけだと、Google に登録した URL と食い違う可能性が高い）。理由は調べていない。同時生成は、関数を直接呼んだ値で、応答が件数に比例して延びる。決定行（2026-11-06）の「20 チーム分で 3 秒以内」は、4 件で 2.6〜2.8 秒・8 件で 4.8〜5.3 秒だったので、5〜6 件のあたりから超える見込み（測っていない）。実際の同時の使われ方（先生が SC-11 を使うので、少ない見込み）は、H-53 ⑦ で決める。スクリプトと測定のコマンドは、リポジトリに入れていない
+- 決着  : **未決着。** 本物のドメインと Google でのサインインの往復は、移行のときに確かめる（H-38・H-77）。8-7-3 の記述は、本項を指す形に直した
+
 ### 引き継ぎ予定（着手前スパイクの検証メモ・未決着）
 
 水戸の検証スパイク（別リポジトリ・使い捨て）が持っていた検証メモ。**新しく実装する中で再び当たったら、F-xx として起こし直す。**

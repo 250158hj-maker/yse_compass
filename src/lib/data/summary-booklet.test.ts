@@ -90,7 +90,7 @@ describeDb("概要集の生成（SC-11・decisions.md 2026-10-22・2026-10-26）
     });
   });
 
-  it("スキップするチームがあるときは、了承が無いと生成しない。了承があれば、入ったチームの数だけページができる", async () => {
+  it("スキップするチームがあるときは、了承が無いと生成しない。了承があれば、目次と、入ったチームの数だけの概要ページができる", async () => {
     await inTransaction(async (db) => {
       const s = await setup(db, 9862, ["A", "B", "C"]);
       await submit(db, s.occasionId, s.teams["A"], true);
@@ -99,7 +99,7 @@ describeDb("概要集の生成（SC-11・decisions.md 2026-10-22・2026-10-26）
       await expectError(generateSummaryBooklet(db, teacher, s.occasionId, { skipConfirmed: false }), "skip_not_confirmed");
       const booklet = await generateSummaryBooklet(db, teacher, s.occasionId, { skipConfirmed: true });
       expect(booklet.pdf.subarray(0, 5).toString("latin1")).toBe("%PDF-");
-      expect(booklet.pageCount).toBe(2);
+      expect(booklet.pageCount).toBe(3);
       expect(booklet.included.map((x) => x.teamName)).toEqual(["A", "B"]);
       expect(booklet.skipped.map((x) => x.teamName)).toEqual(["C"]);
     });
@@ -111,7 +111,7 @@ describeDb("概要集の生成（SC-11・decisions.md 2026-10-22・2026-10-26）
       await submit(db, s.occasionId, s.teams["A"]);
       await submit(db, s.occasionId, s.teams["B"]);
       const booklet = await generateSummaryBooklet(db, teacher, s.occasionId, { skipConfirmed: false });
-      expect(booklet.pageCount).toBe(2);
+      expect(booklet.pageCount).toBe(3);
       expect(booklet.skipped).toEqual([]);
     });
   });

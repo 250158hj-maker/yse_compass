@@ -2,15 +2,16 @@ import path from "node:path";
 import { Document, Font, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import type { ExtraSection } from "@/lib/data/summaries";
 
-// 対応: docs/requirements.md §3-3（概要集の生成）・design/05-output.md 5-2（概要ページの統一レイアウト）・5-4（生成手段：純粋 JS の PDF ライブラリ）。
+// 対応: docs/requirements.md §3-3（概要集の生成）・design/05-output.md 5-1（目次とページ番号）・5-2（概要ページの統一レイアウト）・5-4（生成手段：純粋 JS の PDF ライブラリ）。
 // 寸法・字体・節の順序は、5-2 の仮置き（決定ではない）のとおり。決着したら変わる箇所は、5-2 の「決着したときに変わる箇所」の表。
 // 先行方針で組んでいる（open-questions.md H-69）:
 //   ④ 芯の欄（はじめに・作品概要・開発環境・終わりに）が空のときは、節ごと出さない（既定なし。(a) を仮に採った。紙面は詰まる）。
 //   ① 発表番号は紙面に出さない（出すかどうかが既定なし）。
-//   ⑦⑧ 目次とページ番号は、形は decisions.md 2026-11-24 で決まったが、この部品にはまだ入れていない（decisions.md 2026-11-09 で入れると決めたもの）。
+//   ⑦⑧ 目次・ページ番号の形は決定（decisions.md 2026-11-24）。字の大きさ・行の間隔は仮置き（決定行が実装の担当に任せた）。
 //   画像は、画像の枚数から配置を導く（0 枚は枠を置かない・1 枚は中央・2 枚は横 1 列。H-53 の先行方針）。
 // 1 チーム 1 ページに収まることは、ここでは保証しない（5-2-4 の判定は提案で、合意前）。収まらないときは、そのチームが複数ページになる。
-// 呼び出し側が、返したページ数と入れたチーム数を見比べられるように、ページ数も返す。
+// 呼び出し側が、返したページ数と入れたチーム数を見比べられるように、ページ数も返す。ページ数には目次の分が入る。
+// 目次の番号は、2 回組んで合わせる（1 回目で各チームの最初のページを数え、2 回目でそれを目次に入れる）。合わなければ、その生成では番号の欄を落とす（decisions.md 2026-11-24 ④）。
 
 export type BookletTeam = {
   className: string;
@@ -73,6 +74,15 @@ const styles = StyleSheet.create({
   body: { fontSize: 9.5, lineHeight: 1.7, textAlign: "justify" },
   imageRow: { marginTop: 10, flexDirection: "row", justifyContent: "center", gap: 10 },
   image: { width: IMAGE_WIDTH_PT, height: IMAGE_HEIGHT_PT, objectFit: "contain" },
+  // ページ番号は下の余白（paddingBottom 48pt）の中に絶対位置で置く。本文の高さは変えない（decisions.md 2026-11-24 ①）。
+  pageNumber: { position: "absolute", bottom: 22, left: 0, right: 0, textAlign: "center", fontSize: 9 },
+  // チームの最初のページを数える印。絶対位置で、本文の流れに入れない。
+  marker: { position: "absolute", fontSize: 1 },
+  tocTitle: { fontSize: 18, fontWeight: 700, textAlign: "center", marginBottom: 14 },
+  tocRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#bbbbbb", paddingVertical: 4, fontSize: 10 },
+  tocTeam: { width: "35%", paddingRight: 8 },
+  tocWork: { flex: 1, paddingRight: 8 },
+  tocPage: { width: 30, textAlign: "right" },
 });
 
 type Section = { heading: string; body: string };
@@ -102,13 +112,42 @@ function SectionView({ section }: { section: Section }) {
   );
 }
 
-function TeamPage({ team }: { team: BookletTeam }) {
+function PageNumber() {
+  return <Text fixed style={styles.pageNumber} render={({ pageNumber }) => String(pageNumber)} />;
+}
+
+// 作品名が未設定のチームは、チーム名で埋めず空ける（目次にはチーム名の欄が別にある：decisions.md 2026-11-24 ②）。
+// 番号の欄は、tocStartPages が null のときだけ出さない（番号が合わなかった生成）。
+function TocPage({ teams, tocStartPages }: { teams: BookletTeam[]; tocStartPages: number[] | null }) {
+  return (
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.tocTitle}>目次</Text>
+      {teams.map((team, i) => (
+        <View key={i} style={styles.tocRow} wrap={false}>
+          <Text style={styles.tocTeam}>{team.teamName}</Text>
+          <Text style={styles.tocWork}>{team.workTitle ?? ""}</Text>
+          {tocStartPages && <Text style={styles.tocPage}>{tocStartPages[i]}</Text>}
+        </View>
+      ))}
+      <PageNumber />
+    </Page>
+  );
+}
+
+function TeamPage({ team, onFirstPage }: { team: BookletTeam; onFirstPage: (pageNumber: number) => void }) {
   // 空の芯の欄は節ごと出さない。自由な欄は、保存の時点で見出しが空でないので、本文が空でも見出しは出す。
   const shown = (s: Section) => s.body !== "";
   const before = sectionsBeforeImages(team).filter(shown);
   const after = sectionsAfterImages(team).filter((s, i) => i < team.extraSections.length || shown(s));
   return (
     <Page size="A4" style={styles.page}>
+      <Text
+        style={styles.marker}
+        render={({ pageNumber }) => {
+          onFirstPage(pageNumber);
+          return "";
+        }}
+      />
       <View style={styles.header}>
         <Text style={styles.title}>{team.workTitle ?? team.teamName}</Text>
         <Text style={styles.meta}>{team.className}</Text>
@@ -133,20 +172,58 @@ function TeamPage({ team }: { team: BookletTeam }) {
       {after.map((s, i) => (
         <SectionView key={`${i}-${s.heading}`} section={s} />
       ))}
+      <PageNumber />
     </Page>
   );
 }
 
-export async function renderSummaryBooklet(teams: BookletTeam[]): Promise<{ pdf: Buffer; pageCount: number }> {
-  registerFont();
+// 1 回組む。starts[i] は、i 番目のチームの最初のページの番号（目次を含む通しの番号）。
+// 組んだあとに event loop を 1 回譲る。譲らないと、画像の Buffer の回収が次の 1 周まで遅れ、1 回組むごとに約 10MB（20 チーム・画像 2 枚）増える
+// （開発 PC で測定：譲れば増えない。PR #348 の review thread。サーバーでの測定は H-53 ⑦）。
+async function renderPass(teams: BookletTeam[], tocStartPages: number[] | null): Promise<{ pdf: Buffer; starts: number[] }> {
+  const starts = teams.map(() => 0);
   const pdf = await renderToBuffer(
     <Document title="概要集" language="ja">
+      <TocPage teams={teams} tocStartPages={tocStartPages} />
       {teams.map((team, i) => (
-        <TeamPage key={i} team={team} />
+        <TeamPage
+          key={i}
+          team={team}
+          onFirstPage={(pageNumber) => {
+            starts[i] = pageNumber;
+          }}
+        />
       ))}
     </Document>,
   );
-  return { pdf, pageCount: countPages(pdf) };
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  return { pdf, starts };
+}
+
+export type BookletPass = (tocStartPages: number[] | null) => Promise<{ pdf: Buffer; starts: number[] }>;
+
+export type RenderedBooklet = {
+  pdf: Buffer;
+  // 目次を含む。
+  pageCount: number;
+  // 各チームの最初のページの番号（入れたチームの順）。
+  teamStartPages: number[];
+  // 目次の番号と実際の最初のページが合わず、番号の欄を落として組んだとき true。
+  tocNumbersDropped: boolean;
+};
+
+// 目次の番号の合わせ方（decisions.md 2026-11-24 ③④）。pass は、テストで「合わない」場合を作るために引数にしている。
+export async function composeBooklet(pass: BookletPass, teamCount: number): Promise<RenderedBooklet> {
+  const counted = await pass(Array.from({ length: teamCount }, () => 0));
+  const withNumbers = await pass(counted.starts);
+  const matched = counted.starts.every((n, i) => n === withNumbers.starts[i]);
+  const final = matched ? withNumbers : await pass(null);
+  return { pdf: final.pdf, pageCount: countPages(final.pdf), teamStartPages: final.starts, tocNumbersDropped: !matched };
+}
+
+export async function renderSummaryBooklet(teams: BookletTeam[]): Promise<RenderedBooklet> {
+  registerFont();
+  return composeBooklet((tocStartPages) => renderPass(teams, tocStartPages), teams.length);
 }
 
 // ページの辞書（/Type /Page）を数える。ページの木（/Type /Pages）は数えない。

@@ -213,10 +213,14 @@ export type RenderedBooklet = {
 };
 
 // 目次の番号の合わせ方（decisions.md 2026-11-24 ③④）。pass は、テストで「合わない」場合を作るために引数にしている。
+// 一致しない経路は、実物では通らなかった（レビューで、20 チーム・1 チームがあふれる場合・80 チームなどを試した。番号の欄が固定幅で、桁が変わっても目次の行の高さが変わりにくい）。偽の pass でだけ確かめている。
+// 最初のページの番号は、目次を 1 とするので 2 以上で、チームごとに増える。目印（renderPass の marker）が一度も呼ばれず 0 のままだと、0 どうしで「一致」になるので、それも一致と見なさない。
+const plausibleStarts = (starts: number[]) => starts.every((n, i) => n >= 2 && (i === 0 || n > starts[i - 1]));
+
 export async function composeBooklet(pass: BookletPass, teamCount: number): Promise<RenderedBooklet> {
   const counted = await pass(Array.from({ length: teamCount }, () => 0));
   const withNumbers = await pass(counted.starts);
-  const matched = counted.starts.every((n, i) => n === withNumbers.starts[i]);
+  const matched = plausibleStarts(counted.starts) && counted.starts.every((n, i) => n === withNumbers.starts[i]);
   const final = matched ? withNumbers : await pass(null);
   return { pdf: final.pdf, pageCount: countPages(final.pdf), teamStartPages: final.starts, tocNumbersDropped: !matched };
 }

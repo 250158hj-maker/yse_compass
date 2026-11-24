@@ -90,7 +90,7 @@ describeDb("概要集の生成（SC-11・decisions.md 2026-10-22・2026-10-26）
     });
   });
 
-  it("スキップするチームがあるときは、了承が無いと生成しない。了承があれば、入ったチームの数だけページができる", async () => {
+  it("スキップするチームがあるときは、了承が無いと生成しない。了承があれば、目次と、入ったチームの数だけの概要ページができる", async () => {
     await inTransaction(async (db) => {
       const s = await setup(db, 9862, ["A", "B", "C"]);
       await submit(db, s.occasionId, s.teams["A"], true);

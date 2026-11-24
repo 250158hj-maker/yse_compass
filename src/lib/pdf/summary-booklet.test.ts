@@ -4,7 +4,7 @@ import { composeBooklet, renderSummaryBooklet, type BookletTeam } from "@/lib/pd
 
 // 5-2 の仮置きの組み方が、実際に PDF になることを見る。見た目（行の切れ目・字の大きさ）は、PDF を目で見て確かめる。
 // ここで確かめるのは、日本語と画像が入ること・1 ページに収まること・目次とページ番号・生成の時間（decisions.md 2026-11-06：20 チーム分で 3 秒以内）。
-// ページ数は、先頭の目次（1 ページ）を含む（decisions.md 2026-11-24）。
+// ページ数は、先頭の目次を含む（decisions.md 2026-11-24）。
 
 async function jpeg(color: string): Promise<Uint8Array> {
   return sharp({ create: { width: 1200, height: 675, channels: 3, background: color } }).jpeg().toBuffer();
@@ -35,7 +35,7 @@ it("日本語の概要が、目次と 1 チーム 1 ページの PDF になる",
   expect(pageCount).toBe(2);
 });
 
-it("チームの数だけページができる", async () => {
+it("目次 1 ページと、チームの数だけの概要ページができる", async () => {
   const { pageCount } = await renderSummaryBooklet([team(), team({ teamName: "B" }), team({ teamName: "C" })]);
   expect(pageCount).toBe(4);
 });
@@ -58,7 +58,7 @@ it("空の芯の欄と、長い英数字の連なりがあっても作れる", a
 
 it("字数があふれたときは、そのチームが複数ページになる（収める保証はしない）", async () => {
   const { pageCount } = await renderSummaryBooklet([team({ introduction: zen(4000) })]);
-  expect(pageCount).toBeGreaterThan(1);
+  expect(pageCount).toBeGreaterThan(2);
 });
 
 it("末尾近くの 1 バイトだけが違う画像も、チームごとに別の画像として入る", async () => {
@@ -137,6 +137,18 @@ it("目次の番号が組んだ結果と一致しないときは、その生成�
   };
   const result = await composeBooklet(pass, 2);
   expect(calls).toEqual([[0, 0], [2, 3], null]);
+  expect(result.tocNumbersDropped).toBe(true);
+});
+
+it("最初のページの番号が取れなかった（全部 0 のまま）ときも、一致と見なさず、番号の欄を落とす", async () => {
+  const fakePdf = Buffer.from("%PDF-1.7 /Type /Page");
+  const calls: (number[] | null)[] = [];
+  const pass = async (toc: number[] | null) => {
+    calls.push(toc);
+    return { pdf: fakePdf, starts: [0, 0] };
+  };
+  const result = await composeBooklet(pass, 2);
+  expect(calls).toEqual([[0, 0], [0, 0], null]);
   expect(result.tocNumbersDropped).toBe(true);
 });
 

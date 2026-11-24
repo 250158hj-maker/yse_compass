@@ -36,6 +36,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "googleapis": "^182.0.0",
+    "pdfjs-dist": "6.5.438",
     "prisma": "7.10.0",
     "tailwindcss": "^4",
     "typescript": "^5",

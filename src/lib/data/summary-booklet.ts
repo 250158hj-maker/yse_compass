@@ -9,7 +9,7 @@ import { toExtraSections } from "@/lib/data/summaries";
 // 並びは発表順（presentations.display_order）の昇順。発表順が未設定のチームは、末尾にチーム名順で並べる（04 SC-11・H-51 (a) の行）。
 // 生成のたびに、その時点の概要と発表順から作って返す。生成した PDF の保存も、生成日時の記録もしない（decisions.md 2026-10-22）。
 // スキップするチームがあるときは、先生の了承（skipConfirmed）が要る（requirements.md §3-3）。全チームが未提出のときは、束ねるものが無いので生成しない。
-// 目次とページ番号は、形が未決（H-69 ⑦⑧）なので、まだ入れない（pdf/summary-booklet.tsx の冒頭）。
+// 目次とページ番号は、形は decisions.md 2026-11-24 で決まったが、まだ入れていない（pdf/summary-booklet.tsx の冒頭）。
 // 認可の一次防衛線はここに置く（先生だけ）。
 
 type Db = Pick<PrismaClient, "eventOccasion" | "presentation">;

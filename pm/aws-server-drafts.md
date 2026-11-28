@@ -56,7 +56,8 @@ Environment=NODE_ENV=production
 # DB が healthy になるまで待ってから起動する（demo-server.md ステップ 5 の 1 と同じ）。
 ExecStartPre=/usr/bin/docker compose up -d --wait db
 # nvm の node は systemd から見えないので、実際のパス（`which node`）に置き換える。
-ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000
+# 3000 番は Caddy からだけ使うので、127.0.0.1 で待ち受ける（-H が無いと全部の宛先で待ち受ける）。
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3000
 Restart=on-failure
 RestartSec=5
 
@@ -65,7 +66,7 @@ WantedBy=multi-user.target
 ```
 
 - **ユーザー名・パス**は仮（`ubuntu`）。移行のときに実際の値へ直す。`.env` は、秘密を含むので、権限を `600` にする（`demo-server.md` ステップ 4-2）。
-- **Caddy**：公式のパッケージで入れると、systemd の unit が付く（`caddy.service`。**確かめていない**）。`Caddyfile` の中身（ドメイン・証明書の方式）は、H-38 が決まってから置く。
+- **Caddy**：公式のパッケージで入れると、systemd の unit が付く（`caddy.service`。2026-11-28 に、Ubuntu 24.04 のコンテナで公式の apt の手順から入れて、付くことを確かめた。`User=caddy`・`ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile`。既定の `Caddyfile` は `:80` の静的ファイルの配信なので、中身を置き換える）。`Caddyfile` の中身（ドメイン・証明書の方式）は、H-38 が決まってから置く。
 - **有効にする**：`sudo systemctl daemon-reload` → `sudo systemctl enable --now yse-compass`。**確かめること**：EC2 を 1 回止めて起動し、手を入れずに `/api/health/db` が `{"status":"ok"}` を返すまでの時間を測る（水戸さんの返事が求める「起動から使えるまでの時間」）。
 
 ## 4. `pg_dump` を S3 へ送る下書き
@@ -149,7 +150,7 @@ aws s3 cp "$FILE" "$BUCKET/yse_compass-$(date +%Y%m%d-%H%M%S).dump"
 
 - [ ] **ログイン画面のボタンから**サインインを通す（自分の PC と、学校の PC の両方。学校の PC から届くかは未確認）。F-26 で測ったのはルートを直接呼んだ形で、ボタンの経路（Server Action）は測っていない。`redirect_uri_mismatch` が出たら、`AUTH_URL` の値と、Google に登録した URI を突き合わせる
 - [ ] 先生のアカウントでサインインし、年度を SC-19 で開始できる
-- [ ] §3 の systemd を入れる（パスとユーザー名を実際の値へ。`which node` の結果を `ExecStart` に）。Caddy の unit も有効か見る
+- [ ] §3 の systemd を入れる（パスとユーザー名を実際の値へ。`which node` の結果を `ExecStart` に。nvm なら `/home/<ユーザー>/.nvm/versions/node/v24.x.x/bin/node` の形）。入れたら `sudo systemd-analyze verify /etc/systemd/system/yse-compass.service` で書き方を見る（2026-11-28 にコンテナで試すと、`/usr/bin/node` のままでは「not executable」で止まり、実在のパスに直すと通った）。Caddy の unit も有効か見る
 - [ ] **EC2 を 1 回止めて起動し、手を入れずに `/api/health/db` が `{"status":"ok"}` を返すまでの時間を測る**（H-77 の決定行の根拠に添える：#157 の返事）
 
 ### 6-5. 通し（遅くとも 12/04）

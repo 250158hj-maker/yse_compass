@@ -90,6 +90,35 @@ describeDb("概要集の生成（SC-11・decisions.md 2026-10-22・2026-10-26）
     });
   });
 
+  it("一覧だけのときは、概要の本文と画像の本体を読まない。PDF を組むときは読む。どちらも同じ並びと分け方になる", async () => {
+    await inTransaction(async (db) => {
+      const s = await setup(db, 9869, ["A", "B", "C"]);
+      await submit(db, s.occasionId, s.teams["B"], true);
+      await submit(db, s.occasionId, s.teams["A"]);
+      // presentation.findMany に渡した select を控える（中身は本物の DB から読む）。
+      const reads: { select: { team: { select: { summaries: { select: Record<string, unknown> } } } } }[] = [];
+      const watched = new Proxy(db, {
+        get: (target, key) =>
+          key === "presentation"
+            ? { findMany: (args: (typeof reads)[number]) => (reads.push(args), target.presentation.findMany(args as never)) }
+            : Reflect.get(target, key),
+      });
+
+      const plan = await getSummaryBookletPlan(watched, teacher, s.occasionId);
+      const booklet = await generateSummaryBooklet(watched, teacher, s.occasionId, { skipConfirmed: true });
+
+      const [planRead, bookletRead] = reads.map((r) => r.select.team.select.summaries.select);
+      expect(planRead.id).toBe(true);
+      expect(planRead.introduction).toBe(false);
+      expect(planRead.images).toBe(false);
+      expect(bookletRead.introduction).toBe(true);
+      expect(bookletRead.images).toBeTruthy();
+      expect(plan.included).toEqual(booklet.included);
+      expect(plan.skipped).toEqual(booklet.skipped);
+      expect(booklet.pageCount).toBe(3);
+    });
+  });
+
   it("スキップするチームがあるときは、了承が無いと生成しない。了承があれば、目次と、入ったチームの数だけの概要ページができる", async () => {
     await inTransaction(async (db) => {
       const s = await setup(db, 9862, ["A", "B", "C"]);

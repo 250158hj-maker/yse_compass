@@ -5,7 +5,7 @@
 > **正典**：このファイル（**技術スタックの一覧は `../../CLAUDE.md` §5**）
 > **更新のしかた**：上書き
 > **主担当**：蒲山
-> **最終更新**：2026-11-24（蒲山）
+> **最終更新**：2026-11-28（蒲山）
 
 ## この章が答える問い
 
@@ -268,9 +268,9 @@ pnpm dev
 3. マイグレーションを適用する（`pnpm exec prisma migrate deploy`）。**1 プロセス構成なので、旧アプリを止めてから適用し、新アプリを起動する**（停止時間を許す形。許すかどうかは G-2 が正典に無く未決）。止めずに入れ替えるなら、マイグレーションを旧アプリと両立する形（列・表の追加のみ）に限る
 4. アプリを起動する（`pnpm start`）
 
-**本番で渡す環境変数**（`.env.example` から、ローカル開発専用のものを除く）：`DATABASE_URL`・`AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`SCHOOL_WORKSPACE_DOMAIN`。加えて、`AUTH_URL`（公開 URL）か `AUTH_TRUST_HOST=true` のどちらかが要る見込み（`.env.example` には無い。`@auth/core` 0.41.3 の `lib/utils/env.js` は `trustHost` の既定を、`AUTH_URL`・`AUTH_TRUST_HOST`・Vercel・Cloudflare Pages のいずれも無く `NODE_ENV` が `production` だと false にし、`lib/utils/assert.js` が `UntrustedHost` を返す。ソースを読んだ。2026-10-16 に、ローカルで `next start`〔本番ビルド・`main` の `4fffaeb`〕を起動して確かめた：`AUTH_URL`・`AUTH_TRUST_HOST` のどちらも無い（手元の `.env` に `AUTH_URL` は無かった）と `/api/auth/providers`・`/api/auth/session` が `UntrustedHost` で 500 になり、`AUTH_TRUST_HOST=true` を付けると 200 で Google のプロバイダーが返る。`AUTH_URL` の側は試していない。確かめたのは `localhost` の範囲で、プロキシや PaaS の背後は未確認）。`POSTGRES_USER`／`POSTGRES_PASSWORD`／`POSTGRES_DB` は `docker-compose.yml` 用で、本番のアプリは使わない。**値の置き場所と渡し方は、AWS の構成（H-77）が決まるまで決まらない。** 秘密の値（`AUTH_SECRET`・`AUTH_GOOGLE_SECRET`・`DATABASE_URL` のパスワード）はリポジトリに置かない。
+**本番で渡す環境変数**（`.env.example` から、ローカル開発専用のものを除く）：`DATABASE_URL`・`AUTH_SECRET`・`AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`・`SCHOOL_WORKSPACE_DOMAIN`。加えて、`AUTH_URL`（公開 URL）か `AUTH_TRUST_HOST=true` のどちらかが要る見込み（`.env.example` には無い。`@auth/core` 0.41.3 の `lib/utils/env.js` は `trustHost` の既定を、`AUTH_URL`・`AUTH_TRUST_HOST`・Vercel・Cloudflare Pages のいずれも無く `NODE_ENV` が `production` だと false にし、`lib/utils/assert.js` が `UntrustedHost` を返す。ソースを読んだ。2026-10-16 に、ローカルで `next start`〔本番ビルド・`main` の `4fffaeb`〕を起動して確かめた：`AUTH_URL`・`AUTH_TRUST_HOST` のどちらも無い（手元の `.env` に `AUTH_URL` は無かった）と `/api/auth/providers`・`/api/auth/session` が `UntrustedHost` で 500 になり、`AUTH_TRUST_HOST=true` を付けると 200 で Google のプロバイダーが返る。2026-10-16 の時点では、`AUTH_URL` の側は試していない。確かめたのは `localhost` の範囲で、プロキシや PaaS の背後は未確認。`AUTH_URL` の側とプロキシの背後は、2026-11-24 に Docker での代用で試した：`../findings.md` F-26）。`POSTGRES_USER`／`POSTGRES_PASSWORD`／`POSTGRES_DB` は `docker-compose.yml` 用で、本番のアプリは使わない。**値の置き場所と渡し方は、AWS の構成（H-77）が決まるまで決まらない。** 秘密の値（`AUTH_SECRET`・`AUTH_GOOGLE_SECRET`・`DATABASE_URL` のパスワード）はリポジトリに置かない。
 
-**未確認（実装時に確かめる）**：上の `AUTH_URL` と `AUTH_TRUST_HOST` のどちらを使うか、プロキシや PaaS の背後で redirect URI が一致するか。`src/auth.ts` と `.env.example` には `AUTH_URL`・`trustHost` の指定が無い。名前・証明書・承認済みドメインとリダイレクト URI の登録がそろい（H-38・H-68）、AWS 上のサーバーが動いたら、サインインの往復（redirect URI の一致）を実際に通して確かめる。
+**未確認（実装時に確かめる）**：上の `AUTH_URL` と `AUTH_TRUST_HOST` のどちらを使うか、プロキシや PaaS の背後で redirect URI が一致するか。**2026-11-24 に、Caddy の背後（`next start`・Docker での代用）で、`/api/auth/signin/google` のルートを直接呼んで試した結果、`AUTH_TRUST_HOST=true` だけでは redirect URI が `https://localhost:3000/...` になり、`AUTH_URL` に公開 URL を入れると公開ホスト名になった（`../findings.md` F-26。アプリのログインボタンの経路〔Server Action〕・Google へのつなぎ・本物のドメインでは、確かめていない）。**`src/auth.ts` と `.env.example` には `AUTH_URL`・`trustHost` の指定が無い。名前・証明書・承認済みドメインとリダイレクト URI の登録がそろい（H-38・H-68）、AWS 上のサーバーが動いたら、サインインの往復（redirect URI の一致）を実際に通して確かめる。
 
 ### 8-7-4. HTTPS と認証の接続
 

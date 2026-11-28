@@ -169,6 +169,7 @@ aws s3 cp "$FILE" "$BUCKET/yse_compass-$(date +%Y%m%d-%H%M%S).dump"
 
 - [ ] **ログイン画面のボタンから**サインインを通す（自分の PC と、学校の PC の両方。学校の PC から届くかは未確認）。F-26 で測ったのはルートを直接呼んだ形で、ボタンの経路（Server Action）は測っていない。`redirect_uri_mismatch` が出たら、`AUTH_URL` の値と、Google に登録した URI を突き合わせる
 - [ ] 先生のアカウントでサインインし、年度を SC-19 で開始できる
+- [ ] **AWS 上の Ubuntu で、概要の画像を保存でき（取り込みで sharp が通る）、概要集の PDF を組める**こと（Issue #121 の項目 5 の残り。sharp は WSL2・Alpine・Debian 12 では通った：`../docs/findings.md` F-17。画像はサインインしたあとでないと上げられないので、この段で見る）。結果は 6-7 のとおり `findings.md` に記録する
 - [ ] §3 の systemd を入れる（パスとユーザー名を実際の値へ。`which node` の結果を `ExecStart` に。nvm なら `/home/<ユーザー>/.nvm/versions/node/v24.x.x/bin/node` の形）。入れたら `sudo systemd-analyze verify /etc/systemd/system/yse-compass.service` で書き方を見る（2026-11-28 にコンテナで試すと、`/usr/bin/node` のままでは「not executable」で止まり、実在のパスに直すと通った）。Caddy の unit も有効か見る
 - [ ] **EC2 を 1 回止めて起動し、手を入れずに `/api/health/db` が `{"status":"ok"}` を返すまでの時間を測る**（H-77 の決定行の根拠に添える：#157 の返事）
 

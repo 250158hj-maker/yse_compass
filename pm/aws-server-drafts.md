@@ -155,6 +155,7 @@ aws s3 cp "$FILE" "$BUCKET/yse_compass-$(date +%Y%m%d-%H%M%S).dump"
 - [ ] **DB は持ち込まず、作り直す**（#157 の段取り 2。`../docs/decisions.md` 2026-11-09 の結びつけの行が禁じるのは本番の DB への持ち込み）。`pnpm db:seed` は使わず、`../docs/open-questions.md` P-6 の「デモ環境の DB の用意の案」（先生の行を SQL で入れ、年度は SC-19 で開始する）で用意する
 - [ ] **`pnpm build` のメモリと時間を測る**（F-25 の続き。2GB で落ちたら、4GB に上げるか、ほかの場所でビルドして運ぶかを選ぶ：#157 の返事の 1）。測り方は、ビルドの間に別の端末で `free -m` を見るか、`/usr/bin/time -v` の最大の 1 プロセス（§2 と同じ）
 - [ ] `curl http://localhost:3000/api/health/db` が `{"status":"ok"}`
+- [ ] **2GB で足りるかは、ビルドだけでなく、動かしている間の重い処理も合わせて見る**（`../docs/findings.md` F-27。Docker での代用）：Server Action の本文（上限 `bodySizeLimit` は 21mb）は、約 20MB の本文 1 件あたり約 40MB 増え、サインインしていない呼び出しでも受け取られる。PNG の取り込みは、インターレースだと 1 件 +約 170MB。本文の上限とその手当ては、H-77 ①（大きさ）・⑦（接続元）と合わせて決める（F-27 の決着欄）
 
 ### 6-3. 名前と HTTPS（通しの前。見立て 2〜3h。ドメインの取得が先）
 
@@ -169,7 +170,11 @@ aws s3 cp "$FILE" "$BUCKET/yse_compass-$(date +%Y%m%d-%H%M%S).dump"
 
 - [ ] **ログイン画面のボタンから**サインインを通す（自分の PC と、学校の PC の両方。学校の PC から届くかは未確認）。F-26 で測ったのはルートを直接呼んだ形で、ボタンの経路（Server Action）は測っていない。`redirect_uri_mismatch` が出たら、`AUTH_URL` の値と、Google に登録した URI を突き合わせる
 - [ ] 先生のアカウントでサインインし、年度を SC-19 で開始できる
-- [ ] **AWS 上の Ubuntu で、概要の画像を保存でき（取り込みで sharp が通る）、概要集の PDF を組める**こと（Issue #121 の項目 5 の残り。sharp は WSL2・Alpine・Debian 12 では通った：`../docs/findings.md` F-17。画像はサインインしたあとでないと上げられないので、この段で見る）。結果は 6-7 のとおり `findings.md` に記録する
+- [ ] **AWS 上の Ubuntu で、概要の画像の取り込み（sharp）と、画像を載せた概要集の PDF が動く**こと（Issue #121 の項目 5 の残り）。**最低ラインの外**（`../docs/decisions.md` 2026-11-06 の成功の定義の行の③は、概要の画像と概要集の生成を最低ラインに入れず、順番を最後にしている）。時間が無ければ通しのあとに回せる、は見立て
+  - **画面からはまだ試せない**：概要の入力画面（SC-10）に、画像を選ぶ入力が無い（同じ③）。画像を保存できるのは、チームのメンバー行に結びついた生徒だけで（`src/lib/data/summaries.ts`）、6-2 で作り直した DB には先生の行しか無い。PDF は先生だけで、本実装の入口は `GET /api/summary-booklet/<発表会の ID>`（SC-11 の画面はモック）
+  - **画面なしで確かめる**（#361 のレビューの案。2026-11-28 に開発 PC で、2 ファイル 22 件が通った）：アプリのディレクトリで `pnpm exec vitest run src/lib/data/summary-image.test.ts src/lib/pdf/summary-booklet.test.ts`。どちらも DB を使わない（6-2 の `pnpm install --frozen-lockfile` で、dev の依存〔`vitest`〕も入っている前提）。JPEG・PNG の取り込み（長辺 1200px の JPEG にする）と、画像を載せた概要集の PDF を組むところまで見る。読み込めるかだけなら `node -e "require('sharp')({create:{width:8,height:8,channels:3,background:'#336699'}}).jpeg().toBuffer().then(b=>console.log('ok',b.length))"`（`ok` が出れば読み込める。取り込みの規則までは見ない）
+  - **通ったと言える基準**：上のテストが全部通る。画面で試せる日は、保存が `invalid_image` にならず、保存した画像が JPEG として読め、PDF に画像が載る（空の枠でない）こと。上げる画像は JPEG か PNG にする（HEIC は受けないので、`invalid_image` が sharp の失敗と見分けられない）
+  - **版**：F-17 の「WSL2・Alpine・Debian 12 で通った」は sharp 0.34.5 での記録。アプリが直接使うのは 0.35.5（`package.json`）。記録には版を書く
 - [ ] §3 の systemd を入れる（パスとユーザー名を実際の値へ。`which node` の結果を `ExecStart` に。nvm なら `/home/<ユーザー>/.nvm/versions/node/v24.x.x/bin/node` の形）。入れたら `sudo systemd-analyze verify /etc/systemd/system/yse-compass.service` で書き方を見る（2026-11-28 にコンテナで試すと、`/usr/bin/node` のままでは「not executable」で止まり、実在のパスに直すと通った）。Caddy の unit も有効か見る
 - [ ] **EC2 を 1 回止めて起動し、手を入れずに `/api/health/db` が `{"status":"ok"}` を返すまでの時間を測る**（H-77 の決定行の根拠に添える：#157 の返事）
 
@@ -183,10 +188,11 @@ aws s3 cp "$FILE" "$BUCKET/yse_compass-$(date +%Y%m%d-%H%M%S).dump"
 - [ ] 別の場所へ戻す練習を 1 回（S3 のダンプから。`../docs/open-questions.md` G-2 の 12/18 までの仮置き ②。確かめ方は §4 の「戻しの練習」）
 - [ ] 時刻での起動と停止を入れる（EventBridge Scheduler の案。**スケジュールは AWS の中だけに置き、リポジトリに書かない**：#157 の返事の 4）。止める前に §4 のスクリプトが動く形にするかは、そのとき決める（§4）
 - [ ] 古いダンプが `/tmp` に残っていないか見る（§4。`SIGKILL` のときだけ残る）
+- [ ] **学外から届く形で受付を開けるなら（H-77 ⑦）、本文の上限の手当てを、開ける前に決めておく**（F-27：2GB の制限の `next start` は、サインインしていない約 20MB の本文を同時に 64 件で、メモリ不足で強制終了した。手当ての候補と、どれも決めていないことは F-27 の why）
 
 ### 6-7. 終わったら
 
-- [ ] 測ったもの（ビルドのメモリと時間・起動から使えるまでの時間・サインインの結果）を `../docs/findings.md` に記録する（docs の変更は `origin/main` から切ったブランチで：`AGENTS.md` 禁則8）
+- [ ] 測ったもの（ビルドのメモリと時間・起動から使えるまでの時間・サインインの結果・概要の画像の取り込みと概要集の PDF の結果〔通った・通らなかったと、その理由・sharp の版〕）を `../docs/findings.md` に記録する（docs の変更は `origin/main` から切ったブランチで：`AGENTS.md` 禁則8）
 - [ ] H-77 ①〜④（と P-6 ③）の決定行の PR を出す（承認にリーダーを含める：#157 の返事）
 - [ ] この §6 と `demo-server.md` を、実際に通した手順に直す（または、AWS の手順書を別に起こす）
 

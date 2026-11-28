@@ -5,7 +5,7 @@
 > **正典**：このファイル
 > **更新のしかた**：上書き
 > **主担当**：蒲山（インフラ担当）
-> **最終更新**：2026-11-24（蒲山）
+> **最終更新**：2026-11-28（蒲山）
 
 ---
 
@@ -23,8 +23,8 @@
 
 | 測ったもの | 値 | 読み方 |
 | --- | --- | --- |
-| `pnpm build` の所要時間 | 約 15 秒 | 16 コアでの値。2 コアでは長くなる（見立て） |
-| `pnpm build` の最大メモリ（機械全体の「使用中」の増え方） | **約 3.3GB** | Turbopack が複数のプロセスを並べた結果。コア数が少なければ減る。2 コア・2GB の Docker の制限では、2026-11-24 に測った（`../docs/findings.md` F-25）。**EC2 では測っていない** |
+| `pnpm build` の所要時間 | 約 15 秒 | 16 コアでの値。2 コア・2GB の Docker の制限では約 20〜24 秒（`../docs/findings.md` F-25） |
+| `pnpm build` の最大メモリ（機械全体の「使用中」の増え方） | **約 3.3GB** | Turbopack が複数のプロセスを並べた結果。コア数が少なければ減る。2 コア・2GB の Docker の制限では約 1.65GB（F-25。cgroup の `anon` の最大で、この 3.3GB とは測り方が違う）。**EC2 では測っていない** |
 | `pnpm build` の最大の 1 プロセス | 約 835MB | `/usr/bin/time -v` の値 |
 | `pnpm start`（起動後、`/api/health/db` と `/login` を数回呼んだあと） | 約 165MB（`next-server` のメモリ。機械全体の増え方は約 170MB） | 概要集の生成は含まない |
 | PostgreSQL のコンテナ | 約 42MB | データが少ない状態 |
@@ -44,6 +44,7 @@
 ```ini
 [Unit]
 Description=YSE Compass (next start)
+Wants=network-online.target
 After=network-online.target docker.service
 Requires=docker.service
 
@@ -71,7 +72,7 @@ WantedBy=multi-user.target
 
 **水戸さんの仮置き（受付の間）**：動かした日ごとに、止める前にその日の分が S3 に入っている（#157 の返事。決定ではない）。
 
-**手元で確かめたこと**（2026-11-23、開発 PC の Docker の DB）：下の `pg_dump` の呼び方で、終了コード 0・約 54KB のダンプができ、`pg_restore --list` でダンプの中身（161 項目）を読めた。**S3 への送信は、していない**（AWS CLI も、バケットも無い）。**戻し（`pg_restore`）は、2026-11-24 に、ローカルで 1 回通した**（`../docs/findings.md` F-24。別のコンテナの DB に戻し、件数・画像の md5・シーケンスが元と同じで、概要集のページ数・ファイル名が同じだった。`prisma migrate status` も通ったが、適用の記録だけを見るので、表や列の欠けは分からない）。
+**手元で確かめたこと**（2026-11-23、開発 PC の Docker の DB）：下の `pg_dump` の呼び方で、終了コード 0・約 54KB のダンプができ、`pg_restore --list` でダンプの中身（161 項目）を読めた。**本物の S3 への送信は、していない**（S3 互換のモックへの送信と、失敗したときの動きは、2026-11-24 に Docker で確かめた：`../docs/findings.md` F-25。下のスクリプトの `umask`・`mktemp`・`trap` は、そのとき測った形。最初の `find` で古いダンプを消す行は、2026-11-28 に足した）。**戻し（`pg_restore`）は、2026-11-24 に、ローカルで 1 回通した**（`../docs/findings.md` F-24。別のコンテナの DB に戻し、件数・画像の md5・シーケンスが元と同じで、概要集のページ数・ファイル名が同じだった。`prisma migrate status` も通ったが、適用の記録だけを見るので、表や列の欠けは分からない）。
 
 ```bash
 #!/usr/bin/env bash
@@ -79,16 +80,21 @@ WantedBy=multi-user.target
 set -euo pipefail
 cd /home/ubuntu/workspace/yse_compass
 BUCKET="s3://<バケット名>/pg_dump"          # 仮。公開アクセスを塞いだ専用のバケット（バージョニングあり）
-FILE="/tmp/yse_compass-$(date +%Y%m%d-%H%M%S).dump"
+# ダンプに氏名とメールアドレスが入るので、作るファイルを自分だけが読める権限（600）にする。
+umask 077
+# 前の実行が SIGKILL で止まると trap が動かず、ダンプが残る（findings.md F-25）。最初に消しておく。
+find /tmp -maxdepth 1 -name 'yse_compass-*.dump' -user "$(id -u)" -delete
+FILE="$(mktemp /tmp/yse_compass-XXXXXX.dump)"
+# 途中で失敗しても（set -e で止まっても）、ダンプを残さない。
+trap 'rm -f "$FILE"' EXIT
 
 docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$FILE"
 # 空のダンプを送らない。中身が読めることを確かめてから送る。
 docker compose exec -T db pg_restore --list < "$FILE" > /dev/null
-aws s3 cp "$FILE" "$BUCKET/"
-rm -f "$FILE"
+aws s3 cp "$FILE" "$BUCKET/yse_compass-$(date +%Y%m%d-%H%M%S).dump"
 ```
 
-- **ダンプには学校のメールアドレスと氏名が入る**（#157 の返事）。バケットは公開アクセスを全部塞ぎ、ダンプは `/tmp` に残さない（上の `rm`）。EC2 に付ける IAM の権限は、このバケットへの書き込みだけに絞る（案。実機では未確認）。
+- **ダンプには学校のメールアドレスと氏名が入る**（#157 の返事）。バケットは公開アクセスを全部塞ぎ、ダンプは `/tmp` に残さない（上の `trap`。失敗したときと `SIGTERM` でも消える。`SIGKILL` では `trap` が動かずに残るので、次の実行の最初に消す：`../docs/findings.md` F-25）。EC2 に付ける IAM の権限は、このバケットへの書き込みだけに絞る（案。実機では未確認）。
 - **世代は消さない**（12/18 まで。#157 の返事）。世代数と期間は、G-2 が決まってから。
 - **動かし方**：止める前に手で実行する形から始める。時刻での起動・停止（EventBridge Scheduler。受付の前に入れる）と合わせて、停止の直前に動かす形にするのは、そのとき決める。
 - **戻しの練習**：別のサーバーまたは別の DB に `pg_restore` して、画面で見られるところまで、1 回通す（受付を開ける前）。**`pg_restore` までを、ローカルで 2026-11-24 に通した**（`../docs/findings.md` F-24。画面で見るところまでと、S3 のダンプからの戻しは、未実施）。戻したあとの確かめは、件数・画像の md5・シーケンスの値で行える（`prisma migrate status` は適用の記録だけを見るので、表や列の欠けは分からない。これだけでは確かめにならない）。制約は、戻すと CHECK の式の書き方が変わるので、定義の文字列では比べない（F-24）。
@@ -97,6 +103,7 @@ rm -f "$FILE"
 
 - **`docker-compose.yml` の `ports`**：2026-11-23 時点では `"5432:5432"`。AWS では `"127.0.0.1:5432:5432"` に限る（#157 の返事）。直す変更は #346。
 - **セキュリティグループ**：443 だけを開け、SSH は必要なときだけ、接続元を絞る（H-77 ②）。
+- **`AUTH_URL`**：Caddy の背後では、`AUTH_TRUST_HOST=true` だけだと、ルートを直接呼んだときの `redirect_uri` が `https://localhost:3000/...` になり、`AUTH_URL` に公開 URL を入れると公開ホスト名になった（`../docs/findings.md` F-26。Docker での代用）。移行のとき、`.env` に `AUTH_URL`（公開 URL）を入れる見込み。どちらを使うかは未決（`../docs/design/08-architecture.md` 8-7-3）で、Google でのサインインの往復で確かめる。
 - **AWS の料金**：米国の参考値で見積もっている。東京の値は、権限が渡ってから料金計算ツールで掛け直す（#157）。
 
 ## 関連

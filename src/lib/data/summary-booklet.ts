@@ -42,7 +42,9 @@ function byBookletOrder(a: BookletPlanItem, b: BookletPlanItem) {
   return compareTeamName(a.teamName, b.teamName);
 }
 
-async function load(db: Db, actor: Actor, occasionId: number): Promise<Loaded> {
+// withContent が false のとき（一覧だけが要るとき）は、概要の行は有るかどうか（id）だけを読み、本文と画像の本体は読まない（メンバー名は短いので、どちらのときも読む）。
+// 入る／スキップの判定と並びは、どちらのときもこの関数の同じ式で決める（一覧と PDF で束ねる順がずれないように）。
+async function load(db: Db, actor: Actor, occasionId: number, withContent: boolean): Promise<Loaded> {
   if (actor.role !== "teacher") throw new BookletError("forbidden");
   if (!isId(occasionId)) throw new BookletError("invalid_input");
   const occasion = await db.eventOccasion.findUnique({ where: { id: occasionId }, select: { kind: true, fiscalYear: { select: { year: true } } } });
@@ -63,12 +65,13 @@ async function load(db: Db, actor: Actor, occasionId: number): Promise<Loaded> {
           summaries: {
             where: { eventOccasionId: occasionId },
             select: {
-              introduction: true,
-              workOverview: true,
-              techStack: true,
-              closing: true,
-              extraSections: true,
-              images: { orderBy: { displayOrder: "asc" }, select: { imageData: true } },
+              id: true,
+              introduction: withContent,
+              workOverview: withContent,
+              techStack: withContent,
+              closing: withContent,
+              extraSections: withContent,
+              images: withContent && { orderBy: { displayOrder: "asc" }, select: { imageData: true } },
             },
           },
         },
@@ -87,6 +90,7 @@ async function load(db: Db, actor: Actor, occasionId: number): Promise<Loaded> {
       continue;
     }
     included.push(item);
+    if (!withContent) continue;
     teams.set(team.id, {
       className: team.class.name,
       teamName: team.name,
@@ -107,14 +111,14 @@ async function load(db: Db, actor: Actor, occasionId: number): Promise<Loaded> {
 
 // 生成の前の「この順で束ねます」の一覧（入るチーム・スキップするチーム）。
 export async function getSummaryBookletPlan(db: Db, actor: Actor, occasionId: number): Promise<BookletPlan> {
-  return (await load(db, actor, occasionId)).plan;
+  return (await load(db, actor, occasionId, false)).plan;
 }
 
 export type SummaryBooklet = BookletPlan & { pdf: Buffer; pageCount: number; fileName: string };
 
 // 結果の欄（ファイル名・ページ数・入ったチーム・スキップしたチーム）と PDF は、同じ 1 回の読み込みから作る（04 SC-11）。ファイル名は H-50 の先行方針で仮置き。
 export async function generateSummaryBooklet(db: Db, actor: Actor, occasionId: number, options: { skipConfirmed: boolean }): Promise<SummaryBooklet> {
-  const { plan, teams, fileName } = await load(db, actor, occasionId);
+  const { plan, teams, fileName } = await load(db, actor, occasionId, true);
   if (plan.included.length === 0) throw new BookletError("nothing_to_bundle");
   if (plan.skipped.length > 0 && !options.skipConfirmed) throw new BookletError("skip_not_confirmed");
   const ordered = plan.included.map((item) => teams.get(item.teamId)!);

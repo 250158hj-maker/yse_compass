@@ -50,7 +50,7 @@ describe("signInWithGoogleAction", () => {
   });
 
   // AUTH_URL が無いと、/api/auth/signin 経由で Auth.js が付ける絶対 URL の origin は、Host ではなくサーバーの待ち受け（例：http://localhost:3000）から組まれる。
-  // ここで確かめるのは、Action が見るヘッダーから組む origin の側だけ。公開の名前が決まったら（H-23・H-28）、AUTH_URL と合わせて見直す。
+  // ここで確かめるのは、Action が見るヘッダーから組む origin の側だけ。公開の名前が決まったら（H-38）、AUTH_URL と合わせて見直す。
   it("プロキシの後ろでは、転送されたホストとプロトコルで、同じサイトかを確かめる", async () => {
     requestHeaders({ host: "internal:3000", "x-forwarded-host": "compass.example", "x-forwarded-proto": "https" });
     await signInWithGoogleAction("https://compass.example/teams");

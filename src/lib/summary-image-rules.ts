@@ -5,6 +5,7 @@
 //   長辺 1200px の JPEG：findings.md F-17 の測定（sharp で向きを直し・長辺 1200px の JPEG にし・メタデータを消す）。「読める」の基準（約 640px か約 1280px か）は H-53 ⑤ が未決。
 //   形式 JPEG・PNG だけ：HEIC は、ビルド済みの sharp では読めず、変換用の部品（heic-convert）も実機の写真で変換に失敗した例がある（F-17）ので、受けない。
 //   元の画像の上限 10MB・5,000 万画素：決まった根拠は無い。サーバーのメモリを守るための仮置き。
+//   JPEG の品質 85：決まった根拠は無い仮置き（F-17 にも 06 にも値は無い）。
 
 export const MAX_SUMMARY_IMAGES = 2;
 
@@ -15,3 +16,5 @@ export const MAX_IMAGE_INPUT_BYTES = 10 * 1024 * 1024;
 export const MAX_IMAGE_INPUT_PIXELS = 50_000_000;
 
 export const IMAGE_LONG_EDGE_PX = 1200;
+
+export const IMAGE_JPEG_QUALITY = 85;

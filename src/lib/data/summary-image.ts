@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { SubmissionError } from "@/lib/data/submissions";
-import { ACCEPTED_IMAGE_FORMATS, IMAGE_LONG_EDGE_PX, MAX_IMAGE_INPUT_BYTES, MAX_IMAGE_INPUT_PIXELS } from "@/lib/summary-image-rules";
+import { ACCEPTED_IMAGE_FORMATS, IMAGE_JPEG_QUALITY, IMAGE_LONG_EDGE_PX, MAX_IMAGE_INPUT_BYTES, MAX_IMAGE_INPUT_PIXELS } from "@/lib/summary-image-rules";
 
 // 対応: docs/design/06-data.md 6-3 summary_images・open-questions.md H-52・H-53・findings.md F-17。
 // 概要の画像を取り込むとき、保存する形（向きを直し・長辺を縮め・メタデータを除いた JPEG）にそろえる。元の画像は保存しない。
@@ -21,7 +21,7 @@ export async function normalizeSummaryImage(input: Uint8Array): Promise<Buffer> 
       .rotate()
       .flatten({ background: "#ffffff" })
       .resize({ width: IMAGE_LONG_EDGE_PX, height: IMAGE_LONG_EDGE_PX, fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 85 })
+      .jpeg({ quality: IMAGE_JPEG_QUALITY })
       .toBuffer();
   } catch (e) {
     if (e instanceof SubmissionError) throw e;

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { PrismaClient } from "@/generated/prisma/client";
 import { getSummaryBookletPlanAction } from "@/lib/actions/summary-booklet";
+import { getSummaryBookletPlan } from "@/lib/data/summary-booklet";
 import { saveSummary } from "@/lib/data/summaries";
 import { createTeam } from "@/lib/data/teams";
 import { setupFiscalYear } from "@/lib/data/years";
@@ -13,6 +14,11 @@ const holder = vi.hoisted(() => ({ db: null as unknown as Record<string, unknown
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({ prisma: new Proxy({}, { get: (_, key) => holder.db[key as string] }) }));
+// データ層は本物を通したまま、呼ばれたかどうかだけを見る（未サインインと id の形の誤りで、データ層を呼ばないことを確かめるため）。
+vi.mock("@/lib/data/summary-booklet", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/data/summary-booklet")>();
+  return { ...actual, getSummaryBookletPlan: vi.fn(actual.getSummaryBookletPlan) };
+});
 
 class Rollback extends Error {}
 
@@ -29,6 +35,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   vi.mocked(auth).mockReset();
+  vi.mocked(getSummaryBookletPlan).mockClear();
 });
 
 type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
@@ -95,5 +102,6 @@ describeDb("概要集の一覧の Server Action（SC-11）", () => {
     signInAs("teacher");
     expect(await getSummaryBookletPlanAction(0)).toEqual({ ok: false, code: "invalid_input" });
     expect(await getSummaryBookletPlanAction("1" as never)).toEqual({ ok: false, code: "invalid_input" });
+    expect(getSummaryBookletPlan).not.toHaveBeenCalled();
   });
 });
